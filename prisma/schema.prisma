@@ -1,0 +1,232 @@
+// Landy's Pro — Prisma schema (PostgreSQL / Supabase)
+// Money is ALWAYS integer cents. No floats anywhere in storage.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled, runtime
+  directUrl = env("DIRECT_URL") // direct, migrations
+}
+
+// ─────────────────────────────────────────────────────────────
+// Reference / taxonomy
+// ─────────────────────────────────────────────────────────────
+
+model ContractorType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  contractors  Contractor[]
+  services     Service[]
+  projectTypes ProjectType[]
+  priceTiers   PriceTier[]
+}
+
+model Service {
+  id               String   @id @default(cuid())
+  name             String
+  contractorTypeId String
+  createdAt        DateTime @default(now())
+
+  contractorType      ContractorType      @relation(fields: [contractorTypeId], references: [id], onDelete: Cascade)
+  contractorServices  ContractorService[]
+
+  @@unique([name, contractorTypeId])
+  @@index([contractorTypeId])
+}
+
+model ProjectType {
+  id               String   @id @default(cuid())
+  name             String
+  contractorTypeId String
+  createdAt        DateTime @default(now())
+
+  contractorType ContractorType @relation(fields: [contractorTypeId], references: [id], onDelete: Cascade)
+  priceTiers     PriceTier[]
+  leads          Lead[]
+
+  @@unique([name, contractorTypeId])
+  @@index([contractorTypeId])
+}
+
+// RESERVED for phase-two matching/filtering. Not yet used in distribution.
+model LandType {
+  id    String @id @default(cuid())
+  name  String @unique
+  leads Lead[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// Contractors
+// ─────────────────────────────────────────────────────────────
+
+model Contractor {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  phone              String
+  aboutSection       String?
+  businessHours      String?
+  contractorTypeId   String
+  isPro              Boolean  @default(false)
+  isTopPro           Boolean  @default(false) // RESERVED (phase-two): does NOT affect distribution yet.
+  walletBalanceCents Int      @default(0)
+  stripeCustomerId   String?
+  clerkUserId        String?  @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  contractorType     ContractorType      @relation(fields: [contractorTypeId], references: [id])
+  services           ContractorService[]
+  leadMatches        LeadMatch[]
+  walletTransactions WalletTransaction[]
+
+  @@index([contractorTypeId])
+}
+
+model ContractorService {
+  id           String @id @default(cuid())
+  contractorId String
+  serviceId    String
+
+  contractor Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([contractorId, serviceId])
+  @@index([contractorId])
+  @@index([serviceId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Leads + distribution
+// ─────────────────────────────────────────────────────────────
+
+enum LeadStatus {
+  NEW
+  DISTRIBUTED
+  EXPIRED
+  CLOSED
+}
+
+enum LeadMatchStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum WalletTransactionType {
+  TOPUP
+  LEAD_CHARGE
+  REFUND
+  ADMIN_ADJUST
+}
+
+model Lead {
+  id               String     @id @default(cuid())
+  landownerName    String
+  landownerEmail   String
+  landownerPhone   String
+  propertyLocation String
+  landTypeId       String? // RESERVED (nullable)
+  projectTypeId    String
+  tier             Int // 1 / 2 / 3
+  priceCents       Int // snapshotted from PriceTier at creation
+  status           LeadStatus @default(NEW)
+  source           String     @default("wix_form")
+  createdAt        DateTime   @default(now())
+  expiresAt        DateTime
+
+  landType    LandType?   @relation(fields: [landTypeId], references: [id])
+  projectType ProjectType @relation(fields: [projectTypeId], references: [id])
+  matches     LeadMatch[]
+
+  @@index([status])
+  @@index([projectTypeId])
+}
+
+// This join row lets multiple contractors independently accept the SAME lead;
+// each tracks its own state and its own wallet charge.
+model LeadMatch {
+  id           String          @id @default(cuid())
+  leadId       String
+  contractorId String
+  status       LeadMatchStatus @default(PENDING)
+  acceptToken  String          @unique @default(cuid()) // tokenized SMS link
+  acceptedAt   DateTime?
+  createdAt    DateTime        @default(now())
+
+  lead               Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contractor         Contractor          @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  walletTransactions WalletTransaction[]
+
+  @@unique([leadId, contractorId])
+  @@index([contractorId])
+  @@index([leadId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Money
+// ─────────────────────────────────────────────────────────────
+
+model WalletTransaction {
+  id                    String                @id @default(cuid())
+  contractorId          String
+  amountCents           Int // signed: +topup/refund/adjust, -charge
+  type                  WalletTransactionType
+  leadMatchId           String?
+  stripePaymentIntentId String?               @unique
+  note                  String?
+  createdAt             DateTime              @default(now())
+
+  contractor Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  leadMatch  LeadMatch? @relation(fields: [leadMatchId], references: [id])
+
+  @@index([contractorId])
+  @@index([leadMatchId])
+}
+
+model PriceTier {
+  id               String   @id @default(cuid())
+  contractorTypeId String
+  projectTypeId    String
+  tier             Int // 1 / 2 / 3
+  priceCents       Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  contractorType ContractorType @relation(fields: [contractorTypeId], references: [id], onDelete: Cascade)
+  projectType    ProjectType    @relation(fields: [projectTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([contractorTypeId, projectTypeId, tier])
+  @@index([contractorTypeId])
+  @@index([projectTypeId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Config + audit
+// ─────────────────────────────────────────────────────────────
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorType  String // 'admin' | 'contractor' | 'system'
+  actorId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([action])
+}
