@@ -6,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { startTopUp } from "@/app/actions/wallet";
 import { formatMoney, dollarsToCents } from "@/lib/money";
+import { TOPUP_PRESETS_CENTS, validateTopUpAmountCents } from "@/lib/domain/topup";
 
-const PRESETS = [2500, 5000, 10000, 20000];
-const MIN_CENTS = 500; // $5 minimum
-const MAX_CENTS = 1000000; // $10,000 cap
+const PRESETS = TOPUP_PRESETS_CENTS;
 
 export function TopUp() {
   const [pending, startTransition] = useTransition();
@@ -25,15 +24,12 @@ export function TopUp() {
 
   function goCustom() {
     const cents = dollarsToCents(custom);
-    if (!Number.isInteger(cents) || cents < MIN_CENTS) {
-      setError(`Enter an amount of at least ${formatMoney(MIN_CENTS)}.`);
+    const check = validateTopUpAmountCents(cents);
+    if (!check.ok) {
+      setError(check.message);
       return;
     }
-    if (cents > MAX_CENTS) {
-      setError(`Maximum top-up is ${formatMoney(MAX_CENTS)}.`);
-      return;
-    }
-    go(cents);
+    go(check.amountCents);
   }
 
   return (
@@ -49,7 +45,7 @@ export function TopUp() {
               id="custom-amount"
               type="number"
               inputMode="decimal"
-              min="5"
+              min="10"
               step="1"
               placeholder="130"
               className="pl-7"

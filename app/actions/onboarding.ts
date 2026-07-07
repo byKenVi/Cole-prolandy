@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, authMode } from "@/lib/auth";
+import { normalizePhoneForStorage } from "@/lib/phone";
 
 const ProfileSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -25,6 +26,7 @@ export async function saveProfile(input: ProfileInput): Promise<SaveProfileResul
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   const data = parsed.data;
+  const phone = normalizePhoneForStorage(data.phone);
 
   const session = await getSession();
   let contractorId = session.contractorId;
@@ -93,7 +95,7 @@ export async function saveProfile(input: ProfileInput): Promise<SaveProfileResul
           clerkUserId: userId,
           email,
           name: data.name,
-          phone: data.phone,
+          phone,
           contractorTypeId: data.contractorTypeId,
           aboutSection: data.aboutSection || null,
           businessHours: data.businessHours || null,
@@ -124,7 +126,7 @@ export async function saveProfile(input: ProfileInput): Promise<SaveProfileResul
         where: { id: contractorId! },
         data: {
           name: data.name,
-          phone: data.phone,
+          phone,
           contractorTypeId: data.contractorTypeId,
           aboutSection: data.aboutSection || null,
           businessHours: data.businessHours || null,

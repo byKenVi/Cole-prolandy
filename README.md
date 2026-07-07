@@ -124,11 +124,57 @@ All integrations read config from env and are selected by a `*_MOCK` flag. Flip 
 
 | Service | Flag | Real provider stub | Install |
 | --- | --- | --- | --- |
-| Payments | `STRIPE_MOCK=false` | `StripePaymentsProvider` in `lib/integrations/payments.ts` | `npm i stripe` |
+| Payments | `STRIPE_MOCK=false` | `StripePaymentsProvider` in `lib/integrations/payments.ts` (implemented) | `stripe` (installed) |
 | SMS | `TWILIO_MOCK=false` | `TwilioSmsProvider` in `lib/integrations/sms.ts` | `npm i twilio` |
 | Email | `RESEND_MOCK=false` | `ResendEmailProvider` in `lib/integrations/email.ts` | `npm i resend` |
 
-Each real provider has a `TODO(real)` block with the exact implementation. For **Stripe**, credit wallets only from the verified webhook (`app/api/stripe/webhook/route.ts`) — never from the browser redirect (that redirect is mock-only).
+For **Stripe**, the wallet is credited only from the verified webhook (`app/api/stripe/webhook/route.ts`) — never from the browser redirect (that redirect is mock-only). SMS/Email still have `TODO(real)` stubs.
+
+### Stripe payments — real mode & local testing
+
+Payments are **fully implemented** (`lib/integrations/payments.ts` + `lib/services/stripe-webhook.ts`). All dev/testing uses **Stripe TEST MODE** — no real money is ever moved. Live keys (`sk_live_`) are only swapped in at launch.
+
+**1. Use test keys in `.env`:**
+
+```
+STRIPE_MOCK="false"
+STRIPE_SECRET_KEY="sk_test_..."         # from Stripe Dashboard → Developers → API keys
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."       # from `stripe listen`, see below
+```
+
+Leave `STRIPE_MOCK="true"` (the default) to develop with no keys at all — top-ups are simulated and credited by the mock-complete route.
+
+**2. Test cards** (any future expiry, any CVC, any ZIP):
+
+| Card | Result |
+| --- | --- |
+| `4242 4242 4242 4242` | Payment succeeds |
+| `4000 0000 0000 0002` | Generic decline |
+| `4000 0000 0000 9995` | Insufficient funds decline |
+
+**3. Test webhooks locally with the Stripe CLI:**
+
+```bash
+stripe login
+# Forward events to the local webhook and print a signing secret:
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+# → copy the printed whsec_... into STRIPE_WEBHOOK_SECRET, then restart `npm run dev`
+
+# Simulate a successful top-up:
+stripe trigger checkout.session.completed
+```
+
+**4. Prove the idempotency guard.** Fire the **same event twice** and confirm the wallet is credited **only once**:
+
+```bash
+stripe trigger checkout.session.completed   # credits once
+stripe trigger checkout.session.completed   # a NEW event → credits again (different payment)
+```
+
+To replay the *exact same* event id (a true duplicate, as Stripe retries do), resend it from the CLI/Dashboard event log — the second delivery is deduped via the `ProcessedStripeEvent` table (unique event id) and the unique `stripePaymentIntentId`, so the balance does not change. This is covered by `lib/services/stripe-webhook.test.ts`.
+
+The flow: contractor picks a preset ($50/$100/$250) or custom amount (min $10, max $10,000) → Stripe Checkout Session (customer created on first top-up, id stored on `Contractor`) → success redirect shows a pending state → **webhook credits the wallet**. Never credited on the redirect.
 
 ### Enabling Clerk auth
 

@@ -66,6 +66,15 @@ function applyData(row: Row, data: Row): void {
   }
 }
 
+// Unique constraints enforced by the fake, keyed by table prefix. Mirrors the
+// real schema so idempotency guards (Stripe event id, payment intent) can be
+// tested. Only non-null values conflict (Postgres treats NULLs as distinct).
+const UNIQUE_FIELDS: Record<string, string[]> = {
+  contractor: ["email", "clerkUserId"],
+  wallettx: ["stripePaymentIntentId"],
+  processedstripeevent: ["id"],
+};
+
 class Table {
   rows: Row[] = [];
   constructor(private prefix: string) {}
@@ -80,6 +89,18 @@ class Table {
       row.acceptToken = id("tok");
     }
     if (row.createdAt === undefined) row.createdAt = new Date();
+
+    for (const field of UNIQUE_FIELDS[this.prefix] ?? []) {
+      const value = row[field];
+      if (value !== null && value !== undefined && this.rows.some((r) => r[field] === value)) {
+        const err = new Error(
+          `Unique constraint failed on the fields: (\`${field}\`)`,
+        ) as Error & { code?: string };
+        err.code = "P2002";
+        throw err;
+      }
+    }
+
     this.rows.push(row);
     return project(row, select);
   }
@@ -184,6 +205,7 @@ export class FakeDb {
   priceTier = new Table("pricetier");
   appSetting = new Table("appsetting");
   auditLog = new Table("audit");
+  processedStripeEvent = new Table("processedstripeevent");
 
   constructor() {
     currentDb = this;
@@ -201,6 +223,7 @@ export class FakeDb {
       this.priceTier,
       this.appSetting,
       this.auditLog,
+      this.processedStripeEvent,
     ];
   }
 

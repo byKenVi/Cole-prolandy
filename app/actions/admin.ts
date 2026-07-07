@@ -9,6 +9,7 @@ import { refundLeadMatch } from "@/lib/domain/leads";
 import { createAndDistributeLead } from "@/lib/services/lead-intake";
 import { requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
+import { normalizePhoneForStorage } from "@/lib/phone";
 
 type Result = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -157,6 +158,8 @@ export async function createContractor(
   }
   const data = parsed.data;
   const email = data.email.trim().toLowerCase();
+  // E.164 so first-login matching by verified phone works regardless of format.
+  const phone = normalizePhoneForStorage(data.phone);
 
   const existing = await prisma.contractor.findUnique({ where: { email }, select: { id: true } });
   if (existing) {
@@ -173,7 +176,7 @@ export async function createContractor(
         data: {
           email,
           name: data.name,
-          phone: data.phone,
+          phone,
           contractorTypeId: data.contractorTypeId,
           aboutSection: data.aboutSection || null,
           businessHours: data.businessHours || null,
@@ -209,6 +212,7 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
   }
   const data = parsed.data;
   const email = data.email.trim().toLowerCase();
+  const phone = normalizePhoneForStorage(data.phone);
 
   const current = await prisma.contractor.findUnique({ where: { id }, select: { id: true } });
   if (!current) return { ok: false, message: "Contractor not found." };
@@ -227,7 +231,7 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
       data: {
         email,
         name: data.name,
-        phone: data.phone,
+        phone,
         contractorTypeId: data.contractorTypeId,
         aboutSection: data.aboutSection || null,
         businessHours: data.businessHours || null,

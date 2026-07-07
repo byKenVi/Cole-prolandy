@@ -2,14 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession, authMode } from "@/lib/auth";
 import { UserMenu } from "@/components/auth/user-menu";
-
-const NAV = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/leads", label: "Leads" },
-  { href: "/admin/contractors", label: "Contractors" },
-  { href: "/admin/pricing", label: "Pricing" },
-  { href: "/admin/settings", label: "Settings" },
-];
+import { AdminNav } from "@/components/admin/admin-nav";
 
 export const dynamic = "force-dynamic";
 
@@ -28,15 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             Landy&apos;s Pro · Admin
           </Link>
           <nav className="flex flex-wrap items-center gap-1">
-            {NAV.map((n) => (
-              <Link
-                key={n.href}
-                href={n.href}
-                className="rounded-sm px-3 py-2 text-sm font-medium text-text hover:bg-primary-soft"
-              >
-                {n.label}
-              </Link>
-            ))}
+            <AdminNav />
             {clerk && (
               <span className="ml-2">
                 <UserMenu />

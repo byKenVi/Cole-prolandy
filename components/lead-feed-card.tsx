@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { MapPin, Phone, Mail, ChevronRight } from "lucide-react";
+import { MapPin, Phone, Mail } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { TierBadge } from "@/components/tier-badge";
 import { LeadMatchStatusBadge } from "@/components/status-badge";
+import { LeadCardCta } from "@/components/lead-card-cta";
 import { formatMoney } from "@/lib/money";
 import { timeUntil } from "@/lib/format";
 
@@ -55,12 +56,7 @@ export function LeadFeedCard({ lead }: { lead: FeedLead }) {
           </a>
         </div>
       ) : (
-        <div className="flex items-center justify-between text-sm text-text-muted">
-          <span>{timeUntil(lead.expiresAt)}</span>
-          <span className="flex items-center gap-1 font-medium text-primary">
-            View & respond <ChevronRight className="h-4 w-4" />
-          </span>
-        </div>
+        <LeadCardCta timeLabel={timeUntil(lead.expiresAt)} />
       )}
     </Card>
   );

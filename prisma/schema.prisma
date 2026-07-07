@@ -230,3 +230,13 @@ model AuditLog {
   @@index([targetType, targetId])
   @@index([action])
 }
+
+/// Idempotency ledger for Stripe webhooks. The primary key IS the Stripe event
+/// id (evt_...); inserting it inside the same transaction as the wallet credit
+/// means a duplicate webhook delivery fails the insert and the credit is skipped
+/// — money can never be credited twice for the same event.
+model ProcessedStripeEvent {
+  id          String   @id // Stripe event id
+  type        String
+  processedAt DateTime @default(now())
+}

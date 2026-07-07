@@ -1,52 +1,50 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { applyWalletTransaction } from "@/lib/domain/wallet";
-import { WalletTransactionType } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { constructStripeEvent, parseTopUpEvent, creditTopUp } from "@/lib/services/stripe-webhook";
 
 /**
- * Stripe webhook — the SOURCE OF TRUTH for real top-ups. In real mode, credit
- * the wallet ONLY here after verifying the signature (never from the browser
- * redirect). In mock mode this endpoint is unused.
+ * Stripe webhook — the SOURCE OF TRUTH for real top-ups. The wallet is credited
+ * ONLY here, after verifying the signature (never from the browser redirect).
+ * This route stays OUTSIDE Clerk auth (see middleware public routes), exactly
+ * like the tokenized SMS accept flow.
  *
- * TODO(real): verify signature and handle checkout.session.completed:
- *   const Stripe = (await import("stripe")).default;
- *   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
- *   const sig = req.headers.get("stripe-signature")!;
- *   const event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!);
- *   if (event.type === "checkout.session.completed") { ...credit wallet... }
+ * In mock mode this endpoint is a no-op.
  */
+export const runtime = "nodejs";
+
 export async function POST(req: NextRequest) {
   if (process.env.STRIPE_MOCK !== "false") {
-    return NextResponse.json({ ok: true, note: "Stripe is in mock mode; webhook ignored." });
+    return NextResponse.json({ received: true, note: "Stripe in mock mode; webhook ignored." });
   }
 
-  // Placeholder body handling until signature verification is wired.
-  let payload: { contractorId?: string; amountCents?: number; paymentIntentId?: string };
+  const signature = req.headers.get("stripe-signature");
+  if (!signature) {
+    return NextResponse.json({ error: "Missing stripe-signature header." }, { status: 400 });
+  }
+
+  // Raw body is required for signature verification — do not parse as JSON first.
+  const rawBody = await req.text();
+
+  let event;
   try {
-    payload = await req.json();
+    event = await constructStripeEvent(rawBody, signature);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Invalid signature";
+    return NextResponse.json({ error: `Webhook signature verification failed: ${message}` }, {
+      status: 400,
+    });
+  }
+
+  const parsed = parseTopUpEvent(event);
+  if (!parsed) {
+    // Event type we don't act on — acknowledge so Stripe stops retrying.
+    return NextResponse.json({ received: true, ignored: event.type });
+  }
+
+  try {
+    const result = await creditTopUp(parsed);
+    return NextResponse.json({ received: true, status: result.status });
   } catch {
-    return NextResponse.json({ ok: false, error: "Invalid payload" }, { status: 400 });
+    // Unexpected failure — return 500 so Stripe retries later.
+    return NextResponse.json({ error: "Failed to process event." }, { status: 500 });
   }
-
-  if (!payload.contractorId || !payload.amountCents) {
-    return NextResponse.json({ ok: false, error: "Not implemented" }, { status: 501 });
-  }
-
-  await applyWalletTransaction({
-    contractorId: payload.contractorId,
-    amountCents: payload.amountCents,
-    type: WalletTransactionType.TOPUP,
-    stripePaymentIntentId: payload.paymentIntentId ?? null,
-    note: "Wallet top-up (Stripe)",
-  });
-  await prisma.auditLog.create({
-    data: {
-      actorType: "system",
-      action: "WALLET_TOPUP",
-      targetType: "Contractor",
-      targetId: payload.contractorId,
-      metadata: { amountCents: payload.amountCents, source: "stripe" },
-    },
-  });
-  return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { normalizePhone } from "@/lib/phone";
 
 /**
  * Auth abstraction.
@@ -166,10 +167,14 @@ function collectVerifiedEmails(user: ClerkUserLike): string[] {
 }
 
 function collectVerifiedPhones(user: ClerkUserLike): string[] {
-  return (user?.phoneNumbers ?? [])
+  // Normalize to E.164 so matching lines up with the canonical form we store on
+  // contractors. Clerk phones are already E.164, but normalizing both sides
+  // makes the comparison robust regardless of source formatting.
+  const normalized = (user?.phoneNumbers ?? [])
     .filter((p) => p.verification?.status === "verified")
-    .map((p) => p.phoneNumber.trim())
-    .filter(Boolean);
+    .map((p) => normalizePhone(p.phoneNumber))
+    .filter((p): p is string => Boolean(p));
+  return Array.from(new Set(normalized));
 }
 
 /**
