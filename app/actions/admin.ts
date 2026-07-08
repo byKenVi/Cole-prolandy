@@ -153,6 +153,222 @@ export async function refundLead(leadMatchId: string, reason: string): Promise<R
   }
 }
 
+// ── Contractor delete (integrity-guarded) ──
+export async function deleteContractor(id: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const contractor = await prisma.contractor.findUnique({
+    where: { id },
+    select: { id: true, name: true, _count: { select: { walletTransactions: true } } },
+  });
+  if (!contractor) return { ok: false, message: "Contractor not found." };
+
+  // Preserve money + audit integrity: never delete a contractor that has any
+  // wallet history (top-ups, charges, refunds, credits). Edit instead.
+  if (contractor._count.walletTransactions > 0) {
+    return {
+      ok: false,
+      message:
+        "This contractor has wallet history (top-ups, charges or refunds), so it can't be deleted without destroying money records. Edit the contractor instead.",
+    };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Cascades ContractorService + any non-charged LeadMatches (schema onDelete).
+    await tx.contractor.delete({ where: { id } });
+    await tx.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: "contractor.deleted.admin",
+        targetType: "Contractor",
+        targetId: id,
+        metadata: { name: contractor.name },
+      },
+    });
+  });
+  revalidatePath("/admin/contractors");
+  return { ok: true, message: "Contractor deleted" };
+}
+
+// ── Lead edit / delete ──
+const LeadEditSchema = z.object({
+  landownerName: z.string().min(2, "Landowner name is required"),
+  landownerEmail: z.string().email("A valid email is required"),
+  landownerPhone: z.string().min(7, "A valid phone number is required"),
+  propertyLocation: z.string().min(2, "Property location is required"),
+});
+
+export async function updateLead(
+  id: string,
+  input: {
+    landownerName: string;
+    landownerEmail: string;
+    landownerPhone: string;
+    propertyLocation: string;
+  },
+): Promise<Result> {
+  const admin = await requireAdmin();
+  const parsed = LeadEditSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  const lead = await prisma.lead.findUnique({ where: { id }, select: { id: true } });
+  if (!lead) return { ok: false, message: "Lead not found." };
+
+  // Only landowner contact + location are editable. Project/tier/price are NOT
+  // editable here — the price is snapshotted at creation and money must not move.
+  await prisma.lead.update({ where: { id }, data: parsed.data });
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      actorId: admin.email,
+      action: "lead.updated.admin",
+      targetType: "Lead",
+      targetId: id,
+      metadata: { ...parsed.data },
+    },
+  });
+  revalidatePath("/admin/leads");
+  revalidatePath(`/admin/leads/${id}`);
+  return { ok: true, message: "Lead updated" };
+}
+
+export async function deleteLead(id: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const lead = await prisma.lead.findUnique({
+    where: { id },
+    select: { id: true, matches: { select: { status: true } } },
+  });
+  if (!lead) return { ok: false, message: "Lead not found." };
+
+  // Preserve money + audit integrity: a lead with an accepted match has a wallet
+  // charge behind it. Block deletion so the charge/refund records stay intact.
+  if (lead.matches.some((m) => m.status === "ACCEPTED")) {
+    return {
+      ok: false,
+      message:
+        "This lead has an accepted match with a wallet charge, so it can't be deleted. Refund the match first if it was a mistake.",
+    };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Cascades pending/declined/expired matches (no money attached).
+    await tx.lead.delete({ where: { id } });
+    await tx.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: "lead.deleted.admin",
+        targetType: "Lead",
+        targetId: id,
+      },
+    });
+  });
+  revalidatePath("/admin/leads");
+  return { ok: true, message: "Lead deleted" };
+}
+
+// ── Categories (ContractorType) CRUD ──
+const ContractorTypeSchema = z.object({ name: z.string().trim().min(2, "Name is required").max(80) });
+
+export async function createContractorType(name: string): Promise<Result & { id?: string }> {
+  const admin = await requireAdmin();
+  const parsed = ContractorTypeSchema.safeParse({ name });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
+  }
+  const clean = parsed.data.name;
+  const existing = await prisma.contractorType.findUnique({ where: { name: clean }, select: { id: true } });
+  if (existing) return { ok: false, message: "A category with this name already exists." };
+
+  const created = await prisma.contractorType.create({ data: { name: clean }, select: { id: true } });
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      actorId: admin.email,
+      action: "category.created.admin",
+      targetType: "ContractorType",
+      targetId: created.id,
+      metadata: { name: clean },
+    },
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/pricing");
+  return { ok: true, message: "Category added", id: created.id };
+}
+
+export async function updateContractorType(id: string, name: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const parsed = ContractorTypeSchema.safeParse({ name });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
+  }
+  const clean = parsed.data.name;
+  const current = await prisma.contractorType.findUnique({ where: { id }, select: { name: true } });
+  if (!current) return { ok: false, message: "Category not found." };
+
+  const owner = await prisma.contractorType.findUnique({ where: { name: clean }, select: { id: true } });
+  if (owner && owner.id !== id) {
+    return { ok: false, message: "Another category already uses this name." };
+  }
+
+  // Renaming is safe: leads, pricing and contractors reference the category by
+  // id, not name, so existing data stays intact.
+  await prisma.contractorType.update({ where: { id }, data: { name: clean } });
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      actorId: admin.email,
+      action: "category.updated.admin",
+      targetType: "ContractorType",
+      targetId: id,
+      metadata: { from: current.name, to: clean },
+    },
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/pricing");
+  return { ok: true, message: "Category renamed" };
+}
+
+export async function deleteContractorType(id: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const ct = await prisma.contractorType.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      _count: { select: { contractors: true, projectTypes: true } },
+    },
+  });
+  if (!ct) return { ok: false, message: "Category not found." };
+
+  // Block deletion while anything still references it, so we never orphan
+  // contractors, project types, pricing or leads.
+  if (ct._count.contractors > 0 || ct._count.projectTypes > 0) {
+    return {
+      ok: false,
+      message: `Can't delete "${ct.name}" — it still has ${ct._count.contractors} contractor(s) and ${ct._count.projectTypes} project type(s). Reassign or remove those first.`,
+    };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.contractorType.delete({ where: { id } });
+    await tx.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: "category.deleted.admin",
+        targetType: "ContractorType",
+        targetId: id,
+        metadata: { name: ct.name },
+      },
+    });
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/pricing");
+  return { ok: true, message: "Category deleted" };
+}
+
 // ── Contractor creation / editing (admin-driven, no Clerk account required) ──
 const ContractorSchema = z.object({
   name: z.string().min(2, "Name is required"),

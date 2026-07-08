@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { WalletBalance } from "@/components/wallet-balance";
 import { WalletAdjustForm } from "@/components/admin/wallet-adjust-form";
 import { ViewAsButton } from "@/components/admin/view-as-button";
+import { DeleteButton } from "@/components/admin/delete-button";
+import { RowLink } from "@/components/admin/row-link";
+import { deleteContractor } from "@/app/actions/admin";
 import { LeadMatchStatusBadge } from "@/components/status-badge";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
@@ -82,11 +85,17 @@ export default async function ContractorDetail({
             {contractor.contractorType.name} · {contractor.email} · {contractor.phone}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="outline" size="sm">
             <Link href={`/admin/contractors/${contractor.id}/edit`}>Edit</Link>
           </Button>
           <ViewAsButton contractorId={contractor.id} />
+          <DeleteButton
+            onDelete={deleteContractor.bind(null, contractor.id)}
+            redirectTo="/admin/contractors"
+            label="Delete"
+            confirmLabel="Delete contractor"
+          />
         </div>
       </div>
 
@@ -128,7 +137,11 @@ export default async function ContractorDetail({
         ) : (
           <Card className="divide-y divide-border p-0">
             {contractor.leadMatches.map((m) => (
-              <div key={m.id} className="flex items-center justify-between px-5 py-3">
+              <div
+                key={m.id}
+                className="relative flex items-center justify-between px-5 py-3 transition-colors hover:bg-primary-soft"
+              >
+                <RowLink href={`/admin/leads/${m.leadId}`} label={`Open ${m.lead.projectType.name} lead`} />
                 <div>
                   <p className="font-medium text-text">{m.lead.projectType.name}</p>
                   <p className="text-xs text-text-muted">{m.lead.propertyLocation}</p>

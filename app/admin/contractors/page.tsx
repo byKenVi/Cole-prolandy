@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ViewAsButton } from "@/components/admin/view-as-button";
+import { RowLink } from "@/components/admin/row-link";
+import { DeleteButton } from "@/components/admin/delete-button";
+import { deleteContractor } from "@/app/actions/admin";
 import { EmptyState } from "@/components/empty-state";
 import { formatMoney } from "@/lib/money";
 
@@ -68,7 +71,11 @@ export default async function AdminContractors({
       ) : (
         <Card className="divide-y divide-border p-0">
           {contractors.map((c) => (
-            <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <div
+              key={c.id}
+              className="relative flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-primary-soft"
+            >
+              <RowLink href={`/admin/contractors/${c.id}`} label={`Open ${c.name}`} />
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-text">{c.name}</p>
@@ -85,14 +92,16 @@ export default async function AdminContractors({
                   {c.contractorType.name} · {c.email}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="relative z-10 flex items-center gap-3">
                 <span className="tabular-nums font-semibold text-text">
                   {formatMoney(c.walletBalanceCents)}
                 </span>
                 <ViewAsButton contractorId={c.id} />
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/admin/contractors/${c.id}`}>Manage</Link>
-                </Button>
+                <DeleteButton
+                  onDelete={deleteContractor.bind(null, c.id)}
+                  label="Delete"
+                  confirmLabel="Delete contractor"
+                />
               </div>
             </div>
           ))}

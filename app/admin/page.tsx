@@ -2,10 +2,13 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
 import { Button } from "@/components/ui/button";
+import { RevenueChart } from "@/components/admin/revenue-chart";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+const REVENUE_WINDOW_DAYS = 30;
 
 export default async function AdminDashboard() {
   await expireLeads(prisma).catch(() => undefined);
@@ -23,6 +26,34 @@ export default async function AdminDashboard() {
     where: { type: "LEAD_CHARGE" },
   });
   const revenueCents = Math.abs(revenueAgg._sum.amountCents ?? 0);
+
+  // Revenue = accepted-lead charges (LEAD_CHARGE, stored negative) bucketed by
+  // local day over the last 30 days, zero-filled so the line is continuous.
+  const windowStart = new Date();
+  windowStart.setHours(0, 0, 0, 0);
+  windowStart.setDate(windowStart.getDate() - (REVENUE_WINDOW_DAYS - 1));
+
+  const charges = await prisma.walletTransaction.findMany({
+    where: { type: "LEAD_CHARGE", createdAt: { gte: windowStart } },
+    select: { amountCents: true, createdAt: true },
+  });
+
+  const byDay = new Map<string, number>();
+  for (const c of charges) {
+    const key = c.createdAt.toISOString().slice(0, 10);
+    byDay.set(key, (byDay.get(key) ?? 0) + Math.abs(c.amountCents));
+  }
+
+  const revenueSeries = Array.from({ length: REVENUE_WINDOW_DAYS }, (_, i) => {
+    const d = new Date(windowStart);
+    d.setDate(windowStart.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    return {
+      date: key,
+      label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      revenueCents: byDay.get(key) ?? 0,
+    };
+  });
 
   const stats: { label: string; value: string; highlight?: boolean }[] = [
     { label: "Lead revenue", value: formatMoney(revenueCents), highlight: true },
@@ -51,17 +82,15 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-3 pt-2">
-        <Button asChild variant="outline">
-          <Link href="/admin/leads">View leads</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/admin/contractors">Manage contractors</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/admin/pricing">Edit pricing</Link>
-        </Button>
-      </div>
+      <section className="rounded-lg bg-surface p-6 shadow-md">
+        <div className="mb-4">
+          <p className="text-sm font-medium uppercase tracking-wide text-text-muted">
+            Lead revenue
+          </p>
+          <p className="text-xs text-text-muted">Accepted-lead charges over the last 30 days.</p>
+        </div>
+        <RevenueChart data={revenueSeries} />
+      </section>
     </div>
   );
 }

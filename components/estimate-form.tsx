@@ -58,11 +58,12 @@ export function EstimateForm({
 
   if (done) {
     return (
-      <Card className="flex flex-col items-center gap-3 text-center">
-        <CheckCircle2 className="h-10 w-10 text-success" />
-        <p className="text-lg font-semibold text-text">Request received</p>
-        <p className="text-sm text-text-muted">
-          We&apos;re matching you with local contractors. Expect to hear from them soon.
+      <Card className="flex flex-col items-center gap-3 p-8 text-center">
+        <CheckCircle2 className="h-12 w-12 text-success" />
+        <p className="font-display text-2xl font-semibold text-text">Request received</p>
+        <p className="max-w-sm text-base text-text-muted">
+          Your request has been sent to our contractors — they&apos;ll reach out to you soon. No need
+          to do anything else.
         </p>
       </Card>
     );

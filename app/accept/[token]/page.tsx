@@ -33,7 +33,7 @@ export default async function AcceptPage({
   });
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-5 px-4 py-8">
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-5 px-4 py-8 md:justify-center md:py-16">
       <div className="text-center">
         <p className="font-display text-2xl font-semibold text-primary">Landy&apos;s Pro</p>
       </div>
