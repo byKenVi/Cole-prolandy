@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { WalletBalance } from "@/components/wallet-balance";
 import { TopUp } from "@/components/topup";
 import { EmptyState } from "@/components/empty-state";
@@ -11,16 +12,17 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 const TYPE_LABEL: Record<string, string> = {
-  TOPUP: "Top-up",
+  TOPUP: "Top-up (card)",
   LEAD_CHARGE: "Lead charge",
-  REFUND: "Refund",
-  ADMIN_ADJUST: "Adjustment",
+  REFUND: "Refund credit",
+  ADMIN_ADJUST: "Admin correction",
+  PROMO_CREDIT: "Promo credit",
 };
 
 export default async function WalletPage({
   searchParams,
 }: {
-  searchParams: Promise<{ topup?: string }>;
+  searchParams: Promise<{ topup?: "success" | "error" | "pending" | string }>;
 }) {
   const { topup } = await searchParams;
   const session = await getSession();
@@ -32,19 +34,31 @@ export default async function WalletPage({
     where: { id: session.contractorId },
     select: { walletBalanceCents: true },
   });
-  const txns = await prisma.walletTransaction.findMany({
-    where: { contractorId: session.contractorId },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const [txns, promoAgg] = await Promise.all([
+    prisma.walletTransaction.findMany({
+      where: { contractorId: session.contractorId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.walletTransaction.aggregate({
+      _sum: { amountCents: true },
+      where: { contractorId: session.contractorId, type: "PROMO_CREDIT" },
+    }),
+  ]);
+  const promoTotalCents = promoAgg._sum.amountCents ?? 0;
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold text-text">Wallet</h1>
+    <div className="flex flex-col gap-8">
+      <h1 className="pt-1 text-xl font-semibold text-text">Wallet</h1>
 
       {topup === "success" && (
         <p className="rounded-sm bg-success-soft p-3 text-sm font-medium text-success">
           Funds added successfully.
+        </p>
+      )}
+      {topup === "pending" && (
+        <p className="rounded-sm bg-primary-soft p-3 text-sm font-medium text-text">
+          Payment received — your balance updates in a few seconds once the card payment confirms.
         </p>
       )}
       {topup === "error" && (
@@ -53,19 +67,23 @@ export default async function WalletPage({
         </p>
       )}
 
-      <Card className="flex flex-col gap-2">
-        <p className="text-sm text-text-muted">Current balance</p>
-        <WalletBalance cents={contractor?.walletBalanceCents ?? 0} />
+      <Card className="bg-primary-soft p-6">
+        <WalletBalance cents={contractor?.walletBalanceCents ?? 0} size="hero" label="Current balance" />
+        {promoTotalCents > 0 && (
+          <p className="mt-2 text-xs font-medium text-warning">
+            Includes {formatMoney(promoTotalCents)} promotional credit
+          </p>
+        )}
       </Card>
 
-      <Card>
+      <Card className="p-6">
         <CardHeader>
           <CardTitle>Add funds</CardTitle>
         </CardHeader>
         <TopUp />
       </Card>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-text">Transaction history</h2>
         {txns.length === 0 ? (
           <EmptyState title="No transactions yet" description="Your top-ups and charges will show here." />
@@ -74,7 +92,10 @@ export default async function WalletPage({
             {txns.map((t) => (
               <div key={t.id} className="flex items-center justify-between px-5 py-4">
                 <div>
-                  <p className="font-medium text-text">{TYPE_LABEL[t.type] ?? t.type}</p>
+                  <p className="flex items-center gap-2 font-medium text-text">
+                    {TYPE_LABEL[t.type] ?? t.type}
+                    {t.type === "PROMO_CREDIT" && <Badge variant="warning">Promo</Badge>}
+                  </p>
                   <p className="text-xs text-text-muted">{formatDate(t.createdAt)}</p>
                   {t.note && <p className="text-xs text-text-muted">{t.note}</p>}
                 </div>

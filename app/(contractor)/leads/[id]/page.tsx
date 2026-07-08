@@ -67,14 +67,13 @@ export default async function LeadDetail({
           )}
         </div>
 
-        <div className="rounded-md bg-primary-soft p-4">
-          <p className="text-sm text-text-muted">Lead price</p>
-          <p className="text-2xl font-semibold tabular-nums text-text">
+        <div className="rounded-md bg-primary-soft p-5">
+          <p className="text-sm font-medium uppercase tracking-wide text-text-muted">Lead price</p>
+          <p className="mt-1 text-3xl font-semibold leading-tight tabular-nums text-text">
             {formatMoney(lead.priceCents)}
           </p>
-          <div className="mt-3 border-t border-border pt-3">
-            <p className="text-sm text-text-muted">Your wallet balance</p>
-            <WalletBalance cents={contractor.walletBalanceCents} size="md" />
+          <div className="mt-4 border-t border-border pt-4">
+            <WalletBalance cents={contractor.walletBalanceCents} size="md" label="Your wallet balance" />
             {!accepted && !declined && !expired && contractor.walletBalanceCents < lead.priceCents && (
               <Button asChild variant="accent" size="sm" className="mt-3 w-full">
                 <Link href="/wallet">Add funds to accept</Link>

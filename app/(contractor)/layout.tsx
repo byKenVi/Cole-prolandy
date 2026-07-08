@@ -24,7 +24,7 @@ export default async function ContractorLayout({ children }: { children: React.R
           <UserMenu />
         </header>
       )}
-      <main className="flex-1 px-4 pb-28 pt-4">{children}</main>
+      <main className="flex-1 px-4 pb-28 pt-6">{children}</main>
 
       <ContractorTabs />
     </div>

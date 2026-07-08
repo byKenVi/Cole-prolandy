@@ -120,10 +120,11 @@ enum LeadMatchStatus {
 }
 
 enum WalletTransactionType {
-  TOPUP
-  LEAD_CHARGE
-  REFUND
-  ADMIN_ADJUST
+  TOPUP // real money in via the contractor's card (Stripe)
+  LEAD_CHARGE // spend: accepting a lead
+  REFUND // returns money the contractor actually paid (bad lead, etc.)
+  ADMIN_ADJUST // admin correction — DEDUCT only (never mints funds)
+  PROMO_CREDIT // admin-granted promotional balance — spendable, NOT real money
 }
 
 model Lead {

@@ -19,7 +19,7 @@ export default async function NewContractorPage() {
 
       <header>
         <h1 className="text-2xl font-semibold text-text">New contractor</h1>
-        <p className="text-sm text-text-muted">
+        <p className="mt-1 text-sm text-text-muted">
           Enter the contractor&apos;s details. They can receive leads and hold a wallet balance
           right away — no login required. When they sign in with this email, their profile links
           automatically.

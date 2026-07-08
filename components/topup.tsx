@@ -95,7 +95,7 @@ export function TopUp() {
       {error && <p className="text-sm font-medium text-danger">{error}</p>}
 
       <p className="text-center text-xs text-text-muted">
-        Secure payment via Stripe. Funds are added to your wallet instantly.
+        Secure card payment via Stripe. Your balance updates as soon as the payment confirms.
       </p>
     </div>
   );

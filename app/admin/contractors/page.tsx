@@ -36,10 +36,10 @@ export default async function AdminContractors({
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-text">Contractors</h1>
-        <Button asChild variant="brand">
+        <h1 className="font-display text-3xl font-semibold text-text">Contractors</h1>
+        <Button asChild variant="accent">
           <Link href="/admin/contractors/new">New contractor</Link>
         </Button>
       </div>
@@ -58,7 +58,7 @@ export default async function AdminContractors({
           <option value="toppro">Top Pro</option>
           <option value="free">Free</option>
         </select>
-        <Button type="submit" variant="brand">
+        <Button type="submit" variant="outline">
           Search
         </Button>
       </form>

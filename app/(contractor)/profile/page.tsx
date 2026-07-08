@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { OnboardingForm } from "@/components/onboarding-form";
 
 export const dynamic = "force-dynamic";
@@ -23,32 +24,34 @@ export default async function ProfilePage() {
   // Onboarding (no profile yet) vs edit existing profile.
   if (!contractor) {
     return (
-      <div className="flex flex-col gap-6">
-        <header>
+      <div className="flex flex-col gap-8">
+        <header className="pt-1">
           <h1 className="text-xl font-semibold text-text">Set up your profile</h1>
-          <p className="text-sm text-text-muted">
+          <p className="mt-1 text-sm text-text-muted">
             Tell us about your business so we can start sending you matching leads.
           </p>
         </header>
-        <OnboardingForm
-          contractorTypes={contractorTypes}
-          services={services}
-          initial={{
-            name: "",
-            phone: "",
-            contractorTypeId: contractorTypes[0]?.id ?? "",
-            aboutSection: "",
-            businessHours: "",
-            serviceIds: [],
-          }}
-        />
+        <Card className="p-6">
+          <OnboardingForm
+            contractorTypes={contractorTypes}
+            services={services}
+            initial={{
+              name: "",
+              phone: "",
+              contractorTypeId: contractorTypes[0]?.id ?? "",
+              aboutSection: "",
+              businessHours: "",
+              serviceIds: [],
+            }}
+          />
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex items-center justify-between">
+    <div className="flex flex-col gap-8">
+      <header className="flex items-center justify-between pt-1">
         <h1 className="text-xl font-semibold text-text">Profile</h1>
         {contractor.isTopPro ? (
           <Badge variant="success">Top Pro</Badge>
@@ -59,18 +62,20 @@ export default async function ProfilePage() {
         )}
       </header>
 
-      <OnboardingForm
-        contractorTypes={contractorTypes}
-        services={services}
-        initial={{
-          name: contractor.name,
-          phone: contractor.phone,
-          contractorTypeId: contractor.contractorTypeId,
-          aboutSection: contractor.aboutSection ?? "",
-          businessHours: contractor.businessHours ?? "",
-          serviceIds: contractor.services.map((s) => s.serviceId),
-        }}
-      />
+      <Card className="p-6">
+        <OnboardingForm
+          contractorTypes={contractorTypes}
+          services={services}
+          initial={{
+            name: contractor.name,
+            phone: contractor.phone,
+            contractorTypeId: contractor.contractorTypeId,
+            aboutSection: contractor.aboutSection ?? "",
+            businessHours: contractor.businessHours ?? "",
+            serviceIds: contractor.services.map((s) => s.serviceId),
+          }}
+        />
+      </Card>
     </div>
   );
 }

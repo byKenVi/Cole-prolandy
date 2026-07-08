@@ -21,7 +21,7 @@ export default async function NewLeadPage() {
       </Link>
       <div>
         <h1 className="text-2xl font-semibold text-text">New lead</h1>
-        <p className="text-sm text-text-muted">
+        <p className="mt-1 text-sm text-text-muted">
           Manually create a lead (for testing/ops before Wix integration is live). Price is
           snapshotted from the pricing matrix and the lead is distributed immediately.
         </p>

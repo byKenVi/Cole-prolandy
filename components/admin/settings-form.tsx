@@ -71,7 +71,7 @@ export function SettingsForm({
         </p>
       )}
 
-      <Button type="submit" variant="brand" loading={pending} disabled={pending}>
+      <Button type="submit" variant="accent" loading={pending} disabled={pending}>
         Save settings
       </Button>
     </form>

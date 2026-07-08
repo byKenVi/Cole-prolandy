@@ -24,9 +24,9 @@ export default async function AdminLeads() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-text">Leads</h1>
+    <div className="flex flex-col gap-8">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="font-display text-3xl font-semibold text-text">Leads</h1>
         <Button asChild variant="accent">
           <Link href="/admin/leads/new">New lead</Link>
         </Button>

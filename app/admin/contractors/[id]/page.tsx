@@ -16,10 +16,11 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 const TYPE_LABEL: Record<string, string> = {
-  TOPUP: "Top-up",
+  TOPUP: "Top-up (card)",
   LEAD_CHARGE: "Lead charge",
-  REFUND: "Refund",
-  ADMIN_ADJUST: "Adjustment",
+  REFUND: "Refund credit",
+  ADMIN_ADJUST: "Admin correction",
+  PROMO_CREDIT: "Promo credit",
 };
 
 export default async function ContractorDetail({
@@ -42,6 +43,21 @@ export default async function ContractorDetail({
     },
   });
   if (!contractor) notFound();
+
+  // Balance origin (honest state): sum real card money vs promotional credit so
+  // the client can always see where a balance came from.
+  const [topupAgg, promoAgg] = await Promise.all([
+    prisma.walletTransaction.aggregate({
+      _sum: { amountCents: true },
+      where: { contractorId: id, type: "TOPUP" },
+    }),
+    prisma.walletTransaction.aggregate({
+      _sum: { amountCents: true },
+      where: { contractorId: id, type: "PROMO_CREDIT" },
+    }),
+  ]);
+  const topupTotalCents = topupAgg._sum.amountCents ?? 0;
+  const promoTotalCents = promoAgg._sum.amountCents ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,8 +92,15 @@ export default async function ContractorDetail({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="flex flex-col gap-2">
-          <p className="text-sm text-text-muted">Wallet balance</p>
-          <WalletBalance cents={contractor.walletBalanceCents} />
+          <WalletBalance cents={contractor.walletBalanceCents} label="Wallet balance" />
+          <div className="mt-1 flex flex-col gap-1 text-xs text-text-muted">
+            <span>Lifetime card top-ups (real money): {formatMoney(topupTotalCents)}</span>
+            {promoTotalCents > 0 && (
+              <span className="font-medium text-warning">
+                Promo credit granted (not real money): {formatMoney(promoTotalCents)}
+              </span>
+            )}
+          </div>
           {contractor.aboutSection && (
             <p className="mt-3 border-t border-border pt-3 text-sm text-text-muted">
               {contractor.aboutSection}
@@ -92,7 +115,7 @@ export default async function ContractorDetail({
 
         <Card>
           <CardHeader>
-            <CardTitle>Wallet management</CardTitle>
+            <CardTitle>Refunds &amp; corrections</CardTitle>
           </CardHeader>
           <WalletAdjustForm contractorId={contractor.id} />
         </Card>
@@ -131,7 +154,10 @@ export default async function ContractorDetail({
             {contractor.walletTransactions.map((t) => (
               <div key={t.id} className="flex items-center justify-between px-5 py-3">
                 <div>
-                  <p className="font-medium text-text">{TYPE_LABEL[t.type] ?? t.type}</p>
+                  <p className="flex items-center gap-2 font-medium text-text">
+                    {TYPE_LABEL[t.type] ?? t.type}
+                    {t.type === "PROMO_CREDIT" && <Badge variant="warning">Promo · not real money</Badge>}
+                  </p>
                   <p className="text-xs text-text-muted">
                     {formatDate(t.createdAt)}
                     {t.note ? ` · ${t.note}` : ""}

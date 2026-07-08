@@ -54,26 +54,23 @@ export default async function ContractorHome() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex items-start justify-between">
+    <div className="flex flex-col gap-8">
+      <header className="flex items-start justify-between pt-1">
         <div>
           <p className="text-sm text-text-muted">Welcome back</p>
-          <h1 className="text-xl font-semibold text-text">{contractor.name}</h1>
+          <h1 className="mt-0.5 text-xl font-semibold text-text">{contractor.name}</h1>
           <p className="text-sm text-text-muted">{contractor.contractorType.name}</p>
         </div>
       </header>
 
-      <Card className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-text-muted">Wallet balance</p>
-          <WalletBalance cents={contractor.walletBalanceCents} />
-        </div>
-        <Button asChild variant="accent">
+      <Card className="flex flex-col gap-4 p-6">
+        <WalletBalance cents={contractor.walletBalanceCents} size="hero" label="Wallet balance" />
+        <Button asChild variant="accent" size="cta">
           <Link href="/wallet">Add funds</Link>
         </Button>
       </Card>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-text">New leads</h2>
         {pending.length === 0 ? (
           <EmptyState
@@ -87,7 +84,7 @@ export default async function ContractorHome() {
       </section>
 
       {accepted.length > 0 && (
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-text">Accepted</h2>
           {accepted.map((l) => (
             <LeadFeedCard key={l.matchId} lead={l} />

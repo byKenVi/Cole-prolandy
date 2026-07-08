@@ -7,6 +7,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { saveProfile } from "@/app/actions/onboarding";
+import { cn } from "@/lib/utils";
 
 type Svc = { id: string; name: string; contractorTypeId: string };
 
@@ -107,20 +108,28 @@ export function OnboardingForm({
           {typeServices.length === 0 && (
             <p className="text-sm text-text-muted">No services listed for this trade.</p>
           )}
-          {typeServices.map((s) => (
-            <label
-              key={s.id}
-              className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-3 py-2"
-            >
-              <input
-                type="checkbox"
-                className="h-5 w-5"
-                checked={serviceIds.includes(s.id)}
-                onChange={() => toggleService(s.id)}
-              />
-              <span className="text-base text-text">{s.name}</span>
-            </label>
-          ))}
+          {typeServices.map((s) => {
+            const checked = serviceIds.includes(s.id);
+            return (
+              <label
+                key={s.id}
+                className={cn(
+                  "flex min-h-tap cursor-pointer items-center gap-3 rounded-sm border px-3 py-3 transition-colors",
+                  checked
+                    ? "border-primary bg-primary-soft"
+                    : "border-border bg-surface hover:bg-primary-soft",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-[var(--color-primary)]"
+                  checked={checked}
+                  onChange={() => toggleService(s.id)}
+                />
+                <span className="text-base text-text">{s.name}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 

@@ -66,18 +66,30 @@ export async function updateSetting(key: string, value: number): Promise<Result>
   return { ok: true, message: "Saved" };
 }
 
-// ── Wallet management (manual add / refund) ──
+// ── Wallet management (refund / promo credit / correcting deduct) ──
+//
+// Real spendable money enters a wallet ONLY through the contractor's own card
+// (Stripe top-up, credited by the verified webhook). The admin can never mint
+// generic "funds" that imply a payment happened. The admin wallet actions are
+// three DISTINCT, explicitly-labeled transaction types — never conflated:
+//   • REFUND        — positive credit returning money the contractor actually
+//                     paid (e.g. a bad lead). Traceable to a reason.
+//   • PROMO_CREDIT  — positive, admin-granted PROMOTIONAL balance. Spendable,
+//                     but NOT real money and NOT "funds" — a separate type so a
+//                     balance's origin is always visible.
+//   • ADMIN_ADJUST  — NEGATIVE correction only (fix a mistake / claw back).
+// A positive ADMIN_ADJUST (money-from-nothing) is rejected here.
 const AdjustSchema = z.object({
   contractorId: z.string().min(1),
   amountCents: z.number().int().refine((n) => n !== 0, "Amount cannot be zero"),
-  type: z.enum(["ADMIN_ADJUST", "REFUND"]),
+  type: z.enum(["ADMIN_ADJUST", "REFUND", "PROMO_CREDIT"]),
   reason: z.string().min(1, "A reason is required"),
 });
 
 export async function adjustWallet(input: {
   contractorId: string;
   amountCents: number;
-  type: "ADMIN_ADJUST" | "REFUND";
+  type: "ADMIN_ADJUST" | "REFUND" | "PROMO_CREDIT";
   reason: string;
 }): Promise<Result> {
   const admin = await requireAdmin();
@@ -85,6 +97,22 @@ export async function adjustWallet(input: {
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
+
+  const { type, amountCents } = parsed.data;
+  // Enforce honest money logic:
+  //   - credits (REFUND / PROMO_CREDIT) must be positive
+  //   - ADMIN_ADJUST is a deduct-only correction; it can never add balance
+  if (type === "ADMIN_ADJUST" && amountCents > 0) {
+    return {
+      ok: false,
+      message:
+        "Admin cannot add spendable funds. Real money enters only through the contractor's own card. Use Refund (money they paid) or Promo credit (labeled promotional balance); use Deduct only to correct a balance.",
+    };
+  }
+  if ((type === "REFUND" || type === "PROMO_CREDIT") && amountCents < 0) {
+    return { ok: false, message: "A credit must be a positive amount." };
+  }
+
   try {
     await applyWalletTransaction({
       contractorId: parsed.data.contractorId,
