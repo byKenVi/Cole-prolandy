@@ -49,6 +49,7 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)"],
         display: ["var(--font-display)"],
+        script: ["var(--font-script)"],
       },
       fontSize: {
         xs: "var(--text-xs)",

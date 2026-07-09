@@ -9,6 +9,9 @@ const YEAR = 60 * 60 * 24 * 365;
 
 /** DEV auth only: switch between contractor and admin, or pick a contractor. */
 export async function setDevRole(role: Role) {
+  // Hard no-op in production: the dev role switcher must never mint an admin
+  // session outside development.
+  if (process.env.NODE_ENV === "production") return;
   const jar = await cookies();
   jar.set(AUTH_COOKIES.role, role, { path: "/", maxAge: YEAR });
   if (role === "admin") jar.delete(AUTH_COOKIES.viewAs);

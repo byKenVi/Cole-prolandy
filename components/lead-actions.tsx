@@ -12,7 +12,7 @@ import { formatMoney } from "@/lib/money";
  * Accept / Pass controls for a lead match. Buttons disable + spin during the
  * async call to prevent double-charge taps (DESIGN.md §4).
  */
-export function LeadActions({ matchId }: { matchId: string }) {
+export function LeadActions({ matchId, priceCents }: { matchId: string; priceCents?: number }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [action, setAction] = useState<null | "accept" | "decline">(null);
@@ -84,7 +84,7 @@ export function LeadActions({ matchId }: { matchId: string }) {
         disabled={pending}
         onClick={onAccept}
       >
-        Accept &amp; pay
+        Accept &amp; pay{priceCents != null ? ` ${formatMoney(priceCents)}` : ""}
       </Button>
       <Button
         variant="outline"

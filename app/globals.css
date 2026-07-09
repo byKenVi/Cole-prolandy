@@ -16,12 +16,12 @@
   --color-accent: #c6733b;
   --color-accent-hover: #ae6231;
 
-  /* Warm neutrals (surfaces & text) */
-  --color-bg: #faf8f4;
+  /* Warm neutrals (surfaces & text) — sepia paper system */
+  --color-bg: #f4efe3;
   --color-surface: #ffffff;
-  --color-border: #e6e1d8;
-  --color-text: #23271f;
-  --color-text-muted: #6b6f66;
+  --color-border: #e5ddcd;
+  --color-text: #3a332c;
+  --color-text-muted: #8a7f6d;
 
   /* Semantic */
   --color-success: #3f7d52;
@@ -32,8 +32,9 @@
   --color-danger-soft: #f5e3e3;
 
   /* Type */
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: "Fraunces", "Inter", serif;
+  --font-sans: "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Rubik", "Fraunces", sans-serif;
+  --font-script: "Caveat", "Fraunces", cursive;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -105,5 +106,269 @@
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
+  }
+  .font-script {
+    font-family: var(--font-script);
+  }
+  .font-fraunces {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+  }
+  .font-inter {
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+  .font-vibes {
+    font-family: "Great Vibes", cursive;
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-float-slow {
+    animation: float 8s ease-in-out infinite;
+  }
+
+  /*
+    3D clay nav icons — hover tilt/scale, click press, active emphasis.
+    Transform/opacity/filter only for GPU-friendly animation. Driven by the
+    parent Link having the `group` class (hover/active states).
+  */
+  .nav-icon-3d {
+    transition:
+      transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      filter 220ms ease;
+    will-change: transform;
+    transform: scale(1);
+  }
+  .nav-icon-3d--active {
+    transform: scale(1.08);
+  }
+  .group:hover .nav-icon-3d {
+    transform: scale(1.15) rotate(-6deg);
+  }
+  .group:hover .nav-icon-3d--active {
+    transform: scale(1.2) rotate(-6deg);
+  }
+  .group:active .nav-icon-3d {
+    transform: scale(0.9);
+    transition-duration: 90ms;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+/*
+  Shared keyboard focus affordance (WCAG 2.4.7). Written unlayered so it wins
+  over Tailwind's layered `outline-none` utility on inputs/buttons. Only shows
+  for keyboard/AT users via :focus-visible, so mouse clicks stay ring-free.
+*/
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/*
+  ============================================================================
+  ADMIN THEME SYSTEM (light/dark)
+  ----------------------------------------------------------------------------
+  Scoped under `.admin-theme` so it ONLY affects the admin panel and never
+  touches the contractor app (which uses the --color-* tokens above). The
+  admin shell root carries `class="admin-theme"` + `data-theme="light|dark"`;
+  the initial value is set server-side from a cookie to avoid a theme flash.
+  ============================================================================
+*/
+.admin-theme {
+  --bg: #f2ead9;
+  --surface: #fbf6ec;
+  --card: #ffffff;
+  --card2: #faf4e9;
+  --sage: #e7ede8;
+  --sageFg: #2f4a3c;
+  --ink: #3a352d;
+  --ink2: #6b6459;
+  --ink3: #a79e8d;
+  --line: #ebe3d4;
+  --line2: #f1eadd;
+  --field: #ffffff;
+  --fieldLine: #e0d6c4;
+  --gold: #c0803c;
+  --goldStrong: #a56a2b;
+  --goldSoft: #f4ead3;
+  --goldSoftFg: #8a6b2e;
+  --chipBg: #efe7d8;
+  --chipFg: #5a4e3e;
+  --danger: #b23b3b;
+  --dangerBg: #f5e3e3;
+  --dangerLine: #e7d6d2;
+  --pos: #2f4a3c;
+  --posBg: #e7ede8;
+  --track: #ebe3d4;
+  --shadow: 0 1px 2px rgba(58, 53, 45, 0.05);
+  --shadowMd: 0 8px 22px rgba(58, 53, 45, 0.08);
+  --shadowLg: 0 20px 50px rgba(58, 53, 45, 0.12);
+}
+
+.admin-theme[data-theme="dark"] {
+  --bg: #17140f;
+  --surface: #211d17;
+  --card: #28241c;
+  --card2: #312b22;
+  --sage: #243029;
+  --sageFg: #a9c6b0;
+  --ink: #f1e7d6;
+  --ink2: #beb4a2;
+  --ink3: #8a8175;
+  --line: #38332a;
+  --line2: #312c24;
+  --field: #312b22;
+  --fieldLine: #48412f;
+  --goldSoft: #3a3220;
+  --goldSoftFg: #e0a95c;
+  --chipBg: #3a3327;
+  --chipFg: #d8cbb2;
+  --danger: #e28c8c;
+  --dangerBg: #3a2622;
+  --dangerLine: #4c332e;
+  --pos: #a9c6b0;
+  --posBg: #243029;
+  --track: #38332a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadowMd: 0 10px 26px rgba(0, 0, 0, 0.35);
+  --shadowLg: 0 22px 54px rgba(0, 0, 0, 0.5);
+}
+
+.admin-theme {
+  background: var(--bg);
+  color: var(--ink);
+  transition:
+    background 0.35s ease,
+    color 0.35s ease;
+}
+
+/* Admin helper classes (hover/press states that inline styles can't express). */
+.admin-theme .a-lift {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.admin-theme .a-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadowMd);
+}
+.admin-theme .a-row {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-row:hover {
+  background: var(--card2);
+}
+.admin-theme .a-navitem {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-navitem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.admin-theme .a-gold {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-gold:hover {
+  background: var(--goldStrong);
+}
+.admin-theme .a-ghostbtn {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-ghostbtn:hover {
+  background: var(--card2);
+}
+.admin-theme .a-dangerbtn {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-dangerbtn:hover {
+  background: var(--dangerBg);
+}
+.admin-theme .a-linkgold {
+  transition: color 0.15s ease;
+}
+.admin-theme .a-linkgold:hover {
+  color: var(--goldStrong);
+}
+.admin-theme .a-field:focus-within {
+  border-color: var(--gold);
+}
+.admin-theme .a-input {
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--ink);
+}
+.admin-theme .a-input::placeholder {
+  color: var(--ink3);
+}
+/* Native controls inside admin keep the design's 15px scale, overriding the
+   global 16px iOS rule; desktop-first admin never triggers iOS zoom. */
+.admin-theme input,
+.admin-theme select,
+.admin-theme textarea {
+  font-size: 15px;
+}
+
+@keyframes admin-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes admin-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.admin-fade-up {
+  animation: admin-fade-up 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme,
+  .admin-theme .a-lift,
+  .admin-theme .a-row,
+  .admin-fade-up {
+    transition: none;
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-float-slow {
+    animation: none;
+  }
+
+  .nav-icon-3d,
+  .nav-icon-3d--active,
+  .group:hover .nav-icon-3d,
+  .group:hover .nav-icon-3d--active,
+  .group:active .nav-icon-3d {
+    transform: none;
+    transition: none;
   }
 }

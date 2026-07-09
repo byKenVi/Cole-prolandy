@@ -37,6 +37,22 @@ export function authMode(): "clerk" | "dev" {
   return process.env.AUTH_MODE === "clerk" ? "clerk" : "dev";
 }
 
+/**
+ * Fail-closed startup guard. In production the app MUST run real Clerk auth:
+ * dev auth trusts a self-set `lp_role=admin` cookie, which would grant anyone
+ * full admin. Throwing here (invoked from instrumentation `register()`) stops the
+ * server from booting in an insecure configuration. Dev is unaffected.
+ */
+export function assertAuthConfigFailClosed(): void {
+  if (process.env.NODE_ENV === "production" && authMode() !== "clerk") {
+    throw new Error(
+      'FATAL: AUTH_MODE must be "clerk" in production. Dev auth (self-set lp_role ' +
+        "cookie) grants unauthenticated admin access and is refused at startup. " +
+        "Set AUTH_MODE=clerk and provide Clerk keys.",
+    );
+  }
+}
+
 function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS ?? "")
     .split(",")
@@ -62,7 +78,9 @@ async function getDevSession(): Promise<Session> {
     contractorId = first?.id ?? null;
   }
 
-  if (role === "admin") {
+  // Defense in depth: dev auth must NEVER yield admin in production, even if the
+  // startup guard were somehow bypassed. A self-set cookie can't become admin.
+  if (role === "admin" && process.env.NODE_ENV !== "production") {
     return {
       role: "admin",
       userId: "dev-admin",

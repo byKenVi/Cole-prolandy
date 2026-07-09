@@ -1,11 +1,30 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { updateSetting } from "@/app/actions/admin";
 
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  font: "600 13px/1 'Inter'",
+  color: "var(--ink)",
+  marginBottom: 8,
+};
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 46,
+  padding: "0 14px",
+  border: "1px solid var(--fieldLine)",
+  borderRadius: 11,
+  background: "var(--field)",
+  color: "var(--ink)",
+  fontFamily: "Inter",
+};
+const hintStyle: React.CSSProperties = {
+  font: "400 12px/1.4 'Inter'",
+  color: "var(--ink3)",
+};
+
+/** Lead distribution settings — wired to the real updateSetting server action. */
 export function SettingsForm({
   maxLeadRecipients,
   leadExpiryHours,
@@ -14,66 +33,89 @@ export function SettingsForm({
   leadExpiryHours: number;
 }) {
   const [pending, startTransition] = useTransition();
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
   const [recipients, setRecipients] = useState(String(maxLeadRecipients));
   const [hours, setHours] = useState(String(leadExpiryHours));
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus(null);
+    setMessage(null);
     startTransition(async () => {
       const r1 = await updateSetting("maxLeadRecipients", Number(recipients));
+      if (!r1.ok) {
+        setStatus("error");
+        setMessage(r1.message);
+        return;
+      }
       const r2 = await updateSetting("leadExpiryHours", Number(hours));
-      if (!r1.ok) return setStatus(r1.message);
-      if (!r2.ok) return setStatus(r2.message);
-      setStatus("Saved");
+      if (!r2.ok) {
+        setStatus("error");
+        setMessage(r2.message);
+        return;
+      }
+      setStatus("saved");
+      setMessage(null);
+      setTimeout(() => setStatus("idle"), 1800);
     });
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex max-w-md flex-col gap-5">
-      <div>
-        <Label htmlFor="recipients">Max lead recipients (shared leads)</Label>
-        <Input
-          id="recipients"
-          type="number"
-          min="1"
-          value={recipients}
-          onChange={(e) => setRecipients(e.target.value)}
-        />
-        <p className="mt-1 text-xs text-text-muted">
-          Up to this many contractors receive each lead. Minimum 1.
-        </p>
-      </div>
-      <div>
-        <Label htmlFor="hours">Lead expiry (hours)</Label>
-        <Input
-          id="hours"
-          type="number"
-          min="1"
-          value={hours}
-          onChange={(e) => setHours(e.target.value)}
-        />
-        <p className="mt-1 text-xs text-text-muted">
-          A lead can no longer be accepted after this many hours.
-        </p>
-      </div>
+    <form onSubmit={onSubmit}>
+      <label style={labelStyle} htmlFor="recipients">
+        Max lead recipients
+      </label>
+      <input
+        id="recipients"
+        type="number"
+        min="1"
+        value={recipients}
+        onChange={(e) => setRecipients(e.target.value)}
+        style={inputStyle}
+      />
+      <p style={{ ...hintStyle, margin: "7px 0 20px" }}>
+        Up to this many contractors receive each shared lead. Minimum 1.
+      </p>
 
-      {status && (
-        <p
-          className={
-            status === "Saved"
-              ? "rounded-sm bg-success-soft p-3 text-sm font-medium text-success"
-              : "rounded-sm bg-danger-soft p-3 text-sm font-medium text-danger"
-          }
-        >
-          {status}
+      <label style={labelStyle} htmlFor="hours">
+        Lead expiry (hours)
+      </label>
+      <input
+        id="hours"
+        type="number"
+        min="1"
+        value={hours}
+        onChange={(e) => setHours(e.target.value)}
+        style={inputStyle}
+      />
+      <p style={{ ...hintStyle, margin: "7px 0 22px" }}>
+        A lead can no longer be accepted after this many hours.
+      </p>
+
+      {message && (
+        <p style={{ margin: "0 0 14px", font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>
+          {message}
         </p>
       )}
 
-      <Button type="submit" variant="accent" loading={pending} disabled={pending}>
-        Save settings
-      </Button>
+      <button
+        type="submit"
+        disabled={pending}
+        className="a-gold"
+        style={{
+          width: "100%",
+          height: 50,
+          background: "var(--gold)",
+          color: "#fff",
+          border: "none",
+          borderRadius: 12,
+          font: "600 16px/1 'Inter'",
+          cursor: pending ? "default" : "pointer",
+          boxShadow: "0 8px 18px rgba(192,128,60,.28)",
+        }}
+      >
+        {pending ? "Saving…" : status === "saved" ? "Saved ✓" : "Save settings"}
+      </button>
     </form>
   );
 }

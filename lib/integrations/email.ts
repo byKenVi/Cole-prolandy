@@ -1,6 +1,17 @@
 /**
- * Email interface (lead + acceptance notifications). Real Resend drops in behind
- * this interface. Toggle with RESEND_MOCK env.
+ * Email interface (lead + acceptance notifications).
+ *
+ * Real delivery is via Resend. Everything stays behind this interface so callers
+ * never care which provider (or mock) is active. Toggle with RESEND_MOCK.
+ *
+ * ── Modes ────────────────────────────────────────────────────────────────────
+ *   MOCK (default): logs to console, returns success. No SDK / key needed.
+ *   LIVE:           RESEND_MOCK=false AND RESEND_API_KEY present. Sends via SDK.
+ *
+ * ── Testing today ────────────────────────────────────────────────────────────
+ *   Resend has no "trial-only" restriction like Twilio, but the FROM address
+ *   (RESEND_FROM) must be on a domain you've verified in Resend (or use their
+ *   onboarding@resend.dev sandbox sender for quick tests).
  */
 export type SendEmailParams = {
   to: string;
@@ -9,40 +20,75 @@ export type SendEmailParams = {
   text?: string;
 };
 
+/** Structured result — send() NEVER throws raw errors to callers. */
+export type SendEmailResult =
+  | { ok: true; id: string; mocked: boolean }
+  | { ok: false; error: string; mocked: boolean };
+
 export interface EmailProvider {
-  send(params: SendEmailParams): Promise<{ id: string; mocked: boolean }>;
+  send(params: SendEmailParams): Promise<SendEmailResult>;
 }
 
 const isMock = () => process.env.RESEND_MOCK !== "false"; // default ON
 
-class MockEmailProvider implements EmailProvider {
-  async send({ to, subject }: SendEmailParams) {
+/** Live mode requires the API key to be present. */
+function hasResendCreds(): boolean {
+  return Boolean(process.env.RESEND_API_KEY);
+}
+
+export class MockEmailProvider implements EmailProvider {
+  async send({ to, subject }: SendEmailParams): Promise<SendEmailResult> {
     const id = `email_mock_${Date.now()}`;
     // eslint-disable-next-line no-console
     console.log(`[email:mock] -> ${to} | ${subject}`);
-    return { id, mocked: true };
+    return { ok: true, id, mocked: true };
   }
 }
 
-class ResendEmailProvider implements EmailProvider {
-  async send({ to, subject, html, text }: SendEmailParams): Promise<{ id: string; mocked: boolean }> {
-    void to;
-    void subject;
-    // TODO(real): implement with Resend.
-    //   const { Resend } = await import("resend");
-    //   const resend = new Resend(process.env.RESEND_API_KEY);
-    //   const res = await resend.emails.send({
-    //     from: process.env.RESEND_FROM_EMAIL!, to, subject, html, text,
-    //   });
-    //   return { id: res.data?.id ?? "", mocked: false };
-    void html;
-    void text;
-    throw new Error(
-      "Resend live mode not yet implemented. Set RESEND_MOCK=true or wire ResendEmailProvider.",
-    );
+export class ResendEmailProvider implements EmailProvider {
+  async send({ to, subject, html, text }: SendEmailParams): Promise<SendEmailResult> {
+    try {
+      // Lazy import so the SDK is only loaded (and only required) in live mode.
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
+      const from = process.env.RESEND_FROM;
+      if (!from) {
+        return {
+          ok: false,
+          mocked: false,
+          error: "Resend sender not configured: set RESEND_FROM.",
+        };
+      }
+
+      // Resend requires at least one of html/text; fall back to the subject.
+      const res = await resend.emails.send({
+        from,
+        to,
+        subject,
+        ...(html ? { html } : {}),
+        ...(text ? { text } : {}),
+        ...(!html && !text ? { text: subject } : {}),
+      } as Parameters<typeof resend.emails.send>[0]);
+
+      if (res.error) {
+        return { ok: false, mocked: false, error: res.error.message };
+      }
+      return { ok: true, id: res.data?.id ?? "", mocked: false };
+    } catch (err) {
+      // Never leak a raw error to the caller — normalize to a string.
+      const error = err instanceof Error ? err.message : String(err);
+      return { ok: false, mocked: false, error };
+    }
   }
 }
 
-export const email: EmailProvider = isMock()
-  ? new MockEmailProvider()
-  : new ResendEmailProvider();
+/**
+ * Choose the provider once at module load. Live mode only kicks in when the
+ * mock flag is explicitly off AND the API key exists — a misconfigured env
+ * safely falls back to the mock instead of crashing lead distribution.
+ */
+export const email: EmailProvider =
+  isMock() || !hasResendCreds()
+    ? new MockEmailProvider()
+    : new ResendEmailProvider();

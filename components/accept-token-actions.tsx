@@ -11,7 +11,7 @@ import { formatMoney } from "@/lib/money";
  * The single most important pro screen (DESIGN.md §6): tokenized accept, no
  * login. Two full-width buttons; handles insufficient balance inline.
  */
-export function AcceptTokenActions({ token }: { token: string }) {
+export function AcceptTokenActions({ token, priceCents }: { token: string; priceCents?: number }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [action, setAction] = useState<null | "accept" | "decline">(null);
@@ -73,7 +73,7 @@ export function AcceptTokenActions({ token }: { token: string }) {
         disabled={pending}
         onClick={onAccept}
       >
-        Accept &amp; pay
+        Accept &amp; pay{priceCents != null ? ` ${formatMoney(priceCents)}` : ""}
       </Button>
       <Button
         variant="outline"

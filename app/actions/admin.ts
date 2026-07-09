@@ -6,10 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { WalletTransactionType } from "@prisma/client";
 import { applyWalletTransaction } from "@/lib/domain/wallet";
 import { refundLeadMatch } from "@/lib/domain/leads";
+import { chargeContractorSavedCard } from "@/lib/services/recharge";
+import { refundTopUpToCard, returnRealBalanceToCard } from "@/lib/services/card-refund";
 import { createAndDistributeLead } from "@/lib/services/lead-intake";
 import { requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
 import { normalizePhoneForStorage } from "@/lib/phone";
+import { ICON_KEYS, ICON_AUTO, ICON_NONE } from "@/lib/project-icons";
 
 type Result = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -153,6 +156,81 @@ export async function refundLead(leadMatchId: string, reason: string): Promise<R
   }
 }
 
+// ── Charge the contractor's SAVED card & top up their wallet (off-session) ──
+//
+// This charges the CONTRACTOR's own saved card (their money, not the admin's)
+// and credits their wallet via the webhook (real) / shared mock credit path
+// (mock). It is DISTINCT from Refund / Promo credit / Deduct — it moves real
+// money IN from the contractor's card. Only usable when a card is on file.
+export async function chargeSavedCardTopUp(input: {
+  contractorId: string;
+  amountCents: number;
+  reason: string;
+}): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!input.reason?.trim()) {
+    return { ok: false, message: "A reason is required." };
+  }
+  const res = await chargeContractorSavedCard({
+    contractorId: input.contractorId,
+    amountCents: input.amountCents,
+    actor: { type: "admin", id: admin.email, reason: input.reason },
+  });
+  if (!res.ok) {
+    return { ok: false, message: res.message };
+  }
+  revalidatePath(`/admin/contractors/${input.contractorId}`);
+  return {
+    ok: true,
+    message: res.mocked
+      ? `Saved card charged. ${res.message}`
+      : "Payment submitted — the wallet credits once the card payment confirms.",
+  };
+}
+
+// ── Real refund to the contractor's card (Stripe) — DEBITS the wallet ──
+//
+// Sends real money BACK to the contractor's card and reduces their wallet by the
+// same amount (never below zero; promo credit is never refundable). Distinct
+// from the internal lead REFUND (which CREDITS the wallet).
+export async function refundTopUpToCardAction(input: {
+  contractorId: string;
+  walletTransactionId: string;
+  reason: string;
+}): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!input.reason?.trim()) {
+    return { ok: false, message: "A reason is required." };
+  }
+  const res = await refundTopUpToCard({
+    contractorId: input.contractorId,
+    walletTransactionId: input.walletTransactionId,
+    actorId: admin.email,
+    reason: input.reason,
+  });
+  if (!res.ok) return { ok: false, message: res.message };
+  revalidatePath(`/admin/contractors/${input.contractorId}`);
+  return { ok: true, message: res.message };
+}
+
+export async function returnRealBalanceToCardAction(input: {
+  contractorId: string;
+  reason: string;
+}): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!input.reason?.trim()) {
+    return { ok: false, message: "A reason is required." };
+  }
+  const res = await returnRealBalanceToCard({
+    contractorId: input.contractorId,
+    actorId: admin.email,
+    reason: input.reason,
+  });
+  if (!res.ok) return { ok: false, message: res.message };
+  revalidatePath(`/admin/contractors/${input.contractorId}`);
+  return { ok: true, message: res.message };
+}
+
 // ── Contractor delete (integrity-guarded) ──
 export async function deleteContractor(id: string): Promise<Result> {
   const admin = await requireAdmin();
@@ -269,19 +347,36 @@ export async function deleteLead(id: string): Promise<Result> {
 }
 
 // ── Categories (ContractorType) CRUD ──
-const ContractorTypeSchema = z.object({ name: z.string().trim().min(2, "Name is required").max(80) });
+// `icon` stores an icon key (base filename in /public/icons), or the sentinels
+// "auto" (keyword match) / "none" (no icon). Empty string is normalized to
+// "auto". See lib/project-icons.ts for how it is resolved.
+const ALLOWED_ICONS = [...ICON_KEYS, ICON_AUTO, ICON_NONE] as const;
+const IconSchema = z
+  .string()
+  .trim()
+  .transform((v) => (v === "" ? ICON_AUTO : v))
+  .refine((v) => (ALLOWED_ICONS as readonly string[]).includes(v), "Invalid icon")
+  .optional();
+const ContractorTypeSchema = z.object({
+  name: z.string().trim().min(2, "Name is required").max(80),
+  icon: IconSchema,
+});
 
-export async function createContractorType(name: string): Promise<Result & { id?: string }> {
+export async function createContractorType(name: string, icon?: string): Promise<Result & { id?: string }> {
   const admin = await requireAdmin();
-  const parsed = ContractorTypeSchema.safeParse({ name });
+  const parsed = ContractorTypeSchema.safeParse({ name, icon });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
   }
   const clean = parsed.data.name;
+  const iconValue = parsed.data.icon ?? ICON_AUTO;
   const existing = await prisma.contractorType.findUnique({ where: { name: clean }, select: { id: true } });
   if (existing) return { ok: false, message: "A category with this name already exists." };
 
-  const created = await prisma.contractorType.create({ data: { name: clean }, select: { id: true } });
+  const created = await prisma.contractorType.create({
+    data: { name: clean, icon: iconValue },
+    select: { id: true },
+  });
   await prisma.auditLog.create({
     data: {
       actorType: "admin",
@@ -289,7 +384,7 @@ export async function createContractorType(name: string): Promise<Result & { id?
       action: "category.created.admin",
       targetType: "ContractorType",
       targetId: created.id,
-      metadata: { name: clean },
+      metadata: { name: clean, icon: iconValue },
     },
   });
   revalidatePath("/admin/settings");
@@ -297,14 +392,14 @@ export async function createContractorType(name: string): Promise<Result & { id?
   return { ok: true, message: "Category added", id: created.id };
 }
 
-export async function updateContractorType(id: string, name: string): Promise<Result> {
+export async function updateContractorType(id: string, name: string, icon?: string): Promise<Result> {
   const admin = await requireAdmin();
-  const parsed = ContractorTypeSchema.safeParse({ name });
+  const parsed = ContractorTypeSchema.safeParse({ name, icon });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
   }
   const clean = parsed.data.name;
-  const current = await prisma.contractorType.findUnique({ where: { id }, select: { name: true } });
+  const current = await prisma.contractorType.findUnique({ where: { id }, select: { name: true, icon: true } });
   if (!current) return { ok: false, message: "Category not found." };
 
   const owner = await prisma.contractorType.findUnique({ where: { name: clean }, select: { id: true } });
@@ -312,9 +407,12 @@ export async function updateContractorType(id: string, name: string): Promise<Re
     return { ok: false, message: "Another category already uses this name." };
   }
 
+  // If no icon arg was supplied, preserve the existing one (rename-only path).
+  const iconValue = parsed.data.icon ?? current.icon ?? ICON_AUTO;
+
   // Renaming is safe: leads, pricing and contractors reference the category by
   // id, not name, so existing data stays intact.
-  await prisma.contractorType.update({ where: { id }, data: { name: clean } });
+  await prisma.contractorType.update({ where: { id }, data: { name: clean, icon: iconValue } });
   await prisma.auditLog.create({
     data: {
       actorType: "admin",
@@ -322,12 +420,12 @@ export async function updateContractorType(id: string, name: string): Promise<Re
       action: "category.updated.admin",
       targetType: "ContractorType",
       targetId: id,
-      metadata: { from: current.name, to: clean },
+      metadata: { from: current.name, to: clean, icon: iconValue },
     },
   });
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
-  return { ok: true, message: "Category renamed" };
+  return { ok: true, message: "Category saved" };
 }
 
 export async function deleteContractorType(id: string): Promise<Result> {

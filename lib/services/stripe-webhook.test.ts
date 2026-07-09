@@ -129,6 +129,8 @@ describe("parseTopUpEvent", () => {
       contractorId: "c1",
       amountCents: 5000,
       paymentIntentId: "pi_abc",
+      paymentMethodId: null,
+      stripeCustomerId: null,
     });
   });
 

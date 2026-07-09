@@ -36,7 +36,11 @@ export async function POST(req: NextRequest) {
 
   const parsed = parseTopUpEvent(event);
   if (!parsed) {
-    // Event type we don't act on — acknowledge so Stripe stops retrying.
+    // Event type we don't act on — acknowledge so Stripe stops retrying. NOTE:
+    // refund events (charge.refunded / refund.updated) are intentionally ignored
+    // here: a card refund already DEBITS the wallet inline at the moment the
+    // admin issues it (see lib/services/card-refund.ts), so reconciling again
+    // from this webhook would double-debit.
     return NextResponse.json({ received: true, ignored: event.type });
   }
 

@@ -2,28 +2,140 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Pencil, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import Image from "next/image";
 import {
   createContractorType,
   updateContractorType,
   deleteContractorType,
 } from "@/app/actions/admin";
+import {
+  ICON_KEYS,
+  ICON_LABELS,
+  ICON_AUTO,
+  ICON_NONE,
+  iconSrcForKey,
+  type IconKey,
+} from "@/lib/project-icons";
 
 type Category = {
   id: string;
   name: string;
+  icon: string | null;
   contractors: number;
   projectTypes: number;
+};
+
+function normalizeIcon(icon: string | null): string {
+  return icon || ICON_AUTO;
+}
+
+/** Selectable grid of icon options (Auto, None + the 12 icons). */
+function IconPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const tile = (key: string, selected: boolean, content: React.ReactNode, label: string) => (
+    <button
+      key={key}
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(key)}
+      title={label}
+      aria-label={label}
+      aria-pressed={selected}
+      style={{
+        display: "flex",
+        height: 48,
+        width: 48,
+        flexShrink: 0,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 10,
+        border: `1px solid ${selected ? "var(--gold)" : "var(--fieldLine)"}`,
+        outline: selected ? "2px solid color-mix(in srgb,var(--gold) 40%,transparent)" : "none",
+        background: selected ? "var(--goldSoft)" : "var(--field)",
+        cursor: disabled ? "default" : "pointer",
+        font: "500 10px/1 'Inter'",
+        color: "var(--ink3)",
+      }}
+    >
+      {content}
+    </button>
+  );
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {tile(ICON_AUTO, value === ICON_AUTO, <span>Auto</span>, "Auto (match by name)")}
+      {tile(ICON_NONE, value === ICON_NONE, <span>None</span>, "None")}
+      {ICON_KEYS.map((key) =>
+        tile(
+          key,
+          value === key,
+          <Image
+            src={iconSrcForKey(key as IconKey)}
+            alt=""
+            aria-hidden
+            width={40}
+            height={40}
+            style={{ height: 32, width: 32, objectFit: "contain" }}
+          />,
+          ICON_LABELS[key as IconKey],
+        ),
+      )}
+    </div>
+  );
+}
+
+function IconPreview({ icon }: { icon: string }) {
+  if ((ICON_KEYS as readonly string[]).includes(icon)) {
+    return (
+      <Image
+        src={iconSrcForKey(icon as IconKey)}
+        alt=""
+        aria-hidden
+        width={32}
+        height={32}
+        style={{ height: 26, width: 26, objectFit: "contain" }}
+      />
+    );
+  }
+  return <span style={{ font: "400 11px/1 'Inter'", color: "var(--ink3)" }}>{icon === ICON_NONE ? "None" : "Auto"}</span>;
+}
+
+const smallBtn: React.CSSProperties = {
+  height: 34,
+  padding: "0 13px",
+  background: "var(--field)",
+  border: "1px solid var(--fieldLine)",
+  borderRadius: 9,
+  font: "600 12px/1 'Inter'",
+  color: "var(--ink)",
+  cursor: "pointer",
+};
+
+const inputStyle: React.CSSProperties = {
+  height: 40,
+  padding: "0 12px",
+  border: "1px solid var(--fieldLine)",
+  borderRadius: 10,
+  background: "var(--field)",
+  color: "var(--ink)",
+  font: "500 14px/1 'Inter'",
 };
 
 export function CategoriesManager({ categories }: { categories: Category[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [newName, setNewName] = useState("");
+  const [newIcon, setNewIcon] = useState<string>(ICON_AUTO);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editIcon, setEditIcon] = useState<string>(ICON_AUTO);
   const [error, setError] = useState<string | null>(null);
 
   function run(fn: () => Promise<{ ok: boolean; message?: string }>, onOk?: () => void) {
@@ -40,91 +152,190 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && (
-        <p className="rounded-sm bg-danger-soft p-3 text-sm font-medium text-danger">{error}</p>
+        <p
+          style={{
+            margin: 0,
+            borderRadius: 10,
+            background: "var(--dangerBg)",
+            padding: 12,
+            font: "500 13px/1.4 'Inter'",
+            color: "var(--danger)",
+          }}
+        >
+          {error}
+        </p>
       )}
 
-      <ul className="divide-y divide-border rounded-md border border-border">
+      <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
         {categories.map((c) => (
-          <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div
+            key={c.id}
+            style={{ padding: "13px 16px", borderBottom: "1px solid var(--line2)" }}
+            className={editingId === c.id ? undefined : "a-row"}
+          >
             {editingId === c.id ? (
-              <div className="flex flex-1 items-center gap-2">
-                <Input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="max-w-xs"
-                  autoFocus
-                />
-                <Button
-                  variant="brand"
-                  size="sm"
-                  loading={pending}
-                  disabled={pending}
-                  onClick={() =>
-                    run(() => updateContractorType(c.id, editName), () => setEditingId(null))
-                  }
-                >
-                  <Check className="h-4 w-4" /> Save
-                </Button>
-                <Button variant="ghost" size="sm" disabled={pending} onClick={() => setEditingId(null)}>
-                  <X className="h-4 w-4" />
-                </Button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    autoFocus
+                    style={{ ...inputStyle, flex: 1, minWidth: 180 }}
+                  />
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run(() => updateContractorType(c.id, editName, editIcon), () => setEditingId(null))}
+                    style={{ ...smallBtn, background: "var(--sageFg)", color: "#fff", border: "none" }}
+                  >
+                    Save
+                  </button>
+                  <button type="button" disabled={pending} onClick={() => setEditingId(null)} style={smallBtn}>
+                    Cancel
+                  </button>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>
+                    Icon
+                  </p>
+                  <IconPicker value={editIcon} onChange={setEditIcon} disabled={pending} />
+                </div>
               </div>
             ) : (
-              <>
-                <div>
-                  <p className="font-medium text-text">{c.name}</p>
-                  <p className="text-xs text-text-muted">
-                    {c.contractors} contractor(s) · {c.projectTypes} project type(s)
-                  </p>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 14,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                  <span
+                    style={{
+                      width: 40,
+                      height: 40,
+                      flex: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 10,
+                      border: "1px solid var(--line)",
+                      background: "var(--card2)",
+                    }}
+                  >
+                    <IconPreview icon={normalizeIcon(c.icon)} />
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, font: "600 14px/1.2 'Inter'", color: "var(--ink)" }}>
+                      {c.name}
+                    </p>
+                    <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
+                      {c.contractors} contractor{c.contractors === 1 ? "" : "s"} · {c.projectTypes}{" "}
+                      project type{c.projectTypes === 1 ? "" : "s"}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div style={{ display: "flex", gap: 8, flex: "none" }}>
+                  <button
+                    type="button"
+                    className="a-ghostbtn"
                     onClick={() => {
                       setEditingId(c.id);
                       setEditName(c.name);
+                      setEditIcon(normalizeIcon(c.icon));
                       setError(null);
                     }}
+                    style={smallBtn}
                   >
-                    <Pencil className="h-4 w-4" /> Rename
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${c.name}`}
+                    className="a-dangerbtn"
                     disabled={pending}
                     onClick={() => run(() => deleteContractorType(c.id))}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "var(--field)",
+                      border: "1px solid var(--dangerLine)",
+                      borderRadius: 9,
+                      color: "var(--danger)",
+                      cursor: "pointer",
+                    }}
                   >
-                    Delete
-                  </Button>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" />
+                    </svg>
+                  </button>
                 </div>
-              </>
+              </div>
             )}
-          </li>
+          </div>
         ))}
         {categories.length === 0 && (
-          <li className="px-4 py-3 text-sm text-text-muted">No categories yet.</li>
+          <p style={{ padding: "13px 16px", font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
+            No categories yet.
+          </p>
         )}
-      </ul>
+      </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[220px] flex-1">
-          <Input
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          border: "1px solid var(--line)",
+          borderRadius: 12,
+          padding: 16,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="New category name (e.g. Fencing)"
+            style={{ ...inputStyle, flex: 1, minWidth: 200 }}
           />
+          <button
+            type="button"
+            className="a-gold"
+            disabled={pending || newName.trim().length < 2}
+            onClick={() =>
+              run(
+                () => createContractorType(newName, newIcon),
+                () => {
+                  setNewName("");
+                  setNewIcon(ICON_AUTO);
+                },
+              )
+            }
+            style={{
+              height: 40,
+              padding: "0 18px",
+              background: "var(--gold)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 10,
+              font: "600 13px/1 'Inter'",
+              cursor: "pointer",
+              opacity: pending || newName.trim().length < 2 ? 0.6 : 1,
+            }}
+          >
+            Add category
+          </button>
         </div>
-        <Button
-          variant="accent"
-          loading={pending}
-          disabled={pending || newName.trim().length < 2}
-          onClick={() => run(() => createContractorType(newName), () => setNewName(""))}
-        >
-          Add category
-        </Button>
+        <div>
+          <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>Icon</p>
+          <IconPicker value={newIcon} onChange={setNewIcon} disabled={pending} />
+        </div>
       </div>
     </div>
   );

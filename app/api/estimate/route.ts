@@ -30,7 +30,11 @@ const EstimateSchema = z.object({
 const DEFAULT_TIER = 2;
 
 export async function POST(req: NextRequest) {
-  const spamProtection = process.env.FORM_SPAM_PROTECTION !== "false";
+  // Spam protection is configurable in development via FORM_SPAM_PROTECTION, but
+  // it is ALWAYS forced ON in production (honeypot + rate limit + validation) so
+  // the public endpoint can't be left unprotected by a misconfigured flag.
+  const spamProtection =
+    process.env.NODE_ENV === "production" || process.env.FORM_SPAM_PROTECTION !== "false";
 
   let body: unknown;
   try {

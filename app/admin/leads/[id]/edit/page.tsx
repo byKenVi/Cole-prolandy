@@ -24,14 +24,22 @@ export default async function EditLeadPage({ params }: { params: Promise<{ id: s
   if (!lead) notFound();
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
-      <Link href={`/admin/leads/${id}`} className="flex items-center gap-1 text-sm text-text-muted">
+    <div className="admin-fade-up flex max-w-2xl flex-col gap-6">
+      <Link
+        href={`/admin/leads/${id}`}
+        className="flex items-center gap-1 text-sm"
+        style={{ color: "var(--ink2)" }}
+      >
         <ArrowLeft className="h-4 w-4" /> Back to lead
       </Link>
 
       <header>
-        <h1 className="font-display text-3xl font-semibold text-text">Edit lead</h1>
-        <p className="mt-1 text-sm text-text-muted">{lead.projectType.name}</p>
+        <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
+          Edit lead
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
+          {lead.projectType.name}
+        </p>
       </header>
 
       <Card className="p-6">

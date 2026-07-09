@@ -6,7 +6,7 @@
 
 export const TOPUP_MIN_CENTS = 1000; // $10 minimum
 export const TOPUP_MAX_CENTS = 1000000; // $10,000 maximum
-export const TOPUP_PRESETS_CENTS: readonly number[] = [5000, 10000, 25000]; // $50 / $100 / $250
+export const TOPUP_PRESETS_CENTS: readonly number[] = [5000, 10000, 25000, 50000]; // $50 / $100 / $250 / $500
 
 export type TopUpValidation = { ok: true; amountCents: number } | { ok: false; message: string };
 

@@ -111,6 +111,19 @@ class Table {
     return hydrate(project(row, select), row, include);
   }
 
+  async findFirst({
+    where,
+    select,
+    orderBy,
+  }: {
+    where?: Row;
+    select?: Row;
+    orderBy?: Row;
+  }) {
+    const many = await this.findMany({ where, select, orderBy });
+    return many[0] ?? null;
+  }
+
   async findMany({
     where,
     select,

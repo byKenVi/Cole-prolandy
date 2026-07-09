@@ -6,6 +6,7 @@
  * wallet transactions, audit) is cleared and recreated on each run.
  */
 import { PrismaClient, LeadStatus, LeadMatchStatus, WalletTransactionType } from "@prisma/client";
+import { generateAcceptToken } from "../lib/tokens";
 
 const prisma = new PrismaClient();
 
@@ -123,6 +124,22 @@ const CATALOG: Record<
   },
 };
 
+// Default 3D icon key (base filename in /public/icons) per seeded category.
+const ICON_BY_TYPE: Record<string, string> = {
+  "Excavation / Dirt Work": "excavation",
+  "Land Clearing": "land-clearing",
+  "Pond Building": "pond",
+  Fencing: "fencing",
+  Surveying: "surveying",
+  "Tree Service": "tree-service",
+  "Road / Driveway": "road",
+  "Drainage / Culvert": "drainage",
+  "Brush Mowing": "brush-mowing",
+  Septic: "septic",
+  Grading: "grading",
+  "Well Drilling": "well-drilling",
+};
+
 const dollars = (d: number) => d * 100;
 
 async function main() {
@@ -151,10 +168,11 @@ async function main() {
   const projectIdByKey: Record<string, string> = {}; // `${typeName}::${projectName}` -> id
 
   for (const [typeName, def] of Object.entries(CATALOG)) {
+    const icon = ICON_BY_TYPE[typeName] ?? "auto";
     const ct = await prisma.contractorType.upsert({
       where: { name: typeName },
-      update: {},
-      create: { name: typeName },
+      update: { icon },
+      create: { name: typeName, icon },
     });
     typeIdByName[typeName] = ct.id;
 
@@ -364,6 +382,7 @@ async function main() {
           leadId: lead.id,
           contractorId,
           status: m.status,
+          acceptToken: generateAcceptToken(),
           acceptedAt: m.status === LeadMatchStatus.ACCEPTED ? new Date() : null,
         },
       });

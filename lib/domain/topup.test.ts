@@ -7,8 +7,8 @@ import {
 } from "./topup";
 
 describe("validateTopUpAmountCents", () => {
-  it("accepts all presets ($50 / $100 / $250)", () => {
-    expect(TOPUP_PRESETS_CENTS).toEqual([5000, 10000, 25000]);
+  it("accepts all presets ($50 / $100 / $250 / $500)", () => {
+    expect(TOPUP_PRESETS_CENTS).toEqual([5000, 10000, 25000, 50000]);
     for (const cents of TOPUP_PRESETS_CENTS) {
       const res = validateTopUpAmountCents(cents);
       expect(res.ok).toBe(true);

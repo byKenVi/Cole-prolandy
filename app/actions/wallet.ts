@@ -1,10 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { payments } from "@/lib/integrations/payments";
 import { requireContractorId } from "@/lib/auth";
 import { validateTopUpAmountCents } from "@/lib/domain/topup";
+import { chargeContractorSavedCard, type RechargeResult } from "@/lib/services/recharge";
 
 /**
  * Start a wallet top-up. In mock mode this returns a local URL that simulates a
@@ -46,4 +48,22 @@ export async function startTopUp(amountCents: number) {
   }
 
   redirect(checkoutUrl);
+}
+
+/**
+ * Contractor "1-click recharge" using the saved card (off-session). Validated
+ * server-side; the wallet is credited only by the webhook (real) or the shared
+ * mock credit path (mock). Returns a UI-safe result; when there is no saved card
+ * or the charge needs the cardholder present, `fallbackToCheckout` is true and
+ * the client should use the interactive `startTopUp` flow instead.
+ */
+export async function rechargeSavedCard(amountCents: number): Promise<RechargeResult> {
+  const contractorId = await requireContractorId();
+  const res = await chargeContractorSavedCard({
+    contractorId,
+    amountCents,
+    actor: { type: "contractor", id: contractorId },
+  });
+  if (res.ok) revalidatePath("/wallet");
+  return res;
 }

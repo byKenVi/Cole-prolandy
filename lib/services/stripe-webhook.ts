@@ -22,6 +22,10 @@ export type TopUpEvent = {
   contractorId: string;
   amountCents: number;
   paymentIntentId: string | null;
+  /** Saved card captured from the PI (setup_future_usage=off_session), if any. */
+  paymentMethodId?: string | null;
+  /** Stripe customer the payment belongs to, if present on the event. */
+  stripeCustomerId?: string | null;
 };
 
 export type CreditResult = { status: "credited" | "duplicate" | "ignored" };
@@ -50,6 +54,10 @@ export function parseTopUpEvent(event: Stripe.Event): TopUpEvent | null {
         typeof s.payment_intent === "string"
           ? s.payment_intent
           : (s.payment_intent?.id ?? null),
+      // The session doesn't expose the PM directly; payment_intent.succeeded does.
+      paymentMethodId: null,
+      stripeCustomerId:
+        typeof s.customer === "string" ? s.customer : (s.customer?.id ?? null),
     };
   }
   if (event.type === "payment_intent.succeeded") {
@@ -60,6 +68,11 @@ export function parseTopUpEvent(event: Stripe.Event): TopUpEvent | null {
       contractorId: pi.metadata?.contractorId ?? "",
       amountCents: pi.amount_received ?? pi.amount ?? 0,
       paymentIntentId: pi.id,
+      paymentMethodId:
+        typeof pi.payment_method === "string"
+          ? pi.payment_method
+          : (pi.payment_method?.id ?? null),
+      stripeCustomerId: typeof pi.customer === "string" ? pi.customer : (pi.customer?.id ?? null),
     };
   }
   return null;
@@ -74,6 +87,10 @@ export async function creditTopUp(e: TopUpEvent): Promise<CreditResult> {
   if (!e.contractorId || !Number.isInteger(e.amountCents) || e.amountCents <= 0) {
     return { status: "ignored" };
   }
+  // Persist the saved card + customer regardless of whether THIS event credits
+  // (a duplicate delivery of payment_intent.succeeded still carries the PM). This
+  // is a plain field set — safe to run repeatedly and never mints money.
+  await persistSavedPaymentMethod(e);
   try {
     await prisma.$transaction(async (tx) => {
       await tx.processedStripeEvent.create({ data: { id: e.eventId, type: e.eventType } });
@@ -103,6 +120,22 @@ export async function creditTopUp(e: TopUpEvent): Promise<CreditResult> {
   } catch (err) {
     if (isUniqueViolation(err)) return { status: "duplicate" };
     throw err;
+  }
+}
+
+/**
+ * Best-effort persistence of the saved payment method (and customer) captured
+ * from a top-up event. Never throws — a failure here must not fail the credit.
+ */
+async function persistSavedPaymentMethod(e: TopUpEvent): Promise<void> {
+  if (!e.paymentMethodId && !e.stripeCustomerId) return;
+  const data: { stripeDefaultPaymentMethodId?: string; stripeCustomerId?: string } = {};
+  if (e.paymentMethodId) data.stripeDefaultPaymentMethodId = e.paymentMethodId;
+  if (e.stripeCustomerId) data.stripeCustomerId = e.stripeCustomerId;
+  try {
+    await prisma.contractor.updateMany({ where: { id: e.contractorId }, data });
+  } catch {
+    // Non-fatal: the card can be re-captured on the next top-up.
   }
 }
 

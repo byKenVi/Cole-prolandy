@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { WalletBalance } from "@/components/wallet-balance";
 import { WalletAdjustForm } from "@/components/admin/wallet-adjust-form";
+import { CardActions, CardRefundButton } from "@/components/admin/card-actions";
 import { ViewAsButton } from "@/components/admin/view-as-button";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { RowLink } from "@/components/admin/row-link";
@@ -24,6 +25,7 @@ const TYPE_LABEL: Record<string, string> = {
   REFUND: "Refund credit",
   ADMIN_ADJUST: "Admin correction",
   PROMO_CREDIT: "Promo credit",
+  CARD_REFUND: "Refund to card",
 };
 
 export default async function ContractorDetail({
@@ -62,16 +64,28 @@ export default async function ContractorDetail({
   const topupTotalCents = topupAgg._sum.amountCents ?? 0;
   const promoTotalCents = promoAgg._sum.amountCents ?? 0;
 
+  // Real (card-backed) balance = current balance minus outstanding promo credit.
+  // Promo is never refundable to a card, so it is excluded. Mirrors the cap the
+  // card-refund service enforces.
+  const realBalanceCents = Math.max(0, contractor.walletBalanceCents - Math.max(0, promoTotalCents));
+  const hasSavedCard = Boolean(contractor.stripeDefaultPaymentMethodId);
+
   return (
-    <div className="flex flex-col gap-6">
-      <Link href="/admin/contractors" className="flex items-center gap-1 text-sm text-text-muted">
+    <div className="admin-fade-up flex flex-col gap-6">
+      <Link
+        href="/admin/contractors"
+        className="flex items-center gap-1 text-sm"
+        style={{ color: "var(--ink2)" }}
+      >
         <ArrowLeft className="h-4 w-4" /> Back to contractors
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-text">{contractor.name}</h1>
+            <h1 className="text-2xl font-semibold" style={{ color: "var(--ink)" }}>
+              {contractor.name}
+            </h1>
             {contractor.isTopPro ? (
               <Badge variant="success">Top Pro</Badge>
             ) : contractor.isPro ? (
@@ -81,7 +95,7 @@ export default async function ContractorDetail({
             )}
             {!contractor.clerkUserId && <Badge variant="neutral">Not signed in</Badge>}
           </div>
-          <p className="text-sm text-text-muted">
+          <p className="text-sm" style={{ color: "var(--ink2)" }}>
             {contractor.contractorType.name} · {contractor.email} · {contractor.phone}
           </p>
         </div>
@@ -128,10 +142,23 @@ export default async function ContractorDetail({
           </CardHeader>
           <WalletAdjustForm contractorId={contractor.id} />
         </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Card (real money) — charge &amp; refund</CardTitle>
+          </CardHeader>
+          <CardActions
+            contractorId={contractor.id}
+            hasSavedCard={hasSavedCard}
+            realBalanceCents={realBalanceCents}
+          />
+        </Card>
       </div>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-text">Leads</h2>
+        <h2 className="mb-3 text-lg font-semibold" style={{ color: "var(--ink)" }}>
+          Leads
+        </h2>
         {contractor.leadMatches.length === 0 ? (
           <p className="text-sm text-text-muted">No leads yet.</p>
         ) : (
@@ -159,7 +186,9 @@ export default async function ContractorDetail({
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-text">Transactions</h2>
+        <h2 className="mb-3 text-lg font-semibold" style={{ color: "var(--ink)" }}>
+          Transactions
+        </h2>
         {contractor.walletTransactions.length === 0 ? (
           <p className="text-sm text-text-muted">No transactions.</p>
         ) : (
@@ -176,15 +205,20 @@ export default async function ContractorDetail({
                     {t.note ? ` · ${t.note}` : ""}
                   </p>
                 </div>
-                <span
-                  className={cn(
-                    "tabular-nums font-semibold",
-                    t.amountCents >= 0 ? "text-success" : "text-text",
+                <div className="flex items-center gap-3">
+                  {t.type === "TOPUP" && t.stripePaymentIntentId && (
+                    <CardRefundButton contractorId={contractor.id} walletTransactionId={t.id} />
                   )}
-                >
-                  {t.amountCents >= 0 ? "+" : "−"}
-                  {formatMoney(Math.abs(t.amountCents))}
-                </span>
+                  <span
+                    className={cn(
+                      "tabular-nums font-semibold",
+                      t.amountCents >= 0 ? "text-success" : "text-text",
+                    )}
+                  >
+                    {t.amountCents >= 0 ? "+" : "−"}
+                    {formatMoney(Math.abs(t.amountCents))}
+                  </span>
+                </div>
               </div>
             ))}
           </Card>

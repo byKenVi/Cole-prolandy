@@ -1,18 +1,22 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { TierBadge } from "@/components/tier-badge";
-import { LeadStatusBadge } from "@/components/status-badge";
-import { RowLink } from "@/components/admin/row-link";
-import { EmptyState } from "@/components/empty-state";
+import { PageHeader, GoldButtonLink, StatCard } from "@/components/admin/ui";
+import { LeadsTable, type LeadRow } from "@/components/admin/leads-table";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
+import { iconSrcFor } from "@/lib/project-icons";
+import { leadStatusChip, tierChip } from "@/lib/admin-display";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLeads() {
+export default async function AdminLeads({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const initialQuery = typeof q === "string" ? q : "";
+
   await expireLeads(prisma).catch(() => undefined);
 
   const leads = await prisma.lead.findMany({
@@ -24,50 +28,59 @@ export default async function AdminLeads() {
       priceCents: true,
       propertyLocation: true,
       createdAt: true,
-      projectType: { select: { name: true, contractorType: { select: { name: true } } } },
+      projectType: {
+        select: { name: true, contractorType: { select: { name: true, icon: true } } },
+      },
       _count: { select: { matches: true } },
     },
   });
 
+  const distributed = leads.filter((l) => l.status === "DISTRIBUTED").length;
+  const expired = leads.filter((l) => l.status === "EXPIRED").length;
+  const listedValue = leads.reduce((s, l) => s + l.priceCents, 0);
+
+  const rows: LeadRow[] = leads.map((l) => ({
+    id: l.id,
+    title: l.projectType.name,
+    category: l.projectType.contractorType.name,
+    place: l.propertyLocation,
+    recipients: l._count.matches,
+    sent: formatDate(l.createdAt),
+    price: formatMoney(l.priceCents),
+    iconSrc: iconSrcFor({
+      icon: l.projectType.contractorType.icon,
+      category: l.projectType.contractorType.name,
+      project: l.projectType.name,
+    }),
+    tier: tierChip(l.tier),
+    status: leadStatusChip(l.status),
+    filter:
+      l.status === "DISTRIBUTED" ? "distributed" : l.status === "EXPIRED" ? "expired" : "other",
+  }));
+
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-3xl font-semibold text-text">Leads</h1>
-        <Button asChild variant="accent">
-          <Link href="/admin/leads/new">New lead</Link>
-        </Button>
+    <div className="admin-fade-up">
+      <PageHeader
+        title="Leads"
+        subtitle="Every job distributed to your contractors — newest first."
+        action={<GoldButtonLink href="/admin/leads/new">New lead</GoldButtonLink>}
+      />
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4,1fr)",
+          gap: 14,
+          marginBottom: 20,
+        }}
+      >
+        <StatCard label="Total leads" value={String(leads.length)} />
+        <StatCard label="Distributed" value={String(distributed)} valueColor="var(--sageFg)" />
+        <StatCard label="Expired" value={String(expired)} valueColor="var(--danger)" />
+        <StatCard label="Listed value" value={formatMoney(listedValue)} />
       </div>
 
-      {leads.length === 0 ? (
-        <EmptyState title="No leads yet" description="Create one manually or via the estimate form." />
-      ) : (
-        <Card className="divide-y divide-border p-0">
-          {leads.map((lead) => (
-            <div
-              key={lead.id}
-              className="relative flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-primary-soft"
-            >
-              <RowLink href={`/admin/leads/${lead.id}`} label={`Open ${lead.projectType.name} lead`} />
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="truncate font-medium text-text">{lead.projectType.name}</p>
-                  <TierBadge tier={lead.tier} />
-                  <LeadStatusBadge status={lead.status} />
-                </div>
-                <p className="truncate text-sm text-text-muted">
-                  {lead.projectType.contractorType.name} · {lead.propertyLocation}
-                </p>
-                <p className="mt-0.5 text-xs text-text-muted">
-                  {formatDate(lead.createdAt)} · {lead._count.matches} recipient(s)
-                </p>
-              </div>
-              <span className="tabular-nums text-lg font-semibold text-text">
-                {formatMoney(lead.priceCents)}
-              </span>
-            </div>
-          ))}
-        </Card>
-      )}
+      <LeadsTable leads={rows} total={leads.length} initialQuery={initialQuery} />
     </div>
   );
 }

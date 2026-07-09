@@ -18,6 +18,11 @@ datasource db {
 model ContractorType {
   id        String   @id @default(cuid())
   name      String   @unique
+  // Admin-selected 3D icon. Convention:
+  //   null / "auto" → resolve by keyword from the category/project name
+  //   "none"        → intentionally no icon (neutral fallback glyph)
+  //   otherwise     → an icon key = base filename in /public/icons (e.g. "pond")
+  icon      String?
   createdAt DateTime @default(now())
 
   contractors  Contractor[]
@@ -76,6 +81,10 @@ model Contractor {
   isTopPro           Boolean  @default(false) // RESERVED (phase-two): does NOT affect distribution yet.
   walletBalanceCents Int      @default(0)
   stripeCustomerId   String?
+  // Saved off-session payment method (card) captured from the first top-up's
+  // PaymentIntent (setup_future_usage=off_session). Enables admin "charge saved
+  // card" + contractor "1-click recharge". Nullable: null = no reusable card yet.
+  stripeDefaultPaymentMethodId String?
   clerkUserId        String?  @unique
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -122,9 +131,10 @@ enum LeadMatchStatus {
 enum WalletTransactionType {
   TOPUP // real money in via the contractor's card (Stripe)
   LEAD_CHARGE // spend: accepting a lead
-  REFUND // returns money the contractor actually paid (bad lead, etc.)
+  REFUND // returns money the contractor actually paid (bad lead, etc.) — CREDITS the wallet (internal, no card movement)
   ADMIN_ADJUST // admin correction — DEDUCT only (never mints funds)
   PROMO_CREDIT // admin-granted promotional balance — spendable, NOT real money
+  CARD_REFUND // real money sent BACK to the contractor's card (Stripe refund) — DEBITS the wallet (distinct from internal REFUND)
 }
 
 model Lead {

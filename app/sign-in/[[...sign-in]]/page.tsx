@@ -1,5 +1,6 @@
 import { SignIn } from "@clerk/nextjs";
 import { authMode } from "@/lib/auth";
+import { BrandLogo } from "@/components/brand-logo";
 
 export default function SignInPage() {
   if (authMode() !== "clerk") {
@@ -12,7 +13,8 @@ export default function SignInPage() {
     );
   }
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-12">
+      <BrandLogo className="h-10" priority />
       <SignIn />
     </main>
   );

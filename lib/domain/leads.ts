@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { LeadMatchStatus, LeadStatus, WalletTransactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { generateAcceptToken } from "@/lib/tokens";
 import type { DbClient } from "./types";
 import { applyWalletTransactionInTx } from "./wallet";
 import { getMaxLeadRecipients } from "./settings";
@@ -66,7 +67,14 @@ export async function distributeLead(
   const matches: DistributeLeadResult["matches"] = [];
   for (const c of candidates) {
     const match = await db.leadMatch.create({
-      data: { leadId, contractorId: c.id, status: LeadMatchStatus.PENDING },
+      // Override the weak cuid() schema default with a crypto-random token —
+      // this is the sole credential for the unauthenticated accept link.
+      data: {
+        leadId,
+        contractorId: c.id,
+        status: LeadMatchStatus.PENDING,
+        acceptToken: generateAcceptToken(),
+      },
       select: { id: true, contractorId: true, acceptToken: true },
     });
     matches.push({ ...match, contractor: c });

@@ -40,15 +40,21 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
   if (!lead) notFound();
 
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
-      <Link href="/admin/leads" className="flex items-center gap-1 text-sm text-text-muted">
+    <div className="admin-fade-up flex max-w-3xl flex-col gap-8">
+      <Link
+        href="/admin/leads"
+        className="flex items-center gap-1 text-sm"
+        style={{ color: "var(--ink2)" }}
+      >
         <ArrowLeft className="h-4 w-4" /> Back to leads
       </Link>
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-semibold text-text">{lead.projectType.name}</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
+            {lead.projectType.name}
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
             {lead.projectType.contractorType.name} · {lead.propertyLocation}
           </p>
           <div className="mt-2 flex items-center gap-2">
