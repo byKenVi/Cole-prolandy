@@ -33,7 +33,7 @@ export default async function NewLeadPage() {
           snapshotted from the pricing matrix and the lead is distributed immediately.
         </p>
       </div>
-      <Card className="p-6">
+      <Card className="p-8 md:p-10">
         <ManualLeadForm
           projectTypes={projectTypes.map((p) => ({
             id: p.id,

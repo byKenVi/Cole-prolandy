@@ -39,6 +39,8 @@ export function ContractorForm({
   const [serviceIds, setServiceIds] = useState<string[]>(initial.serviceIds);
   const [isPro, setIsPro] = useState(initial.isPro);
 
+  const isCreate = mode === "create";
+
   const typeServices = useMemo(
     () => services.filter((s) => s.contractorTypeId === typeId),
     [services, typeId],
@@ -60,7 +62,7 @@ export function ContractorForm({
     return null;
   }
 
-  function next() {
+  function goNext() {
     const err = validateStep(step);
     if (err) {
       setMessage(err);
@@ -70,11 +72,13 @@ export function ContractorForm({
     setStep((v) => Math.min(v + 1, STEPS.length - 1));
   }
 
-  function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (mode === "create" && step < STEPS.length - 1) {
-      next();
-      return;
+  function save() {
+    if (isCreate) {
+      const err = validateStep(step);
+      if (err) {
+        setMessage(err);
+        return;
+      }
     }
     setMessage(null);
     const payload: ContractorInput = {
@@ -102,24 +106,35 @@ export function ContractorForm({
     });
   }
 
-  const isCreate = mode === "create";
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    // Enter advances steps only — never creates via implicit submit.
+    if (isCreate && step < STEPS.length - 1) goNext();
+  }
 
   return (
-    <form onSubmit={onSubmit} className="flex max-w-xl flex-col gap-5">
+    <form onSubmit={onSubmit} className="flex w-full max-w-3xl flex-col gap-7">
       {isCreate && <StepIndicator steps={STEPS} current={step} />}
 
       {(!isCreate || step === 0) && (
-        <section className="flex flex-col gap-5">
+        <section className="flex flex-col gap-6">
           {isCreate && <StepTitle title="Basics" subtitle="Who is this contractor?" />}
           <div>
             <Label htmlFor="name">Business / contractor name</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required={!isCreate} />
+            <Input
+              id="name"
+              className="h-14 text-lg"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required={!isCreate}
+            />
           </div>
           <div>
             <Label htmlFor="email">Email (used to link their login later)</Label>
             <Input
               id="email"
               type="email"
+              className="h-14 text-lg"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required={!isCreate}
@@ -130,6 +145,7 @@ export function ContractorForm({
             <Input
               id="phone"
               type="tel"
+              className="h-14 text-lg"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required={!isCreate}
@@ -139,11 +155,16 @@ export function ContractorForm({
       )}
 
       {(!isCreate || step === 1) && (
-        <section className="flex flex-col gap-5">
+        <section className="flex flex-col gap-6">
           {isCreate && <StepTitle title="Trade & services" subtitle="What work do they take?" />}
           <div>
             <Label htmlFor="type">Trade</Label>
-            <Select id="type" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
+            <Select
+              id="type"
+              className="h-14 text-lg"
+              value={typeId}
+              onChange={(e) => setTypeId(e.target.value)}
+            >
               <option value="" disabled>
                 Choose a trade
               </option>
@@ -163,7 +184,7 @@ export function ContractorForm({
               {typeServices.map((s) => (
                 <label
                   key={s.id}
-                  className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-3 py-2"
+                  className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-4 py-3"
                 >
                   <input
                     type="checkbox"
@@ -180,12 +201,13 @@ export function ContractorForm({
       )}
 
       {(!isCreate || step === 2) && (
-        <section className="flex flex-col gap-5">
+        <section className="flex flex-col gap-6">
           {isCreate && <StepTitle title="Profile" subtitle="Optional details landowners may see." />}
           <div>
             <Label htmlFor="hours">Business hours</Label>
             <Input
               id="hours"
+              className="h-14 text-lg"
               value={hours}
               onChange={(e) => setHours(e.target.value)}
               placeholder="Mon–Fri 7am–6pm"
@@ -195,12 +217,13 @@ export function ContractorForm({
             <Label htmlFor="about">About the business</Label>
             <Textarea
               id="about"
+              className="min-h-[120px] text-lg"
               value={about}
               onChange={(e) => setAbout(e.target.value)}
               placeholder="A short description landowners will see."
             />
           </div>
-          <label className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-3 py-2">
+          <label className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-4 py-3">
             <input
               type="checkbox"
               className="h-5 w-5"
@@ -218,16 +241,22 @@ export function ContractorForm({
 
       <div className="flex flex-wrap items-center gap-3">
         {isCreate && step > 0 && (
-          <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)} disabled={pending}>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={() => setStep((s) => s - 1)}
+            disabled={pending}
+          >
             Back
           </Button>
         )}
         {isCreate && step < STEPS.length - 1 ? (
-          <Button type="button" variant="accent" onClick={next}>
+          <Button type="button" variant="accent" size="lg" onClick={goNext}>
             Continue
           </Button>
         ) : (
-          <Button type="submit" variant="accent" size="cta" loading={pending} disabled={pending}>
+          <Button type="button" variant="accent" size="lg" loading={pending} disabled={pending} onClick={save}>
             {mode === "create" ? "Create contractor" : "Save changes"}
           </Button>
         )}
@@ -238,18 +267,18 @@ export function ContractorForm({
 
 function StepIndicator({ steps, current }: { steps: readonly string[]; current: number }) {
   return (
-    <ol className="mb-1 flex items-center gap-2" aria-label="Form steps">
+    <ol className="mb-2 flex flex-wrap items-center gap-2" aria-label="Form steps">
       {steps.map((label, i) => (
         <li key={label} className="flex items-center gap-2">
           <span
             style={{
-              width: 28,
-              height: 28,
+              width: 32,
+              height: 32,
               borderRadius: 999,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              font: "600 12px/1 'Inter'",
+              font: "600 13px/1 'Inter'",
               background: i <= current ? "var(--gold)" : "var(--field)",
               color: i <= current ? "#fff" : "var(--ink3)",
               border: i <= current ? "none" : "1px solid var(--fieldLine)",
@@ -260,14 +289,14 @@ function StepIndicator({ steps, current }: { steps: readonly string[]; current: 
           <span
             className="hidden sm:inline"
             style={{
-              font: "600 12px/1 'Inter'",
+              font: "600 13px/1 'Inter'",
               color: i === current ? "var(--ink)" : "var(--ink3)",
             }}
           >
             {label}
           </span>
           {i < steps.length - 1 && (
-            <span style={{ width: 18, height: 1, background: "var(--line)", display: "inline-block" }} />
+            <span style={{ width: 24, height: 1, background: "var(--line)", display: "inline-block" }} />
           )}
         </li>
       ))}
@@ -278,8 +307,8 @@ function StepIndicator({ steps, current }: { steps: readonly string[]; current: 
 function StepTitle({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
-      <h2 style={{ margin: 0, font: "600 18px/1.2 'Inter'", color: "var(--ink)" }}>{title}</h2>
-      <p style={{ margin: "6px 0 0", font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>{subtitle}</p>
+      <h2 style={{ margin: 0, font: "600 22px/1.2 'Inter'", color: "var(--ink)" }}>{title}</h2>
+      <p style={{ margin: "8px 0 0", font: "400 15px/1.45 'Inter'", color: "var(--ink2)" }}>{subtitle}</p>
     </div>
   );
 }
