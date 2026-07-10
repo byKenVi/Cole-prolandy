@@ -9,7 +9,7 @@ const STRIPE_DASHBOARD_PAYOUTS_URL = "https://dashboard.stripe.com/payouts";
 const STRIPE_DASHBOARD_SETTINGS_URL = "https://dashboard.stripe.com/settings/payouts";
 
 /** Σ amountCents for a given WalletTransaction type. */
-async function sumByType(type: "TOPUP" | "REFUND" | "LEAD_CHARGE" | "CARD_REFUND") {
+async function sumByType(type: "TOPUP" | "CARD_REFUND") {
   const agg = await prisma.walletTransaction.aggregate({
     _sum: { amountCents: true },
     where: { type },
@@ -18,28 +18,23 @@ async function sumByType(type: "TOPUP" | "REFUND" | "LEAD_CHARGE" | "CARD_REFUND
 }
 
 export default async function AdminFinance() {
-  const [topup, refund, leadCharge, cardRefund, walletAgg, balance, payouts] = await Promise.all([
+  const [topup, cardRefund, balance, payouts] = await Promise.all([
     sumByType("TOPUP"),
-    sumByType("REFUND"),
-    sumByType("LEAD_CHARGE"),
     sumByType("CARD_REFUND"),
-    prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
     getStripeBalance(),
     listRecentPayouts(),
   ]);
 
   const cardRefundsOut = Math.abs(cardRefund);
-  const netCashCollected = topup + cardRefund;
-  const leadsRecognized = Math.abs(leadCharge);
-  const walletFloat = walletAgg._sum.walletBalanceCents ?? 0;
+  const netCardCash = topup + cardRefund;
   const stripeUnavailable = balance.mocked || payouts.mocked;
 
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker="Cash & revenue"
+        kicker="Cash"
         title="Finance"
-        subtitle="Card top-ups, lead revenue, wallet restorations, and Stripe payouts."
+        subtitle="Money collected on cards via Stripe, and payouts to the company bank."
       />
 
       <div
@@ -47,31 +42,21 @@ export default async function AdminFinance() {
         style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, margin: "0 0 26px" }}
       >
         <StatCard
-          label="Net cash collected"
-          value={formatMoney(netCashCollected)}
-          caption="Card top-ups minus any refunds to card."
+          label="Card top-ups"
+          value={formatMoney(topup)}
+          caption="Total charged to contractor cards (Stripe)."
           highlight
         />
         <StatCard
-          label="Leads recognized"
-          value={formatMoney(leadsRecognized)}
-          caption="Revenue when contractors accept leads."
-          highlight
-        />
-        <StatCard
-          label="Wallet float"
-          value={formatMoney(walletFloat)}
-          caption="Prepaid balances still held for contractors."
-        />
-        <StatCard
-          label="Lead restorations"
-          value={formatMoney(refund)}
-          caption="Lead charges restored to contractor wallets."
-        />
-        <StatCard
-          label="Card refunds out"
+          label="Card refunds"
           value={formatMoney(cardRefundsOut)}
-          caption="Historical money returned to cards (legacy)."
+          caption="Money returned to contractor cards."
+        />
+        <StatCard
+          label="Net card cash"
+          value={formatMoney(netCardCash)}
+          caption="Top-ups minus card refunds."
+          highlight
         />
       </div>
 
@@ -144,7 +129,7 @@ export default async function AdminFinance() {
             <StatCard
               label="Stripe available"
               value={formatBalance(balance.available)}
-              caption="Settled platform funds ready for payout."
+              caption="Settled Stripe balance ready to pay out to the bank."
               highlight
             />
           )}
@@ -170,8 +155,7 @@ export default async function AdminFinance() {
               Withdrawals & banking
             </h2>
             <p style={{ margin: "10px 0 0", font: "400 14px/1.6 'Inter'", color: "rgba(241,231,214,.85)" }}>
-              Company payouts and bank details are managed in Stripe. Contractor wallets are prepaid
-              lead credit — not bank withdrawals.
+              Company payouts and bank details are managed in Stripe.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
               <a
