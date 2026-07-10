@@ -7,6 +7,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { saveProfile } from "@/app/actions/onboarding";
+import { BusinessHoursPicker } from "@/components/business-hours-picker";
 import { cn } from "@/lib/utils";
 
 type Svc = { id: string; name: string; contractorTypeId: string };
@@ -134,13 +135,10 @@ export function OnboardingForm({
       </div>
 
       <div>
-        <Label htmlFor="hours">Business hours</Label>
-        <Input
-          id="hours"
-          value={hours}
-          onChange={(e) => setHours(e.target.value)}
-          placeholder="Mon–Fri 7am–6pm"
-        />
+        <Label>Business hours</Label>
+        <div className="mt-2">
+          <BusinessHoursPicker value={hours} onChange={setHours} />
+        </div>
       </div>
 
       <div>

@@ -442,7 +442,7 @@ const ContractorSchema = z.object({
   phone: z.string().min(7, "A valid phone number is required"),
   contractorTypeId: z.string().min(1, "Choose a trade"),
   aboutSection: z.string().max(1000).optional().or(z.literal("")),
-  businessHours: z.string().max(200).optional().or(z.literal("")),
+  businessHours: z.string().max(280).optional().or(z.literal("")),
   serviceIds: z.array(z.string()).default([]),
   isPro: z.boolean().default(false),
 });

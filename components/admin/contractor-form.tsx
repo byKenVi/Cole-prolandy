@@ -7,6 +7,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { createContractor, updateContractor, type ContractorInput } from "@/app/actions/admin";
+import { BusinessHoursPicker } from "@/components/business-hours-picker";
 
 type Svc = { id: string; name: string; contractorTypeId: string };
 
@@ -204,14 +205,10 @@ export function ContractorForm({
         <section className="flex flex-col gap-6">
           {isCreate && <StepTitle title="Profile" subtitle="Optional details landowners may see." />}
           <div>
-            <Label htmlFor="hours">Business hours</Label>
-            <Input
-              id="hours"
-              className="h-14 text-lg"
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              placeholder="Mon–Fri 7am–6pm"
-            />
+            <Label>Business hours</Label>
+            <div className="mt-2">
+              <BusinessHoursPicker value={hours} onChange={setHours} />
+            </div>
           </div>
           <div>
             <Label htmlFor="about">About the business</Label>
