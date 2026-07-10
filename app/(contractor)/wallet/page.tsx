@@ -5,6 +5,7 @@ import { SavedCardPanel } from "@/components/saved-card-panel";
 import { EmptyState } from "@/components/empty-state";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
+import { formatCardLabel } from "@/lib/card-display";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,12 @@ export default async function WalletPage({
 
   const contractor = await prisma.contractor.findUnique({
     where: { id: session.contractorId },
-    select: { walletBalanceCents: true, stripeDefaultPaymentMethodId: true },
+    select: {
+      walletBalanceCents: true,
+      stripeDefaultPaymentMethodId: true,
+      cardBrand: true,
+      cardLast4: true,
+    },
   });
   const hasSavedCard = Boolean(contractor?.stripeDefaultPaymentMethodId);
   const txns = await prisma.walletTransaction.findMany({
@@ -88,7 +94,10 @@ export default async function WalletPage({
               <TopUp hasSavedCard={hasSavedCard} />
             </div>
 
-            <SavedCardPanel hasSavedCard={hasSavedCard} />
+            <SavedCardPanel
+              hasSavedCard={hasSavedCard}
+              cardLabel={formatCardLabel(contractor?.cardBrand, contractor?.cardLast4)}
+            />
           </div>
 
           <div className="rounded-[18px] border border-[#EBE3D4] bg-white p-6 shadow-[0_2px_8px_rgba(58,53,45,0.05)]">

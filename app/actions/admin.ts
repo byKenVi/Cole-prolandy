@@ -3,11 +3,8 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { WalletTransactionType } from "@prisma/client";
-import { applyWalletTransaction } from "@/lib/domain/wallet";
 import { refundLeadMatch } from "@/lib/domain/leads";
 import { chargeContractorSavedCard } from "@/lib/services/recharge";
-import { refundTopUpToCard, returnRealBalanceToCard } from "@/lib/services/card-refund";
 import { createAndDistributeLead } from "@/lib/services/lead-intake";
 import { requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
@@ -69,80 +66,7 @@ export async function updateSetting(key: string, value: number): Promise<Result>
   return { ok: true, message: "Saved" };
 }
 
-// ── Wallet management (refund / promo credit / correcting deduct) ──
-//
-// Real spendable money enters a wallet ONLY through the contractor's own card
-// (Stripe top-up, credited by the verified webhook). The admin can never mint
-// generic "funds" that imply a payment happened. The admin wallet actions are
-// three DISTINCT, explicitly-labeled transaction types — never conflated:
-//   • REFUND        — positive credit returning money the contractor actually
-//                     paid (e.g. a bad lead). Traceable to a reason.
-//   • PROMO_CREDIT  — positive, admin-granted PROMOTIONAL balance. Spendable,
-//                     but NOT real money and NOT "funds" — a separate type so a
-//                     balance's origin is always visible.
-//   • ADMIN_ADJUST  — NEGATIVE correction only (fix a mistake / claw back).
-// A positive ADMIN_ADJUST (money-from-nothing) is rejected here.
-const AdjustSchema = z.object({
-  contractorId: z.string().min(1),
-  amountCents: z.number().int().refine((n) => n !== 0, "Amount cannot be zero"),
-  type: z.enum(["ADMIN_ADJUST", "REFUND", "PROMO_CREDIT"]),
-  reason: z.string().min(1, "A reason is required"),
-});
-
-export async function adjustWallet(input: {
-  contractorId: string;
-  amountCents: number;
-  type: "ADMIN_ADJUST" | "REFUND" | "PROMO_CREDIT";
-  reason: string;
-}): Promise<Result> {
-  const admin = await requireAdmin();
-  const parsed = AdjustSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid input" };
-  }
-
-  const { type, amountCents } = parsed.data;
-  // Enforce honest money logic:
-  //   - credits (REFUND / PROMO_CREDIT) must be positive
-  //   - ADMIN_ADJUST is a deduct-only correction; it can never add balance
-  if (type === "ADMIN_ADJUST" && amountCents > 0) {
-    return {
-      ok: false,
-      message:
-        "Admin cannot add spendable funds. Real money enters only through the contractor's own card. Use Refund (money they paid) or Promo credit (labeled promotional balance); use Deduct only to correct a balance.",
-    };
-  }
-  if ((type === "REFUND" || type === "PROMO_CREDIT") && amountCents < 0) {
-    return { ok: false, message: "A credit must be a positive amount." };
-  }
-
-  try {
-    await applyWalletTransaction({
-      contractorId: parsed.data.contractorId,
-      amountCents: parsed.data.amountCents,
-      type: parsed.data.type as WalletTransactionType,
-      note: parsed.data.reason,
-    });
-    await prisma.auditLog.create({
-      data: {
-        actorType: "admin",
-        actorId: admin.email,
-        action: "WALLET_ADJUSTED",
-        targetType: "Contractor",
-        targetId: parsed.data.contractorId,
-        metadata: {
-          amountCents: parsed.data.amountCents,
-          type: parsed.data.type,
-          reason: parsed.data.reason,
-        },
-      },
-    });
-    revalidatePath(`/admin/contractors/${parsed.data.contractorId}`);
-    return { ok: true, message: "Wallet updated" };
-  } catch (e) {
-    return { ok: false, message: e instanceof DomainError ? e.message : "Failed to adjust wallet." };
-  }
-}
+// ── Lead restitution (restore charge to contractor wallet) ──
 
 export async function refundLead(leadMatchId: string, reason: string): Promise<Result> {
   const admin = await requireAdmin();
@@ -150,18 +74,14 @@ export async function refundLead(leadMatchId: string, reason: string): Promise<R
     const res = await refundLeadMatch({ leadMatchId, reason, actorId: admin.email });
     revalidatePath("/admin/leads");
     revalidatePath("/admin/contractors");
-    return { ok: true, message: `Refunded ${res.refundedCents} cents` };
+    return { ok: true, message: `Restored ${res.refundedCents} cents to wallet` };
   } catch (e) {
-    return { ok: false, message: e instanceof DomainError ? e.message : "Refund failed." };
+    return { ok: false, message: e instanceof DomainError ? e.message : "Restore failed." };
   }
 }
 
 // ── Charge the contractor's SAVED card & top up their wallet (off-session) ──
-//
-// This charges the CONTRACTOR's own saved card (their money, not the admin's)
-// and credits their wallet via the webhook (real) / shared mock credit path
-// (mock). It is DISTINCT from Refund / Promo credit / Deduct — it moves real
-// money IN from the contractor's card. Only usable when a card is on file.
+
 export async function chargeSavedCardTopUp(input: {
   contractorId: string;
   amountCents: number;
@@ -186,49 +106,6 @@ export async function chargeSavedCardTopUp(input: {
       ? `Saved card charged. ${res.message}`
       : "Payment submitted — the wallet credits once the card payment confirms.",
   };
-}
-
-// ── Real refund to the contractor's card (Stripe) — DEBITS the wallet ──
-//
-// Sends real money BACK to the contractor's card and reduces their wallet by the
-// same amount (never below zero; promo credit is never refundable). Distinct
-// from the internal lead REFUND (which CREDITS the wallet).
-export async function refundTopUpToCardAction(input: {
-  contractorId: string;
-  walletTransactionId: string;
-  reason: string;
-}): Promise<Result> {
-  const admin = await requireAdmin();
-  if (!input.reason?.trim()) {
-    return { ok: false, message: "A reason is required." };
-  }
-  const res = await refundTopUpToCard({
-    contractorId: input.contractorId,
-    walletTransactionId: input.walletTransactionId,
-    actorId: admin.email,
-    reason: input.reason,
-  });
-  if (!res.ok) return { ok: false, message: res.message };
-  revalidatePath(`/admin/contractors/${input.contractorId}`);
-  return { ok: true, message: res.message };
-}
-
-export async function returnRealBalanceToCardAction(input: {
-  contractorId: string;
-  reason: string;
-}): Promise<Result> {
-  const admin = await requireAdmin();
-  if (!input.reason?.trim()) {
-    return { ok: false, message: "A reason is required." };
-  }
-  const res = await returnRealBalanceToCard({
-    contractorId: input.contractorId,
-    actorId: admin.email,
-    reason: input.reason,
-  });
-  if (!res.ok) return { ok: false, message: res.message };
-  revalidatePath(`/admin/contractors/${input.contractorId}`);
-  return { ok: true, message: res.message };
 }
 
 // ── Contractor soft-deactivate / hard-delete ──

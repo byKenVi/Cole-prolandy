@@ -9,9 +9,7 @@ const STRIPE_DASHBOARD_PAYOUTS_URL = "https://dashboard.stripe.com/payouts";
 const STRIPE_DASHBOARD_SETTINGS_URL = "https://dashboard.stripe.com/settings/payouts";
 
 /** Σ amountCents for a given WalletTransaction type. */
-async function sumByType(
-  type: "TOPUP" | "REFUND" | "PROMO_CREDIT" | "ADMIN_ADJUST" | "LEAD_CHARGE" | "CARD_REFUND",
-) {
+async function sumByType(type: "TOPUP" | "REFUND" | "LEAD_CHARGE" | "CARD_REFUND") {
   const agg = await prisma.walletTransaction.aggregate({
     _sum: { amountCents: true },
     where: { type },

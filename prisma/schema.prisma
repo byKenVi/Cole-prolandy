@@ -85,6 +85,9 @@ model Contractor {
   // PaymentIntent (setup_future_usage=off_session). Enables admin "charge saved
   // card" + contractor "1-click recharge". Nullable: null = no reusable card yet.
   stripeDefaultPaymentMethodId String?
+  // Display fields for the saved card (from Stripe PaymentMethod.card).
+  cardBrand           String?
+  cardLast4           String?
   clerkUserId        String?  @unique
   // Soft-deactivate: blocks login + lead distribution while preserving money/lead history.
   deactivatedAt      DateTime?
@@ -202,6 +205,8 @@ model WalletTransaction {
 
   @@index([contractorId])
   @@index([leadMatchId])
+  // At most one LEAD_CHARGE / REFUND per match (blocks concurrent double-refund).
+  @@unique([leadMatchId, type])
 }
 
 model PriceTier {

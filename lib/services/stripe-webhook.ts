@@ -56,7 +56,6 @@ export function parseTopUpEvent(event: Stripe.Event): TopUpEvent | null {
         typeof s.payment_intent === "string"
           ? s.payment_intent
           : (s.payment_intent?.id ?? null),
-      // The session doesn't expose the PM directly; payment_intent.succeeded does.
       paymentMethodId: null,
       stripeCustomerId:
         typeof s.customer === "string" ? s.customer : (s.customer?.id ?? null),
@@ -78,6 +77,38 @@ export function parseTopUpEvent(event: Stripe.Event): TopUpEvent | null {
     };
   }
   return null;
+}
+
+type CardFields = {
+  stripeDefaultPaymentMethodId?: string;
+  stripeCustomerId?: string;
+  cardBrand?: string | null;
+  cardLast4?: string | null;
+};
+
+async function cardFieldsFromPaymentMethod(
+  paymentMethodId: string | null | undefined,
+  stripeCustomerId: string | null | undefined,
+): Promise<CardFields> {
+  const data: CardFields = {};
+  if (stripeCustomerId) data.stripeCustomerId = stripeCustomerId;
+  if (!paymentMethodId) return data;
+  data.stripeDefaultPaymentMethodId = paymentMethodId;
+
+  if (process.env.STRIPE_MOCK === "false" && process.env.STRIPE_SECRET_KEY) {
+    try {
+      const stripe = await getStripe();
+      const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+      data.cardBrand = pm.card?.brand ?? null;
+      data.cardLast4 = pm.card?.last4 ?? null;
+    } catch {
+      // Non-fatal — id is still saved.
+    }
+  } else if (paymentMethodId.startsWith("pm_mock")) {
+    data.cardBrand = "visa";
+    data.cardLast4 = "4242";
+  }
+  return data;
 }
 
 /**
@@ -114,15 +145,14 @@ export async function persistCardFromSetupSession(event: Stripe.Event): Promise<
 
   if (!paymentMethodId && !stripeCustomerId) return { status: "ignored" };
 
+  const cardData = await cardFieldsFromPaymentMethod(paymentMethodId, stripeCustomerId);
+
   try {
     await prisma.$transaction(async (tx) => {
       await tx.processedStripeEvent.create({ data: { id: event.id, type: event.type } });
       await tx.contractor.updateMany({
         where: { id: contractorId },
-        data: {
-          ...(paymentMethodId ? { stripeDefaultPaymentMethodId: paymentMethodId } : {}),
-          ...(stripeCustomerId ? { stripeCustomerId } : {}),
-        },
+        data: cardData,
       });
       await tx.auditLog.create({
         data: {
@@ -131,7 +161,12 @@ export async function persistCardFromSetupSession(event: Stripe.Event): Promise<
           action: "CARD_UPDATED",
           targetType: "Contractor",
           targetId: contractorId,
-          metadata: { eventId: event.id, paymentMethodId },
+          metadata: {
+            eventId: event.id,
+            paymentMethodId,
+            cardBrand: cardData.cardBrand ?? null,
+            cardLast4: cardData.cardLast4 ?? null,
+          },
         },
       });
     });
@@ -151,9 +186,6 @@ export async function creditTopUp(e: TopUpEvent): Promise<CreditResult> {
   if (!e.contractorId || !Number.isInteger(e.amountCents) || e.amountCents <= 0) {
     return { status: "ignored" };
   }
-  // Persist the saved card + customer regardless of whether THIS event credits
-  // (a duplicate delivery of payment_intent.succeeded still carries the PM). This
-  // is a plain field set — safe to run repeatedly and never mints money.
   await persistSavedPaymentMethod(e);
   try {
     await prisma.$transaction(async (tx) => {
@@ -193,10 +225,8 @@ export async function creditTopUp(e: TopUpEvent): Promise<CreditResult> {
  */
 async function persistSavedPaymentMethod(e: TopUpEvent): Promise<void> {
   if (!e.paymentMethodId && !e.stripeCustomerId) return;
-  const data: { stripeDefaultPaymentMethodId?: string; stripeCustomerId?: string } = {};
-  if (e.paymentMethodId) data.stripeDefaultPaymentMethodId = e.paymentMethodId;
-  if (e.stripeCustomerId) data.stripeCustomerId = e.stripeCustomerId;
   try {
+    const data = await cardFieldsFromPaymentMethod(e.paymentMethodId, e.stripeCustomerId);
     await prisma.contractor.updateMany({ where: { id: e.contractorId }, data });
   } catch {
     // Non-fatal: the card can be re-captured on the next top-up.

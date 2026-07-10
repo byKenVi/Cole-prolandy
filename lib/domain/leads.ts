@@ -147,6 +147,14 @@ export async function acceptLeadMatch(
   return prisma.$transaction(async (tx) => {
     const match = await findMatch(tx, input);
 
+    const contractor = await tx.contractor.findUnique({
+      where: { id: match.contractorId },
+      select: { deactivatedAt: true },
+    });
+    if (contractor?.deactivatedAt) {
+      throw new InvalidStateError("This contractor account is deactivated.");
+    }
+
     const lead = await tx.lead.findUnique({ where: { id: match.leadId } });
     if (!lead) throw new NotFoundError("Lead");
 
@@ -316,13 +324,27 @@ export async function refundLeadMatch(params: {
     );
     const refundCents = charge ? Math.abs(charge.amountCents) : match.lead.priceCents;
 
-    const res = await applyWalletTransactionInTx(tx, {
-      contractorId: match.contractorId,
-      amountCents: refundCents,
-      type: WalletTransactionType.REFUND,
-      leadMatchId: match.id,
-      note: params.reason ?? "Lead charge refunded",
-    });
+    let res;
+    try {
+      res = await applyWalletTransactionInTx(tx, {
+        contractorId: match.contractorId,
+        amountCents: refundCents,
+        type: WalletTransactionType.REFUND,
+        leadMatchId: match.id,
+        note: params.reason ?? "Lead charge refunded",
+      });
+    } catch (e) {
+      // Concurrent double-refund hits @@unique([leadMatchId, type]).
+      if (
+        typeof e === "object" &&
+        e !== null &&
+        "code" in e &&
+        (e as { code?: string }).code === "P2002"
+      ) {
+        throw new InvalidStateError("This lead charge was already refunded.");
+      }
+      throw e;
+    }
 
     await writeAudit(tx, {
       actorType: "admin",

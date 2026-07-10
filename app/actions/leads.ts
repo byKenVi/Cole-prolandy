@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
 import { acceptLeadMatch, declineLeadMatch } from "@/lib/domain/leads";
 import { DomainError, InsufficientBalanceError } from "@/lib/domain/errors";
 import { getSession } from "@/lib/auth";
@@ -9,9 +10,26 @@ export type ActionResult =
   | { ok: true; status: string }
   | { ok: false; code: string; message: string; shortfallCents?: number };
 
+/** Ensure the match belongs to the session contractor (blocks IDOR). */
+async function assertOwnMatch(leadMatchId: string, contractorId: string | null): Promise<ActionResult | null> {
+  if (!contractorId) {
+    return { ok: false, code: "UNAUTHORIZED", message: "Sign in as a contractor to continue." };
+  }
+  const match = await prisma.leadMatch.findUnique({
+    where: { id: leadMatchId },
+    select: { contractorId: true },
+  });
+  if (!match || match.contractorId !== contractorId) {
+    return { ok: false, code: "FORBIDDEN", message: "You cannot act on this lead." };
+  }
+  return null;
+}
+
 /** Accept a lead match from an authenticated contractor screen. */
 export async function acceptLeadAction(leadMatchId: string): Promise<ActionResult> {
   const session = await getSession();
+  const denied = await assertOwnMatch(leadMatchId, session.contractorId);
+  if (denied) return denied;
   try {
     const res = await acceptLeadMatch({
       leadMatchId,
@@ -29,6 +47,8 @@ export async function acceptLeadAction(leadMatchId: string): Promise<ActionResul
 
 export async function declineLeadAction(leadMatchId: string): Promise<ActionResult> {
   const session = await getSession();
+  const denied = await assertOwnMatch(leadMatchId, session.contractorId);
+  if (denied) return denied;
   try {
     const res = await declineLeadMatch({
       leadMatchId,

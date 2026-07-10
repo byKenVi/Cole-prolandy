@@ -15,6 +15,7 @@ import { deactivateContractor, reactivateContractor } from "@/app/actions/admin"
 import { LeadMatchStatusBadge } from "@/components/status-badge";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
+import { formatCardLabel } from "@/lib/card-display";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,7 @@ export default async function ContractorDetail({
   });
   const topupTotalCents = topupAgg._sum.amountCents ?? 0;
   const hasSavedCard = Boolean(contractor.stripeDefaultPaymentMethodId);
+  const cardLabel = formatCardLabel(contractor.cardBrand, contractor.cardLast4);
 
   const acceptedLeads = contractor.leadMatches
     .filter((m) => m.status === "ACCEPTED")
@@ -130,7 +132,7 @@ export default async function ContractorDetail({
             <span>
               Saved card:{" "}
               {hasSavedCard ? (
-                <span className="font-medium text-success">On file</span>
+                <span className="font-medium text-success">{cardLabel ?? "On file"}</span>
               ) : (
                 <span className="font-medium text-warning">Not saved yet</span>
               )}

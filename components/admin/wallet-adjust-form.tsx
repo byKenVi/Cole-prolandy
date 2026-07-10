@@ -110,6 +110,3 @@ export function WalletRechargeForm({
     </form>
   );
 }
-
-/** @deprecated Use WalletRechargeForm — kept as alias for any leftover imports. */
-export const WalletAdjustForm = WalletRechargeForm;

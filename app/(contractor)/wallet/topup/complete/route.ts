@@ -7,9 +7,8 @@ import { prisma } from "@/lib/prisma";
  * MOCK top-up / card-setup completion. In mock mode Stripe redirects here after
  * a simulated payment or card update.
  *
- * ⚠️ In REAL mode, DO NOT trust this redirect to add funds or save cards —
- * those come from the verified Stripe webhook. This handler only mutates when
- * STRIPE_MOCK is on.
+ * ⚠️ In REAL / production mode this never credits — money and cards come from
+ * the verified Stripe webhook only.
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -19,10 +18,13 @@ export async function GET(req: NextRequest) {
   const pm = url.searchParams.get("pm");
   const isSetup = url.searchParams.get("setup") === "1";
   const isMock = process.env.STRIPE_MOCK !== "false";
+  const isProd =
+    process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
 
   const walletUrl = new URL("/wallet", url.origin);
 
-  if (!isMock) {
+  // Fail closed: never mint money from a browser redirect in production.
+  if (!isMock || isProd) {
     walletUrl.searchParams.set("topup", isSetup ? "card_pending" : "pending");
     return NextResponse.redirect(walletUrl);
   }
@@ -32,19 +34,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(walletUrl);
   }
 
-  // Card setup / replace — no wallet credit.
   if (isSetup) {
     const paymentMethodId = pm || `pm_mock_${Date.now().toString(36)}`;
+    const existing = await prisma.contractor.findUnique({
+      where: { id: contractorId },
+      select: { stripeCustomerId: true },
+    });
     await prisma.contractor.update({
       where: { id: contractorId },
       data: {
         stripeDefaultPaymentMethodId: paymentMethodId,
-        stripeCustomerId: (
-          await prisma.contractor.findUnique({
-            where: { id: contractorId },
-            select: { stripeCustomerId: true },
-          })
-        )?.stripeCustomerId ?? `cus_mock_${contractorId.slice(0, 8)}`,
+        stripeCustomerId: existing?.stripeCustomerId ?? `cus_mock_${contractorId.slice(0, 8)}`,
+        cardBrand: "visa",
+        cardLast4: "4242",
       },
     });
     await prisma.auditLog.create({
@@ -54,7 +56,7 @@ export async function GET(req: NextRequest) {
         action: "CARD_UPDATED",
         targetType: "Contractor",
         targetId: contractorId,
-        metadata: { paymentMethodId, mocked: true },
+        metadata: { paymentMethodId, mocked: true, cardBrand: "visa", cardLast4: "4242" },
       },
     });
     walletUrl.searchParams.set("topup", "card_saved");
@@ -90,18 +92,18 @@ export async function GET(req: NextRequest) {
         },
       });
     }
-    // Persist mock saved card so admin/contractor recharge works after first top-up.
     if (pm) {
+      const row = await prisma.contractor.findUnique({
+        where: { id: contractorId },
+        select: { stripeCustomerId: true },
+      });
       await prisma.contractor.update({
         where: { id: contractorId },
         data: {
           stripeDefaultPaymentMethodId: pm,
-          stripeCustomerId: (
-            await prisma.contractor.findUnique({
-              where: { id: contractorId },
-              select: { stripeCustomerId: true },
-            })
-          )?.stripeCustomerId ?? `cus_mock_${contractorId.slice(0, 8)}`,
+          stripeCustomerId: row?.stripeCustomerId ?? `cus_mock_${contractorId.slice(0, 8)}`,
+          cardBrand: "visa",
+          cardLast4: "4242",
         },
       });
     }
