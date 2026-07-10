@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { CreditCard, Plus, ChevronRight, Loader2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { SignOutLink } from "@/components/auth/sign-out-link";
 
 const NAV: { href: string; label: string; icon: string }[] = [
   { href: "/home", label: "Home", icon: "/nav-icons/nav-home.png" },
@@ -21,12 +22,14 @@ export function ContractorSidebar({
   subtitle,
   initials,
   userMenu,
+  showSignOut = false,
 }: {
   walletCents?: number | null;
   name?: string | null;
   subtitle?: string | null;
   initials?: string | null;
   userMenu?: ReactNode;
+  showSignOut?: boolean;
 }) {
   const pathname = usePathname();
   return (
@@ -111,6 +114,12 @@ export function ContractorSidebar({
         </Link>
         <ChevronRight className="h-4 w-4 flex-none text-[#9A9084]" strokeWidth={1.8} aria-hidden />
       </div>
+
+      {showSignOut && (
+        <div className="mt-3 px-[6px]">
+          <SignOutLink />
+        </div>
+      )}
     </aside>
   );
 }

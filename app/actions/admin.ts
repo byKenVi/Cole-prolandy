@@ -10,6 +10,7 @@ import { requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
 import { normalizePhoneForStorage } from "@/lib/phone";
 import { ICON_KEYS, ICON_AUTO, ICON_NONE } from "@/lib/project-icons";
+import { revalidateAdminShell, revalidateContractorShell } from "@/lib/revalidate";
 
 type Result = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -74,6 +75,8 @@ export async function refundLead(leadMatchId: string, reason: string): Promise<R
     const res = await refundLeadMatch({ leadMatchId, reason, actorId: admin.email });
     revalidatePath("/admin/leads");
     revalidatePath("/admin/contractors");
+    revalidateAdminShell();
+    revalidateContractorShell();
     return { ok: true, message: `Restored ${res.refundedCents} cents to wallet` };
   } catch (e) {
     return { ok: false, message: e instanceof DomainError ? e.message : "Restore failed." };
@@ -100,6 +103,8 @@ export async function chargeSavedCardTopUp(input: {
     return { ok: false, message: res.message };
   }
   revalidatePath(`/admin/contractors/${input.contractorId}`);
+  revalidateAdminShell();
+  revalidateContractorShell();
   return {
     ok: true,
     message: res.mocked

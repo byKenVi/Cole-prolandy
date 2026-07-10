@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { applyWalletTransaction } from "@/lib/domain/wallet";
 import { WalletTransactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { revalidateContractorShell } from "@/lib/revalidate";
 
 /**
  * MOCK top-up / card-setup completion. In mock mode Stripe redirects here after
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
       },
     });
     walletUrl.searchParams.set("topup", "card_saved");
+    revalidateContractorShell();
     return NextResponse.redirect(walletUrl);
   }
 
@@ -117,5 +119,6 @@ export async function GET(req: NextRequest) {
   }
 
   walletUrl.searchParams.set("topup", "success");
+  revalidateContractorShell();
   return NextResponse.redirect(walletUrl);
 }

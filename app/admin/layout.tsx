@@ -32,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       walletFloat={formatMoney(walletAgg._sum.walletBalanceCents ?? 0)}
       heldAcross={heldAcross}
       userMenu={clerk ? <UserMenu /> : undefined}
+      showSignOut={clerk}
     >
       {children}
     </AdminShell>

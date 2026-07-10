@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { authMode, getSession } from "@/lib/auth";
 import { UserMenu } from "@/components/auth/user-menu";
+import { SignOutLink } from "@/components/auth/sign-out-link";
 import { ExitViewAsBanner } from "@/components/auth/exit-view-as";
 import { ContractorTabs } from "@/components/contractor-tabs";
 import { ContractorSidebar } from "@/components/contractor-sidebar";
@@ -52,13 +53,14 @@ export default async function ContractorLayout({ children }: { children: React.R
     <div className="flex min-h-screen bg-[#FEFBF6]">
       {session.viewingAs && <ExitViewAsBanner />}
 
-      <ContractorSidebar
-        walletCents={contractor?.walletBalanceCents ?? null}
-        name={contractor?.name}
-        subtitle={contractor?.contractorType?.name}
-        initials={initialsFrom(contractor?.name)}
-        userMenu={clerk ? <UserMenu /> : undefined}
-      />
+        <ContractorSidebar
+          walletCents={contractor?.walletBalanceCents ?? null}
+          name={contractor?.name}
+          subtitle={contractor?.contractorType?.name}
+          initials={initialsFrom(contractor?.name)}
+          userMenu={clerk ? <UserMenu /> : undefined}
+          showSignOut={clerk}
+        />
 
       <main className="flex min-w-0 flex-1 flex-col bg-[#FEFBF6]">
         {/* Mobile header (sidebar is hidden below md) */}
@@ -69,7 +71,10 @@ export default async function ContractorLayout({ children }: { children: React.R
               Pro
             </span>
           </Link>
-          {clerk && <UserMenu />}
+          <div className="flex items-center gap-2">
+            {clerk && <SignOutLink variant="icon" />}
+            {clerk && <UserMenu />}
+          </div>
         </header>
 
         <div className="flex-1 pb-24 md:pb-0">{children}</div>

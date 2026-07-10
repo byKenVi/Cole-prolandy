@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { acceptLeadMatch, declineLeadMatch } from "@/lib/domain/leads";
 import { DomainError, InsufficientBalanceError } from "@/lib/domain/errors";
 import { getSession } from "@/lib/auth";
+import { revalidateContractorShell } from "@/lib/revalidate";
 
 export type ActionResult =
   | { ok: true; status: string }
@@ -39,6 +40,7 @@ export async function acceptLeadAction(leadMatchId: string): Promise<ActionResul
     revalidatePath("/home");
     revalidatePath(`/leads/${leadMatchId}`);
     revalidatePath("/wallet");
+    revalidateContractorShell();
     return { ok: true, status: res.status };
   } catch (e) {
     return toResult(e);

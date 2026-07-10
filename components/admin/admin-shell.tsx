@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import type { AdminTheme } from "@/lib/admin-theme";
 import { ADMIN_SIDEBAR_COOKIE } from "@/lib/admin-theme";
 import { AdminThemeProvider } from "@/components/admin/theme-context";
+import { SignOutLink } from "@/components/auth/sign-out-link";
 
 /**
  * The admin application shell: a fixed dark/green sidebar, a sticky glass
@@ -125,6 +126,7 @@ function Sidebar({
   collapsed,
   onToggleCollapse,
   onCloseMobile,
+  showSignOut,
 }: {
   leadCount: number;
   walletFloat: string;
@@ -132,6 +134,7 @@ function Sidebar({
   collapsed: boolean;
   onToggleCollapse: () => void;
   onCloseMobile: () => void;
+  showSignOut?: boolean;
 }) {
   const pathname = usePathname();
   const items = navItems(leadCount);
@@ -255,18 +258,32 @@ function Sidebar({
         >
           AD
         </span>
-        <div className="admin-foot-text" style={{ minWidth: 0 }}>
+        <div className="admin-foot-text" style={{ minWidth: 0, flex: 1 }}>
           <p style={{ margin: 0, font: "600 13px/1.2 'Inter'", color: "#F1E7D6" }}>Admin Desk</p>
           <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "#8FA592" }}>
             Landy&apos;s Pro HQ
           </p>
         </div>
       </div>
+
+      {showSignOut && (
+        <div className="admin-foot-text" style={{ padding: "0 14px 14px" }}>
+          <SignOutLink variant="admin" />
+        </div>
+      )}
     </aside>
   );
 }
 
-function Topbar({ userMenu, onOpenMobile }: { userMenu?: React.ReactNode; onOpenMobile: () => void }) {
+function Topbar({
+  userMenu,
+  onOpenMobile,
+  showSignOut,
+}: {
+  userMenu?: React.ReactNode;
+  onOpenMobile: () => void;
+  showSignOut?: boolean;
+}) {
   return (
     <header
       className="admin-topbar"
@@ -333,6 +350,7 @@ function Topbar({ userMenu, onOpenMobile }: { userMenu?: React.ReactNode; onOpen
         </span>
       </form>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {showSignOut && <SignOutLink variant="icon" label="Sign out" />}
         {userMenu ?? (
           <span
             style={{
@@ -362,6 +380,7 @@ export function AdminShell({
   walletFloat,
   heldAcross,
   userMenu,
+  showSignOut = false,
   children,
 }: {
   initialTheme: AdminTheme;
@@ -370,6 +389,7 @@ export function AdminShell({
   walletFloat: string;
   heldAcross: number;
   userMenu?: React.ReactNode;
+  showSignOut?: boolean;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
@@ -405,10 +425,15 @@ export function AdminShell({
             collapsed={collapsed}
             onToggleCollapse={toggleCollapse}
             onCloseMobile={() => setMobileOpen(false)}
+            showSignOut={showSignOut}
           />
           <div className="admin-scrim" aria-hidden onClick={() => setMobileOpen(false)} />
           <div className="admin-content">
-            <Topbar userMenu={userMenu} onOpenMobile={() => setMobileOpen(true)} />
+            <Topbar
+              userMenu={userMenu}
+              onOpenMobile={() => setMobileOpen(true)}
+              showSignOut={showSignOut}
+            />
             <main className="admin-main">{children}</main>
           </div>
         </div>

@@ -1,12 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { payments } from "@/lib/integrations/payments";
 import { requireContractorId } from "@/lib/auth";
 import { validateTopUpAmountCents } from "@/lib/domain/topup";
 import { chargeContractorSavedCard, type RechargeResult } from "@/lib/services/recharge";
+import { revalidateContractorShell } from "@/lib/revalidate";
 
 /**
  * Start a wallet top-up. In mock mode this returns a local URL that simulates a
@@ -64,7 +64,7 @@ export async function rechargeSavedCard(amountCents: number): Promise<RechargeRe
     amountCents,
     actor: { type: "contractor", id: contractorId },
   });
-  if (res.ok) revalidatePath("/wallet");
+  if (res.ok) revalidateContractorShell();
   return res;
 }
 
