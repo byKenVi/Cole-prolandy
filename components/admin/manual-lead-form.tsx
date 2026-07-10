@@ -265,19 +265,25 @@ export function ManualLeadForm({
 
       <div className="flex flex-wrap items-center gap-3 pt-1">
         {step > 0 && (
-          <Button type="button" variant="outline" size="lg" onClick={goBack} disabled={pending}>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-14 px-6 text-base"
+            onClick={goBack}
+            disabled={pending}
+          >
             Back
           </Button>
         )}
         {step < STEPS.length - 1 ? (
-          <Button type="button" variant="accent" size="lg" onClick={goNext}>
+          <Button type="button" variant="accent" className="h-14 px-8 text-base" onClick={goNext}>
             Continue
           </Button>
         ) : (
           <Button
             type="button"
             variant="accent"
-            size="lg"
+            className="h-14 px-8 text-base"
             loading={pending}
             disabled={pending}
             onClick={createLead}

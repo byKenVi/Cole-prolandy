@@ -241,7 +241,7 @@ export function ContractorForm({
           <Button
             type="button"
             variant="outline"
-            size="lg"
+            className="h-14 px-6 text-base"
             onClick={() => setStep((s) => s - 1)}
             disabled={pending}
           >
@@ -249,11 +249,18 @@ export function ContractorForm({
           </Button>
         )}
         {isCreate && step < STEPS.length - 1 ? (
-          <Button type="button" variant="accent" size="lg" onClick={goNext}>
+          <Button type="button" variant="accent" className="h-14 px-8 text-base" onClick={goNext}>
             Continue
           </Button>
         ) : (
-          <Button type="button" variant="accent" size="lg" loading={pending} disabled={pending} onClick={save}>
+          <Button
+            type="button"
+            variant="accent"
+            className="h-14 px-8 text-base"
+            loading={pending}
+            disabled={pending}
+            onClick={save}
+          >
             {mode === "create" ? "Create contractor" : "Save changes"}
           </Button>
         )}
