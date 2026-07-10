@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
 import type { RevenuePoint } from "@/components/admin/revenue-chart";
+import { RevenueHero } from "@/components/admin/revenue-hero";
 import { PageHeader, GoldButtonLink, Panel, IconTile, Chip } from "@/components/admin/ui";
 import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
@@ -327,128 +328,6 @@ export default async function AdminDashboard() {
           )}
         </Panel>
       </div>
-    </div>
-  );
-}
-
-/** Dark-green revenue hero with a data-driven area sparkline (matches the model). */
-function RevenueHero({
-  value,
-  trend,
-  series,
-}: {
-  value: string;
-  trend: number | null;
-  series: RevenuePoint[];
-}) {
-  const W = 620;
-  const H = 92;
-  const values = series.map((p) => p.revenueCents);
-  const max = Math.max(1, ...values);
-  const n = values.length;
-  const pointsArr = values.map((v, i) => {
-    const x = n <= 1 ? W : (i / (n - 1)) * W;
-    const y = H - (v / max) * (H - 8) - 4;
-    return [Math.round(x), Math.round(y)] as const;
-  });
-  const line = pointsArr.map(([x, y]) => `${x},${y}`).join(" ");
-  const area = `0,${H} ${line} ${W},${H}`;
-  const last = pointsArr[pointsArr.length - 1] ?? [W, H];
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: 22,
-        padding: "26px 28px",
-        background: "linear-gradient(150deg,var(--green),var(--green2))",
-        color: "#F1E7D6",
-        boxShadow: "var(--shadowMd)",
-      }}
-    >
-      <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
-        <div>
-          <p
-            style={{
-              margin: "0 0 10px",
-              font: "600 11px/1 var(--mono)",
-              letterSpacing: ".1em",
-              textTransform: "uppercase",
-              color: "rgba(241,231,214,.62)",
-            }}
-          >
-            Lead revenue · 30 days
-          </p>
-          <p
-            style={{
-              margin: "0 0 6px",
-              font: "600 48px/1 var(--display)",
-              letterSpacing: "-.02em",
-              color: "#F8F1E2",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {value}
-          </p>
-          {typeof trend === "number" && (
-            <p
-              style={{
-                margin: 0,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                font: "600 13px/1 'Inter'",
-                color: "#B9D0BC",
-                background: "rgba(185,208,188,.14)",
-                padding: "5px 10px",
-                borderRadius: 999,
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: trend < 0 ? "scaleY(-1)" : undefined }}>
-                <path d="M4 17l7-7 4 4 5-6" />
-              </svg>
-              {Math.abs(trend)}% vs prior half
-            </p>
-          )}
-        </div>
-        <span
-          aria-hidden
-          style={{
-            width: 92,
-            height: 92,
-            flex: "none",
-            borderRadius: 999,
-            background: "radial-gradient(circle at 35% 30%,#F0C27E,#C0803C 70%)",
-            boxShadow: "0 10px 22px rgba(0,0,0,.3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            font: "700 34px/1 var(--display)",
-            color: "#7A5320",
-          }}
-        >
-          $
-        </span>
-      </div>
-      <svg
-        viewBox={`0 0 ${W} ${H + 18}`}
-        width="100%"
-        height="92"
-        preserveAspectRatio="none"
-        aria-hidden
-        style={{ position: "relative", marginTop: 14, overflow: "visible" }}
-      >
-        <defs>
-          <linearGradient id="heroFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="var(--gold)" stopOpacity="0.4" />
-            <stop offset="1" stopColor="var(--gold)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <polygon fill="url(#heroFill)" points={area} />
-        <polyline fill="none" stroke="var(--gold)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" points={line} />
-        <circle cx={last[0]} cy={last[1]} r="5" fill="var(--gold)" stroke="var(--green)" strokeWidth="2.5" />
-      </svg>
     </div>
   );
 }
