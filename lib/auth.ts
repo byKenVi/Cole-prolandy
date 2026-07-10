@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 
@@ -55,11 +55,21 @@ export function assertAuthConfigFailClosed(): void {
   }
 }
 
-function adminEmails(): string[] {
-  return (process.env.ADMIN_EMAILS ?? "")
+/**
+ * Parse ADMIN_EMAILS from env. Strips wrapping quotes (common when values are
+ * copy-pasted into Vercel with quotes) and normalizes case/whitespace.
+ */
+export function parseAdminEmails(raw: string | undefined | null): string[] {
+  return (raw ?? "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
     .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+    .map((e) => e.trim().toLowerCase().replace(/^["']|["']$/g, ""))
+    .filter((e) => e.includes("@"));
+}
+
+function adminEmails(): string[] {
+  return parseAdminEmails(process.env.ADMIN_EMAILS);
 }
 
 /** Resolve the current session. */
@@ -121,10 +131,12 @@ async function getClerkSession(): Promise<Session> {
     };
   }
 
-  const user = await currentUser();
-  const email = user?.primaryEmailAddress?.emailAddress?.toLowerCase() ?? null;
-  const metaRole = (user?.publicMetadata as { role?: string } | undefined)?.role;
-  const isAdmin = metaRole === "admin" || (email !== null && adminEmails().includes(email));
+  // currentUser() can be briefly incomplete right after sign-in; fall back to
+  // the Backend API so admin email matching still works on /post-auth.
+  const user = await resolveClerkUser(userId);
+  const emails = collectAllEmails(user);
+  const email = emails[0] ?? null;
+  const isAdmin = userIsAdmin(user, emails);
 
   if (isAdmin) {
     const jar = await cookies();
@@ -202,11 +214,55 @@ async function getClerkSession(): Promise<Session> {
 
 type ClerkUserLike =
   | {
+      primaryEmailAddress?: { emailAddress: string } | null;
       emailAddresses?: { emailAddress: string; verification?: { status?: string } | null }[];
       phoneNumbers?: { phoneNumber: string; verification?: { status?: string } | null }[];
+      publicMetadata?: Record<string, unknown> | null;
     }
   | null
   | undefined;
+
+async function resolveClerkUser(userId: string): Promise<ClerkUserLike> {
+  const fromSession = await currentUser();
+  // Right after sign-in, currentUser() can return a user shell with no usable
+  // emails yet. Fall back to the Backend API so /post-auth still sees ADMIN_EMAILS.
+  const sessionEmails = collectAllEmails(fromSession);
+  if (sessionEmails.length > 0 || fromSession?.publicMetadata?.role === "admin") {
+    return fromSession;
+  }
+  try {
+    const client = await clerkClient();
+    return await client.users.getUser(userId);
+  } catch {
+    return fromSession;
+  }
+}
+
+/** All emails on the Clerk user (primary first), lowercased. */
+export function collectAllEmails(user: ClerkUserLike): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (raw?: string | null) => {
+    const e = raw?.toLowerCase().trim();
+    if (!e || seen.has(e)) return;
+    seen.add(e);
+    out.push(e);
+  };
+  push(user?.primaryEmailAddress?.emailAddress);
+  for (const entry of user?.emailAddresses ?? []) {
+    push(entry.emailAddress);
+  }
+  return out;
+}
+
+/** True when publicMetadata.role is admin or any user email is in ADMIN_EMAILS. */
+export function userIsAdmin(user: ClerkUserLike, emails = collectAllEmails(user)): boolean {
+  const metaRole = user?.publicMetadata?.role;
+  if (metaRole === "admin") return true;
+  const allowed = adminEmails();
+  if (allowed.length === 0 || emails.length === 0) return false;
+  return emails.some((e) => allowed.includes(e));
+}
 
 function collectVerifiedEmails(user: ClerkUserLike): string[] {
   return (user?.emailAddresses ?? [])

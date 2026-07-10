@@ -37,5 +37,17 @@ export default async function RootLayout({
   );
 
   // Only mount ClerkProvider in clerk mode so the app runs with no keys in dev.
-  return clerk ? <ClerkProvider>{tree}</ClerkProvider> : tree;
+  // Keep fallback redirects on /post-auth so role routing (admin → /admin) always runs.
+  return clerk ? (
+    <ClerkProvider
+      signInFallbackRedirectUrl="/post-auth"
+      signUpFallbackRedirectUrl="/post-auth"
+      signInForceRedirectUrl="/post-auth"
+      signUpForceRedirectUrl="/post-auth"
+    >
+      {tree}
+    </ClerkProvider>
+  ) : (
+    tree
+  );
 }
