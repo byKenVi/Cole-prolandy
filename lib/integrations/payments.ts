@@ -80,6 +80,11 @@ export type RefundToCardResult =
 export interface PaymentsProvider {
   createTopUpCheckout(params: CreateTopUpParams): Promise<CreateTopUpResult>;
   /**
+   * Checkout in setup mode — save or replace the contractor's default card
+   * without charging. Wallet is not credited.
+   */
+  createCardSetupCheckout(params: CreateCardSetupParams): Promise<CreateTopUpResult>;
+  /**
    * Charge a saved card OFF-SESSION (no customer present). The wallet is still
    * credited ONLY by the webhook on payment_intent.succeeded — never inline.
    * Returns a graceful, UI-safe failure (never throws raw Stripe errors) so the
@@ -93,6 +98,15 @@ export interface PaymentsProvider {
    */
   refundToCard(params: RefundToCardParams): Promise<RefundToCardResult>;
 }
+
+export type CreateCardSetupParams = {
+  contractorId: string;
+  stripeCustomerId?: string | null;
+  contractorEmail?: string | null;
+  contractorName?: string | null;
+  successUrl: string;
+  cancelUrl: string;
+};
 
 const isMock = () => process.env.STRIPE_MOCK !== "false"; // default ON
 
@@ -111,7 +125,24 @@ class MockPaymentsProvider implements PaymentsProvider {
     url.searchParams.set("mock", "1");
     url.searchParams.set("amountCents", String(params.amountCents));
     url.searchParams.set("pi", paymentIntentId);
+    url.searchParams.set("pm", `pm_mock_${params.contractorId.slice(0, 8)}`);
     return { checkoutUrl: url.toString(), paymentIntentId, customerId: null, mocked: true };
+  }
+
+  async createCardSetupCheckout(params: CreateCardSetupParams): Promise<CreateTopUpResult> {
+    const setupId = `seti_mock_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    // eslint-disable-next-line no-console
+    console.log(`[payments:mock] card setup for contractor ${params.contractorId} -> ${setupId}`);
+    const url = new URL(params.successUrl);
+    url.searchParams.set("mock", "1");
+    url.searchParams.set("setup", "1");
+    url.searchParams.set("pm", `pm_mock_${Date.now().toString(36)}`);
+    return {
+      checkoutUrl: url.toString(),
+      paymentIntentId: null,
+      customerId: params.stripeCustomerId ?? `cus_mock_${params.contractorId.slice(0, 8)}`,
+      mocked: true,
+    };
   }
 
   async chargeSavedCard(params: ChargeSavedCardParams): Promise<ChargeSavedCardResult> {
@@ -190,6 +221,33 @@ class StripePaymentsProvider implements PaymentsProvider {
           },
         },
       ],
+    });
+
+    if (!session.url) throw new Error("Stripe did not return a Checkout URL.");
+    return { checkoutUrl: session.url, paymentIntentId: null, customerId, mocked: false };
+  }
+
+  async createCardSetupCheckout(params: CreateCardSetupParams): Promise<CreateTopUpResult> {
+    const stripe = await getStripe();
+
+    let customerId = params.stripeCustomerId ?? null;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: params.contractorEmail ?? undefined,
+        name: params.contractorName ?? undefined,
+        metadata: { contractorId: params.contractorId },
+      });
+      customerId = customer.id;
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "setup",
+      customer: customerId,
+      success_url: params.successUrl,
+      cancel_url: params.cancelUrl,
+      client_reference_id: params.contractorId,
+      metadata: { contractorId: params.contractorId, purpose: "card_setup" },
+      payment_method_types: ["card"],
     });
 
     if (!session.url) throw new Error("Stripe did not return a Checkout URL.");

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Phone, Hammer, ChevronRight } from "lucide-react";
+import { MapPin, Phone, Mail, Hammer, ChevronRight } from "lucide-react";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
@@ -25,6 +25,7 @@ export type FeedLead = {
   contact?: {
     name: string;
     phone: string;
+    email?: string;
   } | null;
 };
 
@@ -97,6 +98,15 @@ export function LeadFeedCard({ lead }: { lead: FeedLead }) {
               <Phone className="h-[14px] w-[14px] flex-none" strokeWidth={1.7} aria-hidden />
               <span className="truncate">{lead.contact.phone}</span>
             </a>
+            {lead.contact.email && (
+              <a
+                href={`mailto:${lead.contact.email}`}
+                className="mt-1 flex items-center gap-[6px] text-[13px] font-medium text-[#8A6B2E] hover:underline"
+              >
+                <Mail className="h-[14px] w-[14px] flex-none" strokeWidth={1.7} aria-hidden />
+                <span className="truncate">{lead.contact.email}</span>
+              </a>
+            )}
           </div>
         )}
         <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#F2EBDD] pt-3">

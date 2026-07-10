@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { constructStripeEvent, parseTopUpEvent, creditTopUp } from "@/lib/services/stripe-webhook";
+import {
+  constructStripeEvent,
+  parseTopUpEvent,
+  creditTopUp,
+  persistCardFromSetupSession,
+} from "@/lib/services/stripe-webhook";
 
 /**
  * Stripe webhook — the SOURCE OF TRUTH for real top-ups. The wallet is credited
@@ -34,17 +39,18 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const parsed = parseTopUpEvent(event);
-  if (!parsed) {
-    // Event type we don't act on — acknowledge so Stripe stops retrying. NOTE:
-    // refund events (charge.refunded / refund.updated) are intentionally ignored
-    // here: a card refund already DEBITS the wallet inline at the moment the
-    // admin issues it (see lib/services/card-refund.ts), so reconciling again
-    // from this webhook would double-debit.
-    return NextResponse.json({ received: true, ignored: event.type });
-  }
-
   try {
+    const setupResult = await persistCardFromSetupSession(event);
+    if (setupResult.status !== "ignored") {
+      return NextResponse.json({ received: true, status: setupResult.status, kind: "card_setup" });
+    }
+
+    const parsed = parseTopUpEvent(event);
+    if (!parsed) {
+      // Event type we don't act on — acknowledge so Stripe stops retrying.
+      return NextResponse.json({ received: true, ignored: event.type });
+    }
+
     const result = await creditTopUp(parsed);
     return NextResponse.json({ received: true, status: result.status });
   } catch {

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { Badge } from "@/components/ui/badge";
 import { TopUp } from "@/components/topup";
+import { SavedCardPanel } from "@/components/saved-card-panel";
 import { EmptyState } from "@/components/empty-state";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const TYPE_LABEL: Record<string, string> = {
   TOPUP: "Top-up (card)",
   LEAD_CHARGE: "Lead charge",
-  REFUND: "Refund credit",
+  REFUND: "Lead restored to wallet",
   ADMIN_ADJUST: "Admin correction",
   PROMO_CREDIT: "Promo credit",
   CARD_REFUND: "Refund to card",
@@ -21,7 +21,7 @@ const TYPE_LABEL: Record<string, string> = {
 export default async function WalletPage({
   searchParams,
 }: {
-  searchParams: Promise<{ topup?: "success" | "error" | "pending" | string }>;
+  searchParams: Promise<{ topup?: string }>;
 }) {
   const { topup } = await searchParams;
   const session = await getSession();
@@ -38,18 +38,11 @@ export default async function WalletPage({
     select: { walletBalanceCents: true, stripeDefaultPaymentMethodId: true },
   });
   const hasSavedCard = Boolean(contractor?.stripeDefaultPaymentMethodId);
-  const [txns, promoAgg] = await Promise.all([
-    prisma.walletTransaction.findMany({
-      where: { contractorId: session.contractorId },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    }),
-    prisma.walletTransaction.aggregate({
-      _sum: { amountCents: true },
-      where: { contractorId: session.contractorId, type: "PROMO_CREDIT" },
-    }),
-  ]);
-  const promoTotalCents = promoAgg._sum.amountCents ?? 0;
+  const txns = await prisma.walletTransaction.findMany({
+    where: { contractorId: session.contractorId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
 
   return (
     <div className="flex min-h-full flex-col">
@@ -58,12 +51,16 @@ export default async function WalletPage({
           Wallet
         </h1>
         <p className="mt-[5px] text-[14px] text-[#8A7E68]">
-          Add funds to accept leads. Money in is real; promo credit is labeled.
+          Add funds with your card. Landys can also recharge this wallet using your saved card.
         </p>
       </header>
 
       <div className="flex-1 px-5 py-6 md:px-[34px]">
         {topup === "success" && <Banner tone="ok">Funds added successfully.</Banner>}
+        {topup === "card_saved" && <Banner tone="ok">Card saved. You can update it anytime.</Banner>}
+        {topup === "card_pending" && (
+          <Banner tone="info">Card update received — it will show as saved once Stripe confirms.</Banner>
+        )}
         {topup === "pending" && (
           <Banner tone="info">
             Payment received — your balance updates in a few seconds once the card payment confirms.
@@ -75,7 +72,6 @@ export default async function WalletPage({
 
         <div className="grid items-start gap-6 lg:grid-cols-2">
           <div className="flex flex-col gap-6">
-            {/* Balance hero — taller */}
             <div className="flex min-h-[200px] flex-col rounded-[18px] bg-[#3B372F] p-7 shadow-[0_10px_30px_rgba(58,53,45,0.18)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9A9084]">
                 Current balance
@@ -85,21 +81,16 @@ export default async function WalletPage({
                   {formatMoney(contractor?.walletBalanceCents ?? 0)}
                 </p>
               </div>
-              {promoTotalCents > 0 && (
-                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-[#E0A95C]">
-                  Includes {formatMoney(promoTotalCents)} promo credit
-                </span>
-              )}
             </div>
 
-            {/* Add funds */}
             <div className="rounded-[18px] border border-[#EBE3D4] bg-white p-6 shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
               <h2 className="mb-4 text-[17px] font-semibold text-[#3A352D]">Add funds</h2>
               <TopUp hasSavedCard={hasSavedCard} />
             </div>
+
+            <SavedCardPanel hasSavedCard={hasSavedCard} />
           </div>
 
-          {/* History */}
           <div className="rounded-[18px] border border-[#EBE3D4] bg-white p-6 shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
             <h2 className="mb-4 text-[17px] font-semibold text-[#3A352D]">Transaction history</h2>
             {txns.length === 0 ? (
@@ -112,10 +103,7 @@ export default async function WalletPage({
                 {txns.map((t) => (
                   <div key={t.id} className="flex items-center justify-between gap-3 px-2 py-3.5">
                     <div className="min-w-0">
-                      <p className="flex items-center gap-2 font-medium text-[#3A352D]">
-                        {TYPE_LABEL[t.type] ?? t.type}
-                        {t.type === "PROMO_CREDIT" && <Badge variant="warning">Promo</Badge>}
-                      </p>
+                      <p className="font-medium text-[#3A352D]">{TYPE_LABEL[t.type] ?? t.type}</p>
                       <p className="text-xs text-[#A79E8D]">{formatDate(t.createdAt)}</p>
                       {t.note && <p className="truncate text-xs text-[#A79E8D]">{t.note}</p>}
                     </div>

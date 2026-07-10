@@ -5,20 +5,25 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { adjustWallet } from "@/app/actions/admin";
+import { chargeSavedCardTopUp } from "@/app/actions/admin";
 import { dollarsToCents } from "@/lib/money";
 
-export function WalletAdjustForm({ contractorId }: { contractorId: string }) {
+/**
+ * Admin wallet recharge only — charges the contractor's saved card and tops up
+ * their wallet. Lead restitutions live in the separate LeadRestitutionList.
+ */
+export function WalletRechargeForm({
+  contractorId,
+  hasSavedCard,
+}: {
+  contractorId: string;
+  hasSavedCard: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
-
   const [amount, setAmount] = useState("");
-  const [action, setAction] = useState<Action>("refund");
   const [reason, setReason] = useState("");
-
-  const cfg = ACTIONS[action];
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,12 +33,16 @@ export function WalletAdjustForm({ contractorId }: { contractorId: string }) {
       setResult({ ok: false, message: "Enter a valid amount." });
       return;
     }
-    // The action fully determines the transaction type AND sign. The admin can
-    // only issue a REFUND credit, a labeled PROMO_CREDIT, or an ADMIN_ADJUST
-    // deduct — never generic "funds" (the server enforces this too).
-    const signed = cfg.sign * Math.abs(cents);
+    if (!reason.trim()) {
+      setResult({ ok: false, message: "A reason is required." });
+      return;
+    }
     startTransition(async () => {
-      const res = await adjustWallet({ contractorId, amountCents: signed, type: cfg.type, reason });
+      const res = await chargeSavedCardTopUp({
+        contractorId,
+        amountCents: cents,
+        reason,
+      });
       setResult({ ok: res.ok, message: res.message ?? (res.ok ? "Done" : "Failed") });
       if (res.ok) {
         setAmount("");
@@ -46,21 +55,17 @@ export function WalletAdjustForm({ contractorId }: { contractorId: string }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <p className="rounded-sm bg-primary-soft p-3 text-sm text-text-muted">
-        <strong className="text-text">Refund</strong> returns money they paid.{" "}
-        <strong className="text-text">Promo credit</strong> adds promotional balance (not real cash).{" "}
-        <strong className="text-text">Deduct</strong> corrects a mistake. Real card money moves under
-        Card actions below.
+        Charges the contractor&apos;s <strong className="text-text">saved card</strong> and credits
+        their wallet. They must save a card from their Wallet page first.
       </p>
 
+      {!hasSavedCard && (
+        <p className="rounded-sm bg-warning-soft p-2 text-xs font-medium text-warning">
+          No saved card on file. Ask the contractor to add or update a card under Wallet.
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="action">Action</Label>
-          <Select id="action" value={action} onChange={(e) => setAction(e.target.value as Action)}>
-            <option value="refund">Refund — return money they paid (credit)</option>
-            <option value="promo">Promo credit — promotional balance (credit)</option>
-            <option value="deduct">Deduct — correct a mistake (debit)</option>
-          </Select>
-        </div>
         <div>
           <Label htmlFor="amt">Amount (USD)</Label>
           <Input
@@ -70,20 +75,21 @@ export function WalletAdjustForm({ contractorId }: { contractorId: string }) {
             min="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="50.00"
+            placeholder="100.00"
+            disabled={!hasSavedCard || pending}
           />
         </div>
-      </div>
-      <p className="text-xs text-text-muted">{cfg.hint}</p>
-      <div>
-        <Label htmlFor="reason">Reason (logged to audit)</Label>
-        <Input
-          id="reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder={cfg.placeholder}
-          required
-        />
+        <div>
+          <Label htmlFor="reason">Reason (logged)</Label>
+          <Input
+            id="reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Requested phone top-up"
+            disabled={!hasSavedCard || pending}
+            required
+          />
+        </div>
       </div>
 
       {result && (
@@ -98,48 +104,12 @@ export function WalletAdjustForm({ contractorId }: { contractorId: string }) {
         </p>
       )}
 
-      <Button type="submit" variant={cfg.variant} loading={pending} disabled={pending}>
-        {cfg.cta}
+      <Button type="submit" variant="brand" loading={pending} disabled={!hasSavedCard || pending}>
+        Charge card &amp; top up wallet
       </Button>
     </form>
   );
 }
 
-type Action = "refund" | "promo" | "deduct";
-
-const ACTIONS: Record<
-  Action,
-  {
-    type: "REFUND" | "PROMO_CREDIT" | "ADMIN_ADJUST";
-    sign: 1 | -1;
-    cta: string;
-    variant: "brand" | "accent" | "destructive";
-    hint: string;
-    placeholder: string;
-  }
-> = {
-  refund: {
-    type: "REFUND",
-    sign: 1,
-    cta: "Issue refund",
-    variant: "brand",
-    hint: "Returns money the contractor actually paid (real funds).",
-    placeholder: "e.g. Bad lead — refunded",
-  },
-  promo: {
-    type: "PROMO_CREDIT",
-    sign: 1,
-    cta: "Grant promo credit",
-    variant: "accent",
-    hint: "Promotional balance — spendable on leads, but NOT real money. Shown separately.",
-    placeholder: "e.g. Launch promo — $25 credit",
-  },
-  deduct: {
-    type: "ADMIN_ADJUST",
-    sign: -1,
-    cta: "Deduct from balance",
-    variant: "destructive",
-    hint: "Corrects a balance downward. Never produces a negative balance.",
-    placeholder: "e.g. Correcting a duplicate credit",
-  },
-};
+/** @deprecated Use WalletRechargeForm — kept as alias for any leftover imports. */
+export const WalletAdjustForm = WalletRechargeForm;

@@ -45,6 +45,8 @@ export async function constructStripeEvent(
 export function parseTopUpEvent(event: Stripe.Event): TopUpEvent | null {
   if (event.type === "checkout.session.completed") {
     const s = event.data.object as Stripe.Checkout.Session;
+    // Setup-mode sessions only save a card — handled separately, never credit.
+    if (s.mode === "setup") return null;
     return {
       eventId: event.id,
       eventType: event.type,
@@ -76,6 +78,68 @@ export function parseTopUpEvent(event: Stripe.Event): TopUpEvent | null {
     };
   }
   return null;
+}
+
+/**
+ * Persist a card from a Checkout setup-mode session (change/replace card).
+ * Idempotent via ProcessedStripeEvent.
+ */
+export async function persistCardFromSetupSession(event: Stripe.Event): Promise<CreditResult> {
+  if (event.type !== "checkout.session.completed") return { status: "ignored" };
+  const s = event.data.object as Stripe.Checkout.Session;
+  if (s.mode !== "setup") return { status: "ignored" };
+
+  const contractorId = s.metadata?.contractorId ?? s.client_reference_id ?? "";
+  if (!contractorId) return { status: "ignored" };
+
+  const stripeCustomerId =
+    typeof s.customer === "string" ? s.customer : (s.customer?.id ?? null);
+
+  let paymentMethodId: string | null = null;
+  const setupIntentRef = s.setup_intent;
+  if (setupIntentRef) {
+    try {
+      const stripe = await getStripe();
+      const setupIntentId =
+        typeof setupIntentRef === "string" ? setupIntentRef : setupIntentRef.id;
+      const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+      paymentMethodId =
+        typeof setupIntent.payment_method === "string"
+          ? setupIntent.payment_method
+          : (setupIntent.payment_method?.id ?? null);
+    } catch {
+      return { status: "ignored" };
+    }
+  }
+
+  if (!paymentMethodId && !stripeCustomerId) return { status: "ignored" };
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.processedStripeEvent.create({ data: { id: event.id, type: event.type } });
+      await tx.contractor.updateMany({
+        where: { id: contractorId },
+        data: {
+          ...(paymentMethodId ? { stripeDefaultPaymentMethodId: paymentMethodId } : {}),
+          ...(stripeCustomerId ? { stripeCustomerId } : {}),
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorType: "contractor",
+          actorId: contractorId,
+          action: "CARD_UPDATED",
+          targetType: "Contractor",
+          targetId: contractorId,
+          metadata: { eventId: event.id, paymentMethodId },
+        },
+      });
+    });
+    return { status: "credited" };
+  } catch (err) {
+    if (isUniqueViolation(err)) return { status: "duplicate" };
+    throw err;
+  }
 }
 
 /**

@@ -67,3 +67,34 @@ export async function rechargeSavedCard(amountCents: number): Promise<RechargeRe
   if (res.ok) revalidatePath("/wallet");
   return res;
 }
+
+/**
+ * Start a Stripe Checkout (setup mode) so the contractor can save or replace
+ * their default card without charging. Redirects to Stripe.
+ */
+export async function startCardUpdate() {
+  const contractorId = await requireContractorId();
+  const contractor = await prisma.contractor.findUnique({
+    where: { id: contractorId },
+    select: { stripeCustomerId: true, email: true, name: true },
+  });
+
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+  const { checkoutUrl, customerId } = await payments.createCardSetupCheckout({
+    contractorId,
+    stripeCustomerId: contractor?.stripeCustomerId ?? null,
+    contractorEmail: contractor?.email ?? null,
+    contractorName: contractor?.name ?? null,
+    successUrl: `${base}/wallet/topup/complete?contractorId=${contractorId}&setup=1`,
+    cancelUrl: `${base}/wallet`,
+  });
+
+  if (customerId && customerId !== contractor?.stripeCustomerId) {
+    await prisma.contractor.update({
+      where: { id: contractorId },
+      data: { stripeCustomerId: customerId },
+    });
+  }
+
+  redirect(checkoutUrl);
+}

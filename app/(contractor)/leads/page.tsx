@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { MapPin, Phone, Hammer } from "lucide-react";
+import { MapPin, Phone, Mail, Hammer } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { iconSrcFor } from "@/lib/project-icons";
@@ -19,10 +19,11 @@ type Row = {
   priceCents: number;
   contactName: string;
   contactPhone: string;
+  contactEmail: string;
 };
 
 const GRID =
-  "grid-cols-[minmax(180px,2.2fr)_minmax(120px,1.3fr)_minmax(150px,1.6fr)_78px_100px]";
+  "grid-cols-[minmax(180px,2fr)_minmax(120px,1.2fr)_minmax(180px,1.8fr)_78px_100px]";
 
 export default async function MyLeadsPage() {
   const session = await getSession();
@@ -44,6 +45,7 @@ export default async function MyLeadsPage() {
     priceCents: m.lead.priceCents,
     contactName: m.lead.landownerName,
     contactPhone: m.lead.landownerPhone,
+    contactEmail: m.lead.landownerEmail,
   }));
 
   return <Shell rows={rows} />;
@@ -68,7 +70,6 @@ function Shell({ rows }: { rows: Row[] }) {
           <Empty />
         ) : (
           <>
-            {/* Mobile: stacked cards */}
             <div className="flex flex-col gap-3 md:hidden">
               {rows.map((r) => (
                 <LeadFeedCard
@@ -82,17 +83,20 @@ function Shell({ rows }: { rows: Row[] }) {
                     location: r.location,
                     tier: r.tier,
                     priceCents: r.priceCents,
-                    contact: { name: r.contactName, phone: r.contactPhone },
+                    contact: {
+                      name: r.contactName,
+                      phone: r.contactPhone,
+                      email: r.contactEmail,
+                    },
                   }}
                 />
               ))}
             </div>
 
-            {/* Desktop: table */}
             <div className="hidden overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)] md:block">
               <div className="overflow-x-auto">
                 <div
-                  className={`grid ${GRID} min-w-[720px] items-center gap-[14px] border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-[14px]`}
+                  className={`grid ${GRID} min-w-[780px] items-center gap-[14px] border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-[14px]`}
                 >
                   <Head>Job</Head>
                   <Head>Location</Head>
@@ -121,16 +125,27 @@ function Head({ children, className = "" }: { children?: React.ReactNode; classN
 }
 
 function LeadRow({ row }: { row: Row }) {
-  const src = iconSrcFor({ icon: row.categoryIcon, category: row.categoryName, project: row.projectTypeName });
+  const src = iconSrcFor({
+    icon: row.categoryIcon,
+    category: row.categoryName,
+    project: row.projectTypeName,
+  });
   const pill = tierPill(row.tier);
   return (
     <div
-      className={`grid ${GRID} min-w-[720px] items-center gap-[14px] border-b border-[#F2EBDD] px-6 py-[15px] last:border-b-0`}
+      className={`grid ${GRID} min-w-[780px] items-center gap-[14px] border-b border-[#F2EBDD] px-6 py-[15px] last:border-b-0`}
     >
       <div className="flex min-w-0 items-center gap-[14px]">
         <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-[13px] bg-[#F5EEDF]">
           {src ? (
-            <Image src={src} alt="" aria-hidden width={60} height={60} className="h-[30px] w-[30px] object-contain" />
+            <Image
+              src={src}
+              alt=""
+              aria-hidden
+              width={60}
+              height={60}
+              className="h-[30px] w-[30px] object-contain"
+            />
           ) : (
             <Hammer className="h-[26px] w-[26px] text-[#9A6E2E]" aria-hidden />
           )}
@@ -149,7 +164,7 @@ function LeadRow({ row }: { row: Row }) {
         </p>
       </div>
       <div className="min-w-0">
-        <p className="truncate text-[14px] font-medium text-[#3A352D]">{row.contactName}</p>
+        <p className="truncate text-[14px] font-semibold text-[#3A352D]">{row.contactName}</p>
         <a
           href={`tel:${row.contactPhone}`}
           className="mt-0.5 flex items-center gap-[5px] text-[13px] text-[#8A6B2E] hover:underline"
@@ -157,6 +172,15 @@ function LeadRow({ row }: { row: Row }) {
           <Phone className="h-[13px] w-[13px] flex-none" strokeWidth={1.7} aria-hidden />
           <span className="truncate">{row.contactPhone}</span>
         </a>
+        {row.contactEmail && (
+          <a
+            href={`mailto:${row.contactEmail}`}
+            className="mt-0.5 flex items-center gap-[5px] text-[13px] text-[#8A6B2E] hover:underline"
+          >
+            <Mail className="h-[13px] w-[13px] flex-none" strokeWidth={1.7} aria-hidden />
+            <span className="truncate">{row.contactEmail}</span>
+          </a>
+        )}
       </div>
       <div>
         <span

@@ -20,18 +20,15 @@ async function sumByType(
 }
 
 export default async function AdminFinance() {
-  const [topup, refund, promo, adjust, leadCharge, cardRefund, walletAgg, balance, payouts] =
-    await Promise.all([
-      sumByType("TOPUP"),
-      sumByType("REFUND"),
-      sumByType("PROMO_CREDIT"),
-      sumByType("ADMIN_ADJUST"),
-      sumByType("LEAD_CHARGE"),
-      sumByType("CARD_REFUND"),
-      prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
-      getStripeBalance(),
-      listRecentPayouts(),
-    ]);
+  const [topup, refund, leadCharge, cardRefund, walletAgg, balance, payouts] = await Promise.all([
+    sumByType("TOPUP"),
+    sumByType("REFUND"),
+    sumByType("LEAD_CHARGE"),
+    sumByType("CARD_REFUND"),
+    prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
+    getStripeBalance(),
+    listRecentPayouts(),
+  ]);
 
   const cardRefundsOut = Math.abs(cardRefund);
   const netCashCollected = topup + cardRefund;
@@ -44,7 +41,7 @@ export default async function AdminFinance() {
       <PageHeader
         kicker="Cash & revenue"
         title="Finance"
-        subtitle="Card cash in, lead revenue, wallet liability, and Stripe payouts."
+        subtitle="Card top-ups, lead revenue, wallet restorations, and Stripe payouts."
       />
 
       <div
@@ -54,7 +51,7 @@ export default async function AdminFinance() {
         <StatCard
           label="Net cash collected"
           value={formatMoney(netCashCollected)}
-          caption="Card top-ups minus refunds to card."
+          caption="Card top-ups minus any refunds to card."
           highlight
         />
         <StatCard
@@ -69,19 +66,14 @@ export default async function AdminFinance() {
           caption="Prepaid balances still held for contractors."
         />
         <StatCard
+          label="Lead restorations"
+          value={formatMoney(refund)}
+          caption="Lead charges restored to contractor wallets."
+        />
+        <StatCard
           label="Card refunds out"
           value={formatMoney(cardRefundsOut)}
-          caption="Real money returned to contractor cards."
-        />
-        <StatCard
-          label="Promo credit issued"
-          value={formatMoney(promo)}
-          caption="Promotional balance — not real cash."
-        />
-        <StatCard
-          label="Wallet refunds / corrections"
-          value={formatMoney(refund + adjust)}
-          caption="Internal refund credits + admin deducts."
+          caption="Historical money returned to cards (legacy)."
         />
       </div>
 

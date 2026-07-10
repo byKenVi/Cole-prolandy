@@ -30,7 +30,7 @@ export function ContractorSidebar({
 }) {
   const pathname = usePathname();
   return (
-    <aside className="hidden w-[266px] flex-none flex-col bg-[#3B372F] px-5 pb-[22px] pt-[26px] text-[#EFE7D8] md:sticky md:top-4 md:flex md:h-[calc(100vh-2.5rem)] md:overflow-y-auto md:rounded-l-[26px]">
+    <aside className="hidden w-[266px] flex-none flex-col bg-[#3B372F] px-5 pb-[22px] pt-[26px] text-[#EFE7D8] md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto">
       {/* Wordmark */}
       <div className="flex items-baseline gap-[9px] px-[6px] pt-[2px]">
         <Link href="/home" className="font-vibes text-[34px] leading-none text-[#F1E7D6]">
