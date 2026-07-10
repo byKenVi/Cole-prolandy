@@ -248,8 +248,8 @@ export function PricingGroup({
 }
 
 const colLabel: React.CSSProperties = {
-  font: "600 11px/1 'Inter'",
-  letterSpacing: ".05em",
+  font: "600 10px/1 var(--mono)",
+  letterSpacing: ".08em",
   textTransform: "uppercase",
   color: "var(--ink3)",
 };

@@ -7,6 +7,7 @@ import { MapPin, Search, ChevronDown, Hammer, MessageSquare } from "lucide-react
 import { WalletCard } from "@/components/wallet-card";
 import { LeadFeedCard } from "@/components/lead-feed-card";
 import { iconSrcFor } from "@/lib/project-icons";
+import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import { timeAgo } from "@/lib/format";
 
@@ -24,7 +25,7 @@ export type FeedRow = {
 const GRID =
   "grid-cols-[minmax(200px,2.6fr)_minmax(130px,1.5fr)_84px_100px_110px_110px]";
 
-type TierTab = "all" | "t1" | "t2";
+type TierTab = "all" | "t1" | "t2" | "t3";
 type SortOrder = "newest" | "oldest";
 
 export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletCents: number }) {
@@ -33,13 +34,21 @@ export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletC
   const [sort, setSort] = useState<SortOrder>("newest");
 
   const countAll = rows.length;
-  const countT1 = rows.filter((r) => r.tier < 2).length;
-  const countT2 = rows.filter((r) => r.tier >= 2).length;
+  const countT1 = rows.filter((r) => r.tier === 1).length;
+  const countT2 = rows.filter((r) => r.tier === 2).length;
+  const countT3 = rows.filter((r) => r.tier === 3).length;
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = rows.filter((r) => {
-      const byTier = tab === "all" ? true : tab === "t2" ? r.tier >= 2 : r.tier < 2;
+      const byTier =
+        tab === "all"
+          ? true
+          : tab === "t1"
+            ? r.tier === 1
+            : tab === "t2"
+              ? r.tier === 2
+              : r.tier === 3;
       if (!byTier) return false;
       if (!q) return true;
       return (
@@ -94,17 +103,22 @@ export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletC
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4 px-5 py-4 md:px-[34px]">
-        <div role="tablist" aria-label="Filter leads by tier" className="flex gap-0.5 rounded-[12px] bg-[#F1E8D8] p-1">
+      <div className="flex items-center justify-between gap-3 px-5 py-4 md:px-[34px]">
+        <div
+          role="tablist"
+          aria-label="Filter leads by tier"
+          className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto rounded-[12px] bg-[#F1E8D8] p-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-none [&::-webkit-scrollbar]:hidden"
+        >
           <Tab label="New" count={countAll} active={tab === "all"} onSelect={() => setTab("all")} />
           <Tab label="Tier 1" count={countT1} active={tab === "t1"} onSelect={() => setTab("t1")} />
           <Tab label="Tier 2" count={countT2} active={tab === "t2"} onSelect={() => setTab("t2")} />
+          <Tab label="Tier 3" count={countT3} active={tab === "t3"} onSelect={() => setTab("t3")} />
         </div>
         <button
           type="button"
           onClick={() => setSort((s) => (s === "newest" ? "oldest" : "newest"))}
           aria-label={`Sort by date received: ${sort === "newest" ? "newest first" : "oldest first"}. Tap to toggle.`}
-          className="flex h-[38px] items-center gap-[7px] rounded-[10px] border border-[#E6DFD1] bg-white px-[13px] text-[13px] font-medium text-[#5A4E3E] transition-colors hover:bg-[#F7F0E3]"
+          className="flex h-[38px] flex-none items-center gap-[7px] rounded-[10px] border border-[#E6DFD1] bg-white px-[13px] text-[13px] font-medium text-[#5A4E3E] transition-colors hover:bg-[#F7F0E3]"
         >
           Sort: {sort === "newest" ? "Newest" : "Oldest"}
           <ChevronDown className="h-[15px] w-[15px]" strokeWidth={1.8} aria-hidden />
@@ -199,7 +213,7 @@ function Tab({
       role="tab"
       aria-selected={active}
       onClick={onSelect}
-      className={`flex items-center gap-1.5 rounded-[9px] px-[15px] py-2 text-[13px] font-semibold transition-colors ${
+      className={`flex flex-none items-center gap-1.5 whitespace-nowrap rounded-[9px] px-[15px] py-2 text-[13px] font-semibold transition-colors ${
         active ? "bg-white text-[#3A352D] shadow-[0_1px_3px_rgba(58,53,45,0.14)]" : "text-[#8A7E68] hover:text-[#5A4E3E]"
       }`}
     >
@@ -210,7 +224,7 @@ function Tab({
 
 function FeedTableRow({ row }: { row: FeedRow }) {
   const src = iconSrcFor({ icon: row.categoryIcon, category: row.categoryName, project: row.projectTypeName });
-  const t2 = row.tier >= 2;
+  const pill = tierPill(row.tier);
   return (
     <Link
       href={`/leads/${row.matchId}`}
@@ -240,13 +254,9 @@ function FeedTableRow({ row }: { row: FeedRow }) {
       <div>
         <span
           className="whitespace-nowrap rounded-full px-[10px] py-1.5 text-[11px] font-semibold"
-          style={
-            t2
-              ? { color: "#8A5A1E", background: "#F4E6CE" }
-              : { color: "#7A6E58", background: "#EFE7D8" }
-          }
+          style={{ color: pill.color, background: pill.background }}
         >
-          Tier {t2 ? 2 : 1}
+          {pill.label}
         </span>
       </div>
       <div className="text-[13px] leading-[1.3] text-[#8A7E68]">{timeAgo(row.receivedAt)}</div>

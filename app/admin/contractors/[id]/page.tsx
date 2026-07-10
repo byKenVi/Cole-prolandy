@@ -11,7 +11,7 @@ import { CardActions, CardRefundButton } from "@/components/admin/card-actions";
 import { ViewAsButton } from "@/components/admin/view-as-button";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { RowLink } from "@/components/admin/row-link";
-import { deleteContractor } from "@/app/actions/admin";
+import { deactivateContractor, reactivateContractor } from "@/app/actions/admin";
 import { LeadMatchStatusBadge } from "@/components/status-badge";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
@@ -94,6 +94,7 @@ export default async function ContractorDetail({
               <Badge variant="neutral">Free</Badge>
             )}
             {!contractor.clerkUserId && <Badge variant="neutral">Not signed in</Badge>}
+            {contractor.deactivatedAt && <Badge variant="danger">Deactivated</Badge>}
           </div>
           <p className="text-sm" style={{ color: "var(--ink2)" }}>
             {contractor.contractorType.name} · {contractor.email} · {contractor.phone}
@@ -103,13 +104,22 @@ export default async function ContractorDetail({
           <Button asChild variant="outline" size="sm">
             <Link href={`/admin/contractors/${contractor.id}/edit`}>Edit</Link>
           </Button>
-          <ViewAsButton contractorId={contractor.id} />
-          <DeleteButton
-            onDelete={deleteContractor.bind(null, contractor.id)}
-            redirectTo="/admin/contractors"
-            label="Delete"
-            confirmLabel="Delete contractor"
-          />
+          {!contractor.deactivatedAt && <ViewAsButton contractorId={contractor.id} />}
+          {contractor.deactivatedAt ? (
+            <DeleteButton
+              onDelete={reactivateContractor.bind(null, contractor.id)}
+              label="Reactivate"
+              confirmLabel="Confirm reactivate"
+              showTrashIcon={false}
+            />
+          ) : (
+            <DeleteButton
+              onDelete={deactivateContractor.bind(null, contractor.id)}
+              redirectTo="/admin/contractors"
+              label="Deactivate"
+              confirmLabel="Confirm deactivate"
+            />
+          )}
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { authMode, getSession } from "@/lib/auth";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -23,16 +24,30 @@ export default async function ContractorLayout({ children }: { children: React.R
   const clerk = authMode() === "clerk";
   const session = await getSession();
 
+  // Admins land on /admin after login; keep them out of the blank contractor shell
+  // unless they are explicitly "viewing as" a contractor.
+  if (session.role === "admin" && !session.viewingAs) {
+    redirect("/admin");
+  }
+  if (session.deactivated) {
+    redirect("/deactivated");
+  }
+
   const contractor = session.contractorId
     ? await prisma.contractor.findUnique({
         where: { id: session.contractorId },
         select: {
           walletBalanceCents: true,
           name: true,
+          deactivatedAt: true,
           contractorType: { select: { name: true } },
         },
       })
     : null;
+
+  if (contractor?.deactivatedAt) {
+    redirect("/deactivated");
+  }
 
   return (
     <div className="min-h-screen bg-[#EFE7D8]">

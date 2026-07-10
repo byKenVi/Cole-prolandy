@@ -3,7 +3,7 @@ import { getSession, authMode } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UserMenu } from "@/components/auth/user-menu";
 import { AdminShell } from "@/components/admin/admin-shell";
-import { getAdminTheme } from "@/lib/admin-theme.server";
+import { getAdminTheme, getAdminSidebarCollapsed } from "@/lib/admin-theme.server";
 import { formatMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +16,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const clerk = authMode() === "clerk";
 
   // Sidebar summary + initial theme. All read-only, no money/state mutation.
-  const [theme, openLeads, walletAgg, heldAcross] = await Promise.all([
+  const [theme, collapsed, openLeads, walletAgg, heldAcross] = await Promise.all([
     getAdminTheme(),
+    getAdminSidebarCollapsed(),
     prisma.lead.count({ where: { status: { in: ["NEW", "DISTRIBUTED"] } } }),
     prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
     prisma.contractor.count({ where: { walletBalanceCents: { gt: 0 } } }),
@@ -26,6 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <AdminShell
       initialTheme={theme}
+      initialCollapsed={collapsed}
       leadCount={openLeads}
       walletFloat={formatMoney(walletAgg._sum.walletBalanceCents ?? 0)}
       heldAcross={heldAcross}

@@ -15,7 +15,7 @@ export default function SignInPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-12">
       <BrandLogo className="h-10" priority />
-      <SignIn />
+      <SignIn forceRedirectUrl="/post-auth" fallbackRedirectUrl="/post-auth" />
     </main>
   );
 }

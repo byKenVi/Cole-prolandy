@@ -70,10 +70,11 @@ export function ContractorFilters({ q, filter }: { q: string; filter: string }) 
           cursor: "pointer",
         }}
       >
-        <option value="">All plans</option>
+        <option value="">Active</option>
         <option value="pro">Pro</option>
         <option value="toppro">Top Pro</option>
         <option value="free">Free</option>
+        <option value="deactivated">Deactivated</option>
       </select>
     </div>
   );

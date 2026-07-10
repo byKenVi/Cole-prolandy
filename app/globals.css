@@ -195,7 +195,7 @@ textarea:focus-visible,
   --card: #ffffff;
   --card2: #faf4e9;
   --sage: #e7ede8;
-  --sageFg: #2f4a3c;
+  --sageFg: #2f5340;
   --ink: #3a352d;
   --ink2: #6b6459;
   --ink3: #a79e8d;
@@ -212,12 +212,20 @@ textarea:focus-visible,
   --danger: #b23b3b;
   --dangerBg: #f5e3e3;
   --dangerLine: #e7d6d2;
-  --pos: #2f4a3c;
+  --pos: #2f5340;
   --posBg: #e7ede8;
   --track: #ebe3d4;
+  /* Sidebar / hero green gradient (matches the reimagined model). */
+  --green: #263b2e;
+  --green2: #1b2a21;
+  --greenFg: #8fa592;
   --shadow: 0 1px 2px rgba(58, 53, 45, 0.05);
+  --shadowSm: 0 4px 14px rgba(58, 53, 45, 0.07);
   --shadowMd: 0 8px 22px rgba(58, 53, 45, 0.08);
   --shadowLg: 0 20px 50px rgba(58, 53, 45, 0.12);
+  /* Type roles used across the admin design. */
+  --display: "Fraunces", ui-serif, Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .admin-theme[data-theme="dark"] {
@@ -244,7 +252,11 @@ textarea:focus-visible,
   --pos: #a9c6b0;
   --posBg: #243029;
   --track: #38332a;
+  --green: #1c2c22;
+  --green2: #141f18;
+  --greenFg: #8fa592;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadowSm: 0 2px 12px rgba(0, 0, 0, 0.42);
   --shadowMd: 0 10px 26px rgba(0, 0, 0, 0.35);
   --shadowLg: 0 22px 54px rgba(0, 0, 0, 0.5);
 }
@@ -345,6 +357,313 @@ textarea:focus-visible,
 }
 .admin-fade-up {
   animation: admin-fade-up 0.3s ease;
+}
+
+/*
+  ----------------------------------------------------------------------------
+  RESPONSIVE LAYER (desktop-first)
+  The admin design is a fixed desktop console. These rules let it degrade
+  gracefully on narrower widths WITHOUT altering the desktop layout: the
+  sidebar collapses to an icon rail, paddings tighten, and wide tables gain a
+  horizontal scroll instead of overflowing the viewport.
+  ----------------------------------------------------------------------------
+*/
+.admin-scroll-x {
+  overflow-x: auto;
+}
+
+/* ── Shell skeleton (layout-critical props live here, not inline) ────────── */
+.admin-shell-root {
+  display: flex;
+  min-height: 100vh;
+}
+.admin-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.admin-main {
+  padding: 32px 40px 56px;
+  width: 100%;
+  max-width: 1300px;
+}
+
+.admin-sidebar {
+  width: 264px;
+  flex: none;
+  z-index: 50;
+  background: linear-gradient(178deg, var(--green), var(--green2));
+  color: #efe7d8;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 18px 18px;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow: hidden;
+  transition:
+    width 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-brand-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 2px 4px 0;
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.admin-collapse-btn,
+.admin-drawer-close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d9d0bf;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-collapse-btn:hover,
+.admin-drawer-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f6eedf;
+}
+.admin-drawer-close {
+  display: none;
+}
+
+.admin-nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 30px;
+}
+.admin-navitem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  color: #b4aa98;
+  font: 500 15px/1 "Inter";
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-navitem:hover {
+  background: rgba(224, 169, 92, 0.09);
+  color: #f6eedf;
+}
+.admin-navitem[data-active="true"] {
+  border-left-color: #e3ab5e;
+  background: rgba(224, 169, 92, 0.14);
+  color: #f6eedf;
+  font-weight: 600;
+}
+.admin-nav-icon {
+  display: flex;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+}
+.admin-nav-icon-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+.admin-nav-label {
+  white-space: nowrap;
+}
+.admin-lead-badge {
+  margin-left: auto;
+  font: 600 11px/1 "Inter";
+  color: #e3ab5e;
+  background: rgba(224, 169, 92, 0.16);
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.admin-wallet-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 15px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-user {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+/* Scrim behind the mobile drawer (only shown on small screens). */
+.admin-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.26s ease, visibility 0.26s ease;
+}
+
+/* Buttons that only make sense at a given breakpoint. */
+.admin-hamburger {
+  display: none;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ── Collapsed rail (desktop only) ──────────────────────────────────────── */
+@media (min-width: 901px) {
+  .admin-shell-root[data-collapsed="true"] .admin-sidebar {
+    width: 82px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-nav-label,
+  .admin-shell-root[data-collapsed="true"] .admin-lead-badge,
+  .admin-shell-root[data-collapsed="true"] .admin-brand-word,
+  .admin-shell-root[data-collapsed="true"] .admin-brand-tag,
+  .admin-shell-root[data-collapsed="true"] .admin-foot-text,
+  .admin-shell-root[data-collapsed="true"] .admin-wallet-body {
+    display: none;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-brand {
+    flex: none;
+    padding: 0;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-brand-row {
+    justify-content: center;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-navitem {
+    justify-content: center;
+    gap: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-left-width: 0;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-wallet-card,
+  .admin-shell-root[data-collapsed="true"] .admin-user {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* ── Narrow desktop / large tablet: tighten paddings ────────────────────── */
+@media (max-width: 1180px) {
+  .admin-main {
+    padding: 28px 26px 52px;
+  }
+  .admin-topbar {
+    padding-left: 26px !important;
+    padding-right: 26px !important;
+  }
+}
+
+/* ── Tablet & phone: sidebar becomes an off-canvas drawer ───────────────── */
+@media (max-width: 900px) {
+  .admin-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 260px;
+    transform: translateX(-100%);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+  .admin-shell-root[data-mobile-open="true"] .admin-sidebar {
+    transform: translateX(0);
+  }
+  .admin-scrim {
+    display: block;
+  }
+  .admin-shell-root[data-mobile-open="true"] .admin-scrim {
+    opacity: 1;
+    visibility: visible;
+  }
+  .admin-collapse-btn {
+    display: none;
+  }
+  .admin-drawer-close {
+    display: inline-flex;
+  }
+  .admin-hamburger {
+    display: inline-flex;
+  }
+  .admin-main {
+    padding: 22px 16px 44px;
+  }
+  .admin-topbar {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  .admin-topbar .admin-search {
+    min-width: 0 !important;
+  }
+  .admin-search-kbd {
+    display: none;
+  }
+}
+
+/* ── Responsive grids (stat cards & tuned grids stack down) ─────────────── */
+@media (max-width: 720px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 640px) {
+  .admin-grid-tight {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .admin-grid-stack {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 460px) {
+  .admin-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

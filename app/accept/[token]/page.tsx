@@ -3,6 +3,7 @@ import { MapPin, Phone, Mail, CheckCircle2, Lock, Hammer } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { AcceptTokenActions } from "@/components/accept-token-actions";
 import { iconSrcFor } from "@/lib/project-icons";
+import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import { timeUntil } from "@/lib/format";
 
@@ -54,7 +55,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
         project: match.lead.projectType.name,
       })
     : null;
-  const t2 = !!match && match.lead.tier >= 2;
+  const pill = match ? tierPill(match.lead.tier) : null;
 
   return (
     <main className="min-h-screen bg-[#EFE7D8] font-inter">
@@ -134,9 +135,9 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
               <div className="my-6 flex flex-wrap gap-2.5">
                 <span
                   className="rounded-full px-[13px] py-2 text-[13px] font-medium"
-                  style={t2 ? { color: "#8A5A1E", background: "#F4E6CE" } : { color: "#5A4E3E", background: "#EFE7D8" }}
+                  style={pill ? { color: pill.color, background: pill.background } : undefined}
                 >
-                  Tier {t2 ? 2 : 1}
+                  {pill?.label}
                 </span>
                 {match.lead.landType && (
                   <span className="rounded-full bg-[#F0EADD] px-[13px] py-2 text-[13px] font-medium text-[#6B6459]">

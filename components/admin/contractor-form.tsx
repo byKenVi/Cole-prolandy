@@ -10,6 +10,8 @@ import { createContractor, updateContractor, type ContractorInput } from "@/app/
 
 type Svc = { id: string; name: string; contractorTypeId: string };
 
+const STEPS = ["Basics", "Trade & services", "Profile"] as const;
+
 export function ContractorForm({
   mode,
   contractorId,
@@ -26,6 +28,7 @@ export function ContractorForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const [step, setStep] = useState(0);
 
   const [name, setName] = useState(initial.name);
   const [email, setEmail] = useState(initial.email);
@@ -45,8 +48,34 @@ export function ContractorForm({
     setServiceIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   }
 
+  function validateStep(s: number): string | null {
+    if (s === 0) {
+      if (!name.trim()) return "Business name is required.";
+      if (!email.trim()) return "Email is required.";
+      if (!phone.trim()) return "Phone is required.";
+    }
+    if (s === 1) {
+      if (!typeId) return "Choose a trade.";
+    }
+    return null;
+  }
+
+  function next() {
+    const err = validateStep(step);
+    if (err) {
+      setMessage(err);
+      return;
+    }
+    setMessage(null);
+    setStep((v) => Math.min(v + 1, STEPS.length - 1));
+  }
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (mode === "create" && step < STEPS.length - 1) {
+      next();
+      return;
+    }
     setMessage(null);
     const payload: ContractorInput = {
       name,
@@ -73,109 +102,184 @@ export function ContractorForm({
     });
   }
 
+  const isCreate = mode === "create";
+
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-5">
-      <div>
-        <Label htmlFor="name">Business / contractor name</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-      </div>
+    <form onSubmit={onSubmit} className="flex max-w-xl flex-col gap-5">
+      {isCreate && <StepIndicator steps={STEPS} current={step} />}
 
-      <div>
-        <Label htmlFor="email">Email (used to link their login later)</Label>
-        <Input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
+      {(!isCreate || step === 0) && (
+        <section className="flex flex-col gap-5">
+          {isCreate && <StepTitle title="Basics" subtitle="Who is this contractor?" />}
+          <div>
+            <Label htmlFor="name">Business / contractor name</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required={!isCreate} />
+          </div>
+          <div>
+            <Label htmlFor="email">Email (used to link their login later)</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required={!isCreate}
+            />
+          </div>
+          <div>
+            <Label htmlFor="phone">Phone (for lead texts)</Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required={!isCreate}
+            />
+          </div>
+        </section>
+      )}
 
-      <div>
-        <Label htmlFor="phone">Phone (for lead texts)</Label>
-        <Input
-          id="phone"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          required
-        />
-      </div>
+      {(!isCreate || step === 1) && (
+        <section className="flex flex-col gap-5">
+          {isCreate && <StepTitle title="Trade & services" subtitle="What work do they take?" />}
+          <div>
+            <Label htmlFor="type">Trade</Label>
+            <Select id="type" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
+              <option value="" disabled>
+                Choose a trade
+              </option>
+              {contractorTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label>Services offered</Label>
+            <div className="flex flex-col gap-2">
+              {typeServices.length === 0 && (
+                <p className="text-sm text-text-muted">Choose a trade to see its services.</p>
+              )}
+              {typeServices.map((s) => (
+                <label
+                  key={s.id}
+                  className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-3 py-2"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5"
+                    checked={serviceIds.includes(s.id)}
+                    onChange={() => toggleService(s.id)}
+                  />
+                  <span className="text-base text-text">{s.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
-      <div>
-        <Label htmlFor="type">Trade</Label>
-        <Select id="type" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-          <option value="" disabled>
-            Choose a trade
-          </option>
-          {contractorTypes.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      <div>
-        <Label>Services offered</Label>
-        <div className="flex flex-col gap-2">
-          {typeServices.length === 0 && (
-            <p className="text-sm text-text-muted">Choose a trade to see its services.</p>
-          )}
-          {typeServices.map((s) => (
-            <label
-              key={s.id}
-              className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-3 py-2"
-            >
-              <input
-                type="checkbox"
-                className="h-5 w-5"
-                checked={serviceIds.includes(s.id)}
-                onChange={() => toggleService(s.id)}
-              />
-              <span className="text-base text-text">{s.name}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="hours">Business hours</Label>
-        <Input
-          id="hours"
-          value={hours}
-          onChange={(e) => setHours(e.target.value)}
-          placeholder="Mon–Fri 7am–6pm"
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="about">About the business</Label>
-        <Textarea
-          id="about"
-          value={about}
-          onChange={(e) => setAbout(e.target.value)}
-          placeholder="A short description landowners will see."
-        />
-      </div>
-
-      <label className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-3 py-2">
-        <input
-          type="checkbox"
-          className="h-5 w-5"
-          checked={isPro}
-          onChange={(e) => setIsPro(e.target.checked)}
-        />
-        <span className="text-base text-text">Pro contractor</span>
-      </label>
+      {(!isCreate || step === 2) && (
+        <section className="flex flex-col gap-5">
+          {isCreate && <StepTitle title="Profile" subtitle="Optional details landowners may see." />}
+          <div>
+            <Label htmlFor="hours">Business hours</Label>
+            <Input
+              id="hours"
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              placeholder="Mon–Fri 7am–6pm"
+            />
+          </div>
+          <div>
+            <Label htmlFor="about">About the business</Label>
+            <Textarea
+              id="about"
+              value={about}
+              onChange={(e) => setAbout(e.target.value)}
+              placeholder="A short description landowners will see."
+            />
+          </div>
+          <label className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-3 py-2">
+            <input
+              type="checkbox"
+              className="h-5 w-5"
+              checked={isPro}
+              onChange={(e) => setIsPro(e.target.checked)}
+            />
+            <span className="text-base text-text">Pro contractor</span>
+          </label>
+        </section>
+      )}
 
       {message && (
         <p className="rounded-sm bg-danger-soft p-3 text-sm font-medium text-danger">{message}</p>
       )}
 
-      <Button type="submit" variant="accent" size="cta" loading={pending} disabled={pending}>
-        {mode === "create" ? "Create contractor" : "Save changes"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        {isCreate && step > 0 && (
+          <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)} disabled={pending}>
+            Back
+          </Button>
+        )}
+        {isCreate && step < STEPS.length - 1 ? (
+          <Button type="button" variant="accent" onClick={next}>
+            Continue
+          </Button>
+        ) : (
+          <Button type="submit" variant="accent" size="cta" loading={pending} disabled={pending}>
+            {mode === "create" ? "Create contractor" : "Save changes"}
+          </Button>
+        )}
+      </div>
     </form>
+  );
+}
+
+function StepIndicator({ steps, current }: { steps: readonly string[]; current: number }) {
+  return (
+    <ol className="mb-1 flex items-center gap-2" aria-label="Form steps">
+      {steps.map((label, i) => (
+        <li key={label} className="flex items-center gap-2">
+          <span
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              font: "600 12px/1 'Inter'",
+              background: i <= current ? "var(--gold)" : "var(--field)",
+              color: i <= current ? "#fff" : "var(--ink3)",
+              border: i <= current ? "none" : "1px solid var(--fieldLine)",
+            }}
+          >
+            {i + 1}
+          </span>
+          <span
+            className="hidden sm:inline"
+            style={{
+              font: "600 12px/1 'Inter'",
+              color: i === current ? "var(--ink)" : "var(--ink3)",
+            }}
+          >
+            {label}
+          </span>
+          {i < steps.length - 1 && (
+            <span style={{ width: 18, height: 1, background: "var(--line)", display: "inline-block" }} />
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function StepTitle({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div>
+      <h2 style={{ margin: 0, font: "600 18px/1.2 'Inter'", color: "var(--ink)" }}>{title}</h2>
+      <p style={{ margin: "6px 0 0", font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>{subtitle}</p>
+    </div>
   );
 }

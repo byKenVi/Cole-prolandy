@@ -21,8 +21,8 @@ export type LeadRow = {
 
 const GRID = "52px minmax(220px,2.4fr) minmax(170px,1.6fr) 84px 116px 130px 108px";
 const HEAD_CELL: React.CSSProperties = {
-  font: "600 11px/1 'Inter'",
-  letterSpacing: ".06em",
+  font: "600 10px/1 var(--mono)",
+  letterSpacing: ".08em",
   textTransform: "uppercase",
   color: "var(--ink3)",
 };
@@ -252,7 +252,7 @@ export function LeadsTable({
             <span style={{ font: "400 13px/1.3 'Inter'", color: "var(--ink2)" }}>{row.sent}</span>
             <span
               style={{
-                font: "600 17px/1 'Inter'",
+                font: "600 17px/1 var(--display)",
                 color: "var(--ink)",
                 fontVariantNumeric: "tabular-nums",
                 textAlign: "right",

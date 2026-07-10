@@ -14,3 +14,10 @@
 export type AdminTheme = "light" | "dark";
 
 export const ADMIN_THEME_COOKIE = "lp_admin_theme";
+
+/**
+ * Persists the admin sidebar collapsed/expanded preference. Mirrors the theme
+ * cookie approach: written client-side on toggle, read server-side in the admin
+ * layout so first paint already matches (no rail flicker). Value: "collapsed".
+ */
+export const ADMIN_SIDEBAR_COOKIE = "lp_admin_sidebar";

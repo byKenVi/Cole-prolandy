@@ -36,15 +36,36 @@ export function Panel({
   );
 }
 
-/** Screen title + subtitle + optional right-aligned action (e.g. New lead). */
+/** Small gold monospace kicker shown above a screen title. */
+export function Kicker({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      style={{
+        margin: "0 0 8px",
+        font: "600 12px/1 var(--mono)",
+        letterSpacing: ".12em",
+        textTransform: "uppercase",
+        color: "var(--gold)",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+/** Screen kicker + title + subtitle + optional right-aligned action (e.g. New lead). */
 export function PageHeader({
+  kicker,
   title,
   subtitle,
   action,
+  titleSize = 34,
 }: {
+  kicker?: React.ReactNode;
   title: string;
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   action?: React.ReactNode;
+  titleSize?: number;
 }) {
   return (
     <div
@@ -53,16 +74,18 @@ export function PageHeader({
         alignItems: "flex-start",
         justifyContent: "space-between",
         gap: 20,
-        marginBottom: 24,
+        marginBottom: 22,
       }}
     >
       <div>
+        {kicker && <Kicker>{kicker}</Kicker>}
         <h1
           className="font-fraunces"
           style={{
             fontWeight: 600,
-            fontSize: 34,
-            letterSpacing: "-.01em",
+            fontSize: titleSize,
+            lineHeight: 1,
+            letterSpacing: "-.015em",
             margin: 0,
             color: "var(--ink)",
           }}
@@ -70,7 +93,9 @@ export function PageHeader({
           {title}
         </h1>
         {subtitle && (
-          <p style={{ margin: "7px 0 0", color: "var(--ink2)", fontSize: 15 }}>{subtitle}</p>
+          <p style={{ margin: "9px 0 0", color: "var(--ink2)", fontSize: 15, lineHeight: 1.55 }}>
+            {subtitle}
+          </p>
         )}
       </div>
       {action}
@@ -186,7 +211,7 @@ export function StatCard({
       <p
         style={{
           margin: "0 0 8px",
-          font: "600 11px/1 'Inter'",
+          font: "600 11px/1 var(--mono)",
           letterSpacing: ".05em",
           textTransform: "uppercase",
           color: "var(--ink3)",
@@ -197,7 +222,7 @@ export function StatCard({
       <p
         style={{
           margin: 0,
-          font: "600 24px/1 'Inter'",
+          font: "600 24px/1 var(--display)",
           color: valueColor,
           fontVariantNumeric: "tabular-nums",
         }}

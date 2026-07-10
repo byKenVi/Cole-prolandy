@@ -40,13 +40,24 @@ export default async function PricingPage() {
         }}
       >
         <div style={{ maxWidth: 560 }}>
+          <p
+            style={{
+              margin: "0 0 8px",
+              font: "600 12px/1 var(--mono)",
+              letterSpacing: ".12em",
+              textTransform: "uppercase",
+              color: "var(--gold)",
+            }}
+          >
+            Lead pricing
+          </p>
           <h1
             className="font-fraunces"
-            style={{ fontWeight: 600, fontSize: 34, letterSpacing: "-.01em", margin: 0, color: "var(--ink)" }}
+            style={{ fontWeight: 600, fontSize: 34, lineHeight: 1, letterSpacing: "-.015em", margin: 0, color: "var(--ink)" }}
           >
             Pricing matrix
           </h1>
-          <p style={{ margin: "8px 0 0", color: "var(--ink2)", fontSize: 15, lineHeight: 1.6 }}>
+          <p style={{ margin: "9px 0 0", color: "var(--ink2)", fontSize: 15, lineHeight: 1.6 }}>
             What a contractor pays for a lead, set per{" "}
             <b style={{ color: "var(--ink)" }}>trade × project × tier</b>. Edits apply to new leads
             only — existing leads keep their snapshotted price.
@@ -64,7 +75,7 @@ export default async function PricingPage() {
           <p
             style={{
               margin: "0 0 6px",
-              font: "600 11px/1 'Inter'",
+              font: "600 11px/1 var(--mono)",
               letterSpacing: ".05em",
               textTransform: "uppercase",
               color: "var(--sageFg)",
@@ -76,7 +87,7 @@ export default async function PricingPage() {
           <p
             style={{
               margin: 0,
-              font: "600 28px/1 'Inter'",
+              font: "600 28px/1 var(--display)",
               color: "var(--sageFg)",
               fontVariantNumeric: "tabular-nums",
             }}

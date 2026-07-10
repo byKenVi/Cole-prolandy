@@ -61,12 +61,14 @@ export default async function AdminLeads({
   return (
     <div className="admin-fade-up">
       <PageHeader
+        kicker="Distribution"
         title="Leads"
-        subtitle="Every job distributed to your contractors — newest first."
+        subtitle="Every job distributed to your contractors — newest first. Prices are snapshotted at send."
         action={<GoldButtonLink href="/admin/leads/new">New lead</GoldButtonLink>}
       />
 
       <div
+        className="admin-stat-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(4,1fr)",

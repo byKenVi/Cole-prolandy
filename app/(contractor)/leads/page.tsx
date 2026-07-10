@@ -3,6 +3,7 @@ import { MapPin, Phone, Hammer } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { iconSrcFor } from "@/lib/project-icons";
+import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import { LeadFeedCard } from "@/components/lead-feed-card";
 
@@ -121,7 +122,7 @@ function Head({ children, className = "" }: { children?: React.ReactNode; classN
 
 function LeadRow({ row }: { row: Row }) {
   const src = iconSrcFor({ icon: row.categoryIcon, category: row.categoryName, project: row.projectTypeName });
-  const t2 = row.tier >= 2;
+  const pill = tierPill(row.tier);
   return (
     <div
       className={`grid ${GRID} min-w-[720px] items-center gap-[14px] border-b border-[#F2EBDD] px-6 py-[15px] last:border-b-0`}
@@ -160,9 +161,9 @@ function LeadRow({ row }: { row: Row }) {
       <div>
         <span
           className="whitespace-nowrap rounded-full px-[10px] py-1.5 text-[11px] font-semibold"
-          style={t2 ? { color: "#8A5A1E", background: "#F4E6CE" } : { color: "#7A6E58", background: "#EFE7D8" }}
+          style={{ color: pill.color, background: pill.background }}
         >
-          Tier {t2 ? 2 : 1}
+          {pill.label}
         </span>
       </div>
       <div className="text-right text-[17px] font-semibold tabular-nums text-[#3A352D]">

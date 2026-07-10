@@ -46,12 +46,10 @@ export function WalletAdjustForm({ contractorId }: { contractorId: string }) {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <p className="rounded-sm bg-primary-soft p-3 text-sm text-text-muted">
-        Real money enters a wallet only through the contractor&apos;s own card (Stripe). The admin
-        can&apos;t add spendable &quot;funds.&quot; You can issue a{" "}
-        <strong className="text-text">refund</strong> (money they paid),{" "}
-        <strong className="text-text">promo credit</strong> (labeled promotional balance, not real
-        money), or <strong className="text-text">deduct</strong> to correct a mistake. Every action
-        is logged.
+        <strong className="text-text">Refund</strong> returns money they paid.{" "}
+        <strong className="text-text">Promo credit</strong> adds promotional balance (not real cash).{" "}
+        <strong className="text-text">Deduct</strong> corrects a mistake. Real card money moves under
+        Card actions below.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">

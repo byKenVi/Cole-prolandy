@@ -16,6 +16,7 @@ import {
   iconSrcForKey,
   type IconKey,
 } from "@/lib/project-icons";
+import { TrashIcon } from "@/components/admin/trash-icon";
 
 type Category = {
   id: string;
@@ -271,9 +272,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
                       cursor: "pointer",
                     }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" />
-                    </svg>
+                    <TrashIcon size={16} />
                   </button>
                 </div>
               </div>

@@ -231,27 +231,113 @@ export async function returnRealBalanceToCardAction(input: {
   return { ok: true, message: res.message };
 }
 
-// ── Contractor delete (integrity-guarded) ──
+// ── Contractor soft-deactivate / hard-delete ──
+
+/** Soft-deactivate: blocks login + lead distribution, keeps money/lead history. */
+export async function deactivateContractor(id: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const contractor = await prisma.contractor.findUnique({
+    where: { id },
+    select: { id: true, name: true, deactivatedAt: true },
+  });
+  if (!contractor) return { ok: false, message: "Contractor not found." };
+  if (contractor.deactivatedAt) {
+    return { ok: false, message: "Contractor is already deactivated." };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.contractor.update({
+      where: { id },
+      data: { deactivatedAt: new Date() },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: "contractor.deactivated.admin",
+        targetType: "Contractor",
+        targetId: id,
+        metadata: { name: contractor.name },
+      },
+    });
+  });
+  revalidatePath("/admin/contractors");
+  revalidatePath(`/admin/contractors/${id}`);
+  return { ok: true, message: "Contractor deactivated" };
+}
+
+export async function reactivateContractor(id: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const contractor = await prisma.contractor.findUnique({
+    where: { id },
+    select: { id: true, name: true, deactivatedAt: true },
+  });
+  if (!contractor) return { ok: false, message: "Contractor not found." };
+  if (!contractor.deactivatedAt) {
+    return { ok: false, message: "Contractor is already active." };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.contractor.update({
+      where: { id },
+      data: { deactivatedAt: null },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: "contractor.reactivated.admin",
+        targetType: "Contractor",
+        targetId: id,
+        metadata: { name: contractor.name },
+      },
+    });
+  });
+  revalidatePath("/admin/contractors");
+  revalidatePath(`/admin/contractors/${id}`);
+  return { ok: true, message: "Contractor reactivated" };
+}
+
+/**
+ * Hard delete — only when there is no wallet balance, no lead associations, and
+ * no wallet history. Prefer deactivateContractor for anything with history.
+ */
 export async function deleteContractor(id: string): Promise<Result> {
   const admin = await requireAdmin();
   const contractor = await prisma.contractor.findUnique({
     where: { id },
-    select: { id: true, name: true, _count: { select: { walletTransactions: true } } },
+    select: {
+      id: true,
+      name: true,
+      walletBalanceCents: true,
+      _count: { select: { walletTransactions: true, leadMatches: true } },
+    },
   });
   if (!contractor) return { ok: false, message: "Contractor not found." };
 
-  // Preserve money + audit integrity: never delete a contractor that has any
-  // wallet history (top-ups, charges, refunds, credits). Edit instead.
+  if (contractor.walletBalanceCents > 0) {
+    return {
+      ok: false,
+      message:
+        "This contractor still has an active wallet balance. Deactivate instead, or clear the balance first.",
+    };
+  }
+  if (contractor._count.leadMatches > 0) {
+    return {
+      ok: false,
+      message:
+        "This contractor has associated leads. Deactivate instead to preserve history.",
+    };
+  }
   if (contractor._count.walletTransactions > 0) {
     return {
       ok: false,
       message:
-        "This contractor has wallet history (top-ups, charges or refunds), so it can't be deleted without destroying money records. Edit the contractor instead.",
+        "This contractor has wallet history (top-ups, charges or refunds), so it can't be deleted. Deactivate instead.",
     };
   }
 
   await prisma.$transaction(async (tx) => {
-    // Cascades ContractorService + any non-charged LeadMatches (schema onDelete).
     await tx.contractor.delete({ where: { id } });
     await tx.auditLog.create({
       data: {

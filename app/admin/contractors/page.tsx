@@ -38,6 +38,8 @@ export default async function AdminContractors({
   if (filter === "pro") where.isPro = true;
   if (filter === "free") where.isPro = false;
   if (filter === "toppro") where.isTopPro = true;
+  if (filter === "deactivated") where.deactivatedAt = { not: null };
+  else if (filter !== "all") where.deactivatedAt = null;
 
   const [contractors, totalCount, proCount, walletAgg] = await Promise.all([
     prisma.contractor.findMany({
@@ -53,12 +55,14 @@ export default async function AdminContractors({
   return (
     <div className="admin-fade-up">
       <PageHeader
+        kicker="Network"
         title="Contractors"
         subtitle="The pros who receive and accept your leads."
         action={<GoldButtonLink href="/admin/contractors/new">New contractor</GoldButtonLink>}
       />
 
       <div
+        className="admin-stat-grid"
         style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}
       >
         <StatCard label="Total contractors" value={String(totalCount)} />
@@ -140,6 +144,11 @@ export default async function AdminContractors({
                         Not signed in
                       </Chip>
                     )}
+                    {c.deactivatedAt && (
+                      <Chip bg="var(--dangerBg)" fg="var(--danger)">
+                        Deactivated
+                      </Chip>
+                    )}
                   </div>
                   <p style={{ margin: "5px 0 0", font: "400 13px/1 'Inter'", color: "var(--ink2)" }}>
                     {c.contractorType.name} · <span style={{ color: "var(--ink3)" }}>{c.email}</span>
@@ -151,7 +160,7 @@ export default async function AdminContractors({
                   <p
                     style={{
                       margin: 0,
-                      font: "600 15px/1 'Inter'",
+                      font: "600 15px/1 var(--display)",
                       color: "var(--ink)",
                       fontVariantNumeric: "tabular-nums",
                     }}
@@ -162,7 +171,10 @@ export default async function AdminContractors({
                     balance
                   </p>
                 </div>
-                <ContractorRowActions contractorId={c.id} />
+                <ContractorRowActions
+                  contractorId={c.id}
+                  deactivated={Boolean(c.deactivatedAt)}
+                />
               </div>
             </div>
           ))

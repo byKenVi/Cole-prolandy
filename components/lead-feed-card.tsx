@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Phone, Hammer, ChevronRight } from "lucide-react";
 import { iconSrcFor } from "@/lib/project-icons";
+import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import { timeAgo } from "@/lib/format";
 
@@ -45,13 +46,13 @@ function CardIcon({ lead }: { lead: FeedLead }) {
 }
 
 function TierPill({ tier }: { tier: number }) {
-  const t2 = tier >= 2;
+  const pill = tierPill(tier);
   return (
     <span
       className="whitespace-nowrap rounded-full px-[10px] py-1.5 text-[11px] font-semibold"
-      style={t2 ? { color: "#8A5A1E", background: "#F4E6CE" } : { color: "#7A6E58", background: "#EFE7D8" }}
+      style={{ color: pill.color, background: pill.background }}
     >
-      Tier {t2 ? 2 : 1}
+      {pill.label}
     </span>
   );
 }

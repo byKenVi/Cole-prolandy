@@ -86,6 +86,8 @@ model Contractor {
   // card" + contractor "1-click recharge". Nullable: null = no reusable card yet.
   stripeDefaultPaymentMethodId String?
   clerkUserId        String?  @unique
+  // Soft-deactivate: blocks login + lead distribution while preserving money/lead history.
+  deactivatedAt      DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -95,6 +97,7 @@ model Contractor {
   walletTransactions WalletTransaction[]
 
   @@index([contractorTypeId])
+  @@index([deactivatedAt])
 }
 
 model ContractorService {

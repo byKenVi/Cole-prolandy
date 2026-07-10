@@ -54,7 +54,7 @@ export default async function SettingsPage() {
         Settings
       </h1>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }} className="admin-grid-stack">
         <div style={cardStyle}>
           <p style={titleStyle}>Lead distribution</p>
           <p style={descStyle}>How leads are shared and how long they stay open.</p>

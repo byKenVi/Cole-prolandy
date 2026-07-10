@@ -1,11 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
-import { RevenueChart, type RevenuePoint, type RevenueRanges } from "@/components/admin/revenue-chart";
-import { PageHeader, GoldButtonLink, Panel, StatCard, IconTile, Chip } from "@/components/admin/ui";
+import type { RevenuePoint } from "@/components/admin/revenue-chart";
+import { PageHeader, GoldButtonLink, Panel, IconTile, Chip } from "@/components/admin/ui";
 import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
 import { iconSrcFor } from "@/lib/project-icons";
-import { formatDate } from "@/lib/format";
 import { leadStatusChip } from "@/lib/admin-display";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +32,7 @@ export default async function AdminDashboard() {
     acceptedMatches,
     expiredMatches,
     walletAgg,
+    heldAcross,
     charges,
     recentLeads,
   ] = await Promise.all([
@@ -43,6 +43,7 @@ export default async function AdminDashboard() {
     prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
     prisma.leadMatch.count({ where: { status: "EXPIRED" } }),
     prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
+    prisma.contractor.count({ where: { walletBalanceCents: { gt: 0 } } }),
     prisma.walletTransaction.findMany({
       where: { type: "LEAD_CHARGE", createdAt: { gte: start365 } },
       select: { amountCents: true, createdAt: true },
@@ -72,12 +73,9 @@ export default async function AdminDashboard() {
     return x.toISOString().slice(0, 10);
   };
   const byDay = new Map<string, number>();
-  const byMonth = new Map<string, number>();
   for (const c of charges) {
     const day = dailyKey(c.createdAt);
     byDay.set(day, (byDay.get(day) ?? 0) + Math.abs(c.amountCents));
-    const month = c.createdAt.toISOString().slice(0, 7);
-    byMonth.set(month, (byMonth.get(month) ?? 0) + Math.abs(c.amountCents));
   }
 
   const dailySeries = (days: number): RevenuePoint[] => {
@@ -94,21 +92,7 @@ export default async function AdminDashboard() {
     });
   };
 
-  const monthlySeries = (): RevenuePoint[] => {
-    const arr: RevenuePoint[] = [];
-    const base = new Date(now.getFullYear(), now.getMonth(), 1);
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(base.getFullYear(), base.getMonth() - i, 1);
-      arr.push({
-        label: d.toLocaleDateString(undefined, { month: "short" }),
-        revenueCents: byMonth.get(d.toISOString().slice(0, 7)) ?? 0,
-      });
-    }
-    return arr;
-  };
-
   const d30 = dailySeries(30);
-  const ranges: RevenueRanges = { d30, d90: dailySeries(90), y1: monthlySeries() };
 
   const revenue30 = d30.reduce((s, p) => s + p.revenueCents, 0);
   // Honest trend: second half vs first half of the 30d window.
@@ -130,46 +114,93 @@ export default async function AdminDashboard() {
   return (
     <div className="admin-fade-up">
       <PageHeader
+        kicker={`Command center · ${dateStr}`}
         title={greeting()}
-        subtitle={`Your marketplace at a glance — ${dateStr}.`}
+        subtitle="Your marketplace at a glance."
+        titleSize={38}
         action={<GoldButtonLink href="/admin/leads/new">New lead</GoldButtonLink>}
       />
 
-      {/* KPI ROW */}
+      {/* HERO STRIP: revenue hero + wallet/stat column */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1.15fr 1.15fr 1fr 1fr",
-          gap: 16,
-          marginBottom: 16,
-        }}
+        className="admin-grid-stack"
+        style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 16, marginBottom: 16 }}
       >
-        <SageStat label="Lead revenue · 30d" value={formatMoney(revenue30)} trend={trendPct} />
-        <SageStat label="Wallet float" value={formatMoney(walletFloat)} />
-        <StatCard label="Open leads" value={String(openLeads)} sub={`${pendingMatches} awaiting a match`} />
-        <StatCard label="Contractors" value={String(contractors)} sub={`${proContractors} on Pro plan`} />
+        <RevenueHero value={formatMoney(revenue30)} trend={trendPct} series={d30} />
+
+        <div style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: 16 }}>
+          <div
+            className="a-lift"
+            style={{
+              background: "var(--sage)",
+              borderRadius: 20,
+              padding: "20px 22px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
+            <p
+              style={{
+                margin: "0 0 10px",
+                font: "600 11px/1 var(--mono)",
+                letterSpacing: ".08em",
+                textTransform: "uppercase",
+                color: "var(--sageFg)",
+                opacity: 0.85,
+              }}
+            >
+              Wallet float
+            </p>
+            <p
+              style={{
+                margin: 0,
+                font: "600 30px/1 var(--display)",
+                color: "var(--sageFg)",
+                letterSpacing: "-.02em",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {formatMoney(walletFloat)}
+            </p>
+            <p style={{ margin: "6px 0 0", font: "500 12px/1 'Inter'", color: "var(--sageFg)", opacity: 0.8 }}>
+              Liability held across {heldAcross} contractor{heldAcross === 1 ? "" : "s"}
+            </p>
+          </div>
+          <div className="admin-grid-tight" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <MiniStat label="Open leads" value={String(openLeads)} sub={`${pendingMatches} awaiting a match`} />
+            <MiniStat label="Contractors" value={String(contractors)} sub={`${proContractors} on Pro plan`} />
+          </div>
+        </div>
       </div>
 
-      {/* CHART + PIPELINE */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.75fr 1fr", gap: 16, marginBottom: 16 }}>
-        <Panel style={{ padding: "24px 26px" }}>
-          <RevenueChart ranges={ranges} />
-        </Panel>
-
-        <Panel style={{ padding: "24px 26px" }}>
+      {/* PIPELINE + RECENT LEADS */}
+      <div
+        className="admin-grid-stack"
+        style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 16 }}
+      >
+        <div
+          style={{
+            background: "var(--card)",
+            border: "1px solid var(--line)",
+            borderRadius: 20,
+            padding: "22px 24px",
+            boxShadow: "var(--shadowSm)",
+          }}
+        >
           <p
             style={{
               margin: "0 0 3px",
               font: "600 13px/1 'Inter'",
-              letterSpacing: ".03em",
+              letterSpacing: ".02em",
               textTransform: "uppercase",
               color: "var(--ink2)",
             }}
           >
             Match pipeline
           </p>
-          <p style={{ margin: "0 0 20px", color: "var(--ink3)", fontSize: 13 }}>
-            {pipelineTotal} match{pipelineTotal === 1 ? "" : "es"} this period.
+          <p style={{ margin: "0 0 18px", color: "var(--ink3)", fontSize: 13 }}>
+            {pipelineTotal} match{pipelineTotal === 1 ? "" : "es"} this period
           </p>
           <div
             style={{
@@ -184,20 +215,14 @@ export default async function AdminDashboard() {
             <div style={{ width: `${pct(acceptedMatches)}%`, background: "var(--gold)" }} />
             <div style={{ width: `${pct(pendingMatches)}%`, background: "#D8B577" }} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
             <PipelineRow color="var(--gold)" label="Accepted" value={acceptedMatches} />
             <PipelineRow color="#D8B577" label="Pending" value={pendingMatches} />
-            <PipelineRow
-              color="var(--track)"
-              border
-              label="Expired"
-              value={expiredMatches}
-              muted
-            />
+            <PipelineRow color="var(--track)" border label="Expired" value={expiredMatches} muted />
           </div>
           <div
             style={{
-              marginTop: 22,
+              marginTop: 20,
               paddingTop: 18,
               borderTop: "1px solid var(--line)",
               display: "flex",
@@ -208,7 +233,7 @@ export default async function AdminDashboard() {
             <span style={{ font: "500 13px/1 'Inter'", color: "var(--ink2)" }}>Acceptance rate</span>
             <span
               style={{
-                font: "600 20px/1 'Inter'",
+                font: "600 20px/1 var(--display)",
                 color: "var(--sageFg)",
                 fontVariantNumeric: "tabular-nums",
               }}
@@ -216,164 +241,246 @@ export default async function AdminDashboard() {
               {acceptanceRate}%
             </span>
           </div>
-        </Panel>
-      </div>
+        </div>
 
-      {/* RECENT LEADS */}
-      <Panel style={{ overflow: "hidden" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "18px 24px",
-            borderBottom: "1px solid var(--line)",
-          }}
-        >
-          <p style={{ margin: 0, font: "600 15px/1 'Inter'", color: "var(--ink)" }}>Recent leads</p>
-          <a
-            href="/admin/leads"
-            className="a-linkgold"
+        <Panel style={{ borderRadius: 20, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
+          <div
             style={{
-              font: "600 13px/1 'Inter'",
-              color: "var(--gold)",
               display: "flex",
               alignItems: "center",
-              gap: 5,
-              textDecoration: "none",
+              justifyContent: "space-between",
+              padding: "18px 24px",
+              borderBottom: "1px solid var(--line)",
             }}
           >
-            View all
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </a>
-        </div>
-        {recentLeads.length === 0 ? (
-          <p style={{ padding: "24px", color: "var(--ink3)", fontSize: 14 }}>No leads yet.</p>
-        ) : (
-          recentLeads.map((lead) => {
-            const chip = leadStatusChip(lead.status);
-            const src = iconSrcFor({
-              icon: lead.projectType.contractorType.icon,
-              category: lead.projectType.contractorType.name,
-              project: lead.projectType.name,
-            });
-            return (
-              <div
-                key={lead.id}
-                className="a-row"
-                style={{
-                  position: "relative",
-                  display: "grid",
-                  gridTemplateColumns: "44px 1.8fr 1.4fr auto auto",
-                  alignItems: "center",
-                  gap: 16,
-                  padding: "14px 24px",
-                  borderBottom: "1px solid var(--line2)",
-                }}
-              >
-                <RowLink href={`/admin/leads/${lead.id}`} label={`Open ${lead.projectType.name} lead`} />
-                <IconTile src={src} />
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>
-                    {lead.projectType.name}
-                  </p>
-                  <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                    {lead.projectType.contractorType.name}
-                  </p>
-                </div>
-                <span style={{ font: "400 13px/1 'Inter'", color: "var(--ink2)" }}>
-                  {formatDate(lead.createdAt)}
-                </span>
-                <span style={{ justifySelf: "start" }}>
-                  <Chip bg={chip.bg} fg={chip.fg}>
-                    {chip.label}
-                  </Chip>
-                </span>
-                <span
+            <p style={{ margin: 0, font: "600 15px/1 'Inter'", color: "var(--ink)" }}>Recent leads</p>
+            <a
+              href="/admin/leads"
+              className="a-linkgold"
+              style={{
+                font: "600 13px/1 'Inter'",
+                color: "var(--gold)",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                textDecoration: "none",
+              }}
+            >
+              View all
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </a>
+          </div>
+          {recentLeads.length === 0 ? (
+            <p style={{ padding: "24px", color: "var(--ink3)", fontSize: 14 }}>No leads yet.</p>
+          ) : (
+            recentLeads.map((lead) => {
+              const chip = leadStatusChip(lead.status);
+              const src = iconSrcFor({
+                icon: lead.projectType.contractorType.icon,
+                category: lead.projectType.contractorType.name,
+                project: lead.projectType.name,
+              });
+              return (
+                <div
+                  key={lead.id}
+                  className="a-row"
                   style={{
-                    font: "600 16px/1 'Inter'",
-                    color: "var(--ink)",
-                    fontVariantNumeric: "tabular-nums",
-                    textAlign: "right",
+                    position: "relative",
+                    display: "grid",
+                    gridTemplateColumns: "44px 1fr auto auto",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "13px 24px",
+                    borderBottom: "1px solid var(--line2)",
                   }}
                 >
-                  {formatMoney(lead.priceCents)}
-                </span>
-              </div>
-            );
-          })
-        )}
-      </Panel>
+                  <RowLink href={`/admin/leads/${lead.id}`} label={`Open ${lead.projectType.name} lead`} />
+                  <IconTile src={src} />
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
+                      {lead.projectType.name}
+                    </p>
+                    <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
+                      {lead.projectType.contractorType.name}
+                    </p>
+                  </div>
+                  <span style={{ justifySelf: "start" }}>
+                    <Chip bg={chip.bg} fg={chip.fg}>
+                      {chip.label}
+                    </Chip>
+                  </span>
+                  <span
+                    style={{
+                      font: "600 16px/1 var(--display)",
+                      color: "var(--ink)",
+                      fontVariantNumeric: "tabular-nums",
+                      textAlign: "right",
+                    }}
+                  >
+                    {formatMoney(lead.priceCents)}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </Panel>
+      </div>
     </div>
   );
 }
 
-function SageStat({
-  label,
+/** Dark-green revenue hero with a data-driven area sparkline (matches the model). */
+function RevenueHero({
   value,
   trend,
+  series,
 }: {
-  label: string;
   value: string;
-  trend?: number | null;
+  trend: number | null;
+  series: RevenuePoint[];
 }) {
+  const W = 620;
+  const H = 92;
+  const values = series.map((p) => p.revenueCents);
+  const max = Math.max(1, ...values);
+  const n = values.length;
+  const pointsArr = values.map((v, i) => {
+    const x = n <= 1 ? W : (i / (n - 1)) * W;
+    const y = H - (v / max) * (H - 8) - 4;
+    return [Math.round(x), Math.round(y)] as const;
+  });
+  const line = pointsArr.map(([x, y]) => `${x},${y}`).join(" ");
+  const area = `0,${H} ${line} ${W},${H}`;
+  const last = pointsArr[pointsArr.length - 1] ?? [W, H];
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 22,
+        padding: "26px 28px",
+        background: "linear-gradient(150deg,var(--green),var(--green2))",
+        color: "#F1E7D6",
+        boxShadow: "var(--shadowMd)",
+      }}
+    >
+      <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
+        <div>
+          <p
+            style={{
+              margin: "0 0 10px",
+              font: "600 11px/1 var(--mono)",
+              letterSpacing: ".1em",
+              textTransform: "uppercase",
+              color: "rgba(241,231,214,.62)",
+            }}
+          >
+            Lead revenue · 30 days
+          </p>
+          <p
+            style={{
+              margin: "0 0 6px",
+              font: "600 48px/1 var(--display)",
+              letterSpacing: "-.02em",
+              color: "#F8F1E2",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {value}
+          </p>
+          {typeof trend === "number" && (
+            <p
+              style={{
+                margin: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                font: "600 13px/1 'Inter'",
+                color: "#B9D0BC",
+                background: "rgba(185,208,188,.14)",
+                padding: "5px 10px",
+                borderRadius: 999,
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: trend < 0 ? "scaleY(-1)" : undefined }}>
+                <path d="M4 17l7-7 4 4 5-6" />
+              </svg>
+              {Math.abs(trend)}% vs prior half
+            </p>
+          )}
+        </div>
+        <span
+          aria-hidden
+          style={{
+            width: 92,
+            height: 92,
+            flex: "none",
+            borderRadius: 999,
+            background: "radial-gradient(circle at 35% 30%,#F0C27E,#C0803C 70%)",
+            boxShadow: "0 10px 22px rgba(0,0,0,.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            font: "700 34px/1 var(--display)",
+            color: "#7A5320",
+          }}
+        >
+          $
+        </span>
+      </div>
+      <svg
+        viewBox={`0 0 ${W} ${H + 18}`}
+        width="100%"
+        height="92"
+        preserveAspectRatio="none"
+        aria-hidden
+        style={{ position: "relative", marginTop: 14, overflow: "visible" }}
+      >
+        <defs>
+          <linearGradient id="heroFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="var(--gold)" stopOpacity="0.4" />
+            <stop offset="1" stopColor="var(--gold)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon fill="url(#heroFill)" points={area} />
+        <polyline fill="none" stroke="var(--gold)" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" points={line} />
+        <circle cx={last[0]} cy={last[1]} r="5" fill="var(--gold)" stroke="var(--green)" strokeWidth="2.5" />
+      </svg>
+    </div>
+  );
+}
+
+/** Small white KPI card used in the dashboard hero column. */
+function MiniStat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <div
       className="a-lift"
-      style={{ background: "var(--sage)", borderRadius: 18, padding: "20px 22px" }}
+      style={{
+        background: "var(--card)",
+        border: "1px solid var(--line)",
+        borderRadius: 20,
+        padding: "18px 20px",
+        boxShadow: "var(--shadowSm)",
+      }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 14,
-        }}
-      >
-        <span
-          style={{
-            font: "600 11px/1 'Inter'",
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "var(--sageFg)",
-            opacity: 0.85,
-          }}
-        >
-          {label}
-        </span>
-        {typeof trend === "number" && (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              font: "600 11px/1 'Inter'",
-              color: "var(--sageFg)",
-              background: "color-mix(in srgb,var(--sageFg) 14%,transparent)",
-              padding: "4px 7px",
-              borderRadius: 999,
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: trend < 0 ? "scaleY(-1)" : undefined }}>
-              <path d="M4 17l7-7 4 4 5-6" />
-            </svg>
-            {Math.abs(trend)}%
-          </span>
-        )}
-      </div>
       <p
         style={{
-          margin: 0,
-          font: "600 30px/1 'Inter'",
-          color: "var(--sageFg)",
-          letterSpacing: "-.02em",
-          fontVariantNumeric: "tabular-nums",
+          margin: "0 0 12px",
+          font: "600 11px/1 var(--mono)",
+          letterSpacing: ".08em",
+          textTransform: "uppercase",
+          color: "var(--ink3)",
         }}
       >
+        {label}
+      </p>
+      <p style={{ margin: "0 0 6px", font: "600 28px/1 var(--display)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
         {value}
       </p>
+      <p style={{ margin: 0, font: "500 12px/1.2 'Inter'", color: "var(--ink2)" }}>{sub}</p>
     </div>
   );
 }
@@ -392,12 +499,12 @@ function PipelineRow({
   muted?: boolean;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
       <span
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 9,
+          gap: 10,
           font: "500 14px/1 'Inter'",
           color: muted ? "var(--ink2)" : "var(--ink)",
         }}

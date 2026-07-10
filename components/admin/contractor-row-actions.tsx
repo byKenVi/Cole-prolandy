@@ -3,29 +3,36 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { viewAsContractor } from "@/app/actions/dev";
-import { deleteContractor } from "@/app/actions/admin";
+import { deactivateContractor, reactivateContractor } from "@/app/actions/admin";
+import { TrashIcon } from "@/components/admin/trash-icon";
 
 /**
- * The per-row "View as" + delete controls for the contractors list, styled to
- * the design model (field pill + danger icon button). Wired to the real server
- * actions: viewAsContractor (impersonation) and the integrity-guarded
- * deleteContractor. Sits above the row's stretched link (z-index).
+ * Per-row "View as" + deactivate/reactivate controls for the contractors list.
  */
-export function ContractorRowActions({ contractorId }: { contractorId: string }) {
+export function ContractorRowActions({
+  contractorId,
+  deactivated,
+}: {
+  contractorId: string;
+  deactivated?: boolean;
+}) {
   const router = useRouter();
   const [pendingView, startView] = useTransition();
-  const [pendingDel, startDel] = useTransition();
+  const [pendingAct, startAct] = useTransition();
   const [armed, setArmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function del() {
+  function run() {
     setError(null);
-    startDel(async () => {
-      const res = await deleteContractor(contractorId);
+    startAct(async () => {
+      const res = deactivated
+        ? await reactivateContractor(contractorId)
+        : await deactivateContractor(contractorId);
       if (res.ok) {
+        setArmed(false);
         router.refresh();
       } else {
-        setError(res.message ?? "Could not delete.");
+        setError(res.message ?? "Could not update contractor.");
         setArmed(false);
       }
     });
@@ -43,7 +50,7 @@ export function ContractorRowActions({ contractorId }: { contractorId: string })
       <button
         type="button"
         className="a-ghostbtn"
-        disabled={pendingView}
+        disabled={pendingView || deactivated}
         onClick={() => startView(() => viewAsContractor(contractorId))}
         style={{
           height: 38,
@@ -53,7 +60,8 @@ export function ContractorRowActions({ contractorId }: { contractorId: string })
           borderRadius: 10,
           font: "600 13px/1 'Inter'",
           color: "var(--ink)",
-          cursor: "pointer",
+          cursor: deactivated ? "not-allowed" : "pointer",
+          opacity: deactivated ? 0.5 : 1,
         }}
       >
         {pendingView ? "Opening…" : "View as"}
@@ -64,25 +72,25 @@ export function ContractorRowActions({ contractorId }: { contractorId: string })
           <button
             type="button"
             className="a-dangerbtn"
-            disabled={pendingDel}
-            onClick={del}
+            disabled={pendingAct}
+            onClick={run}
             style={{
               height: 38,
               padding: "0 13px",
-              background: "var(--dangerBg)",
-              border: "1px solid var(--dangerLine)",
+              background: deactivated ? "var(--sage)" : "var(--dangerBg)",
+              border: `1px solid ${deactivated ? "var(--sage)" : "var(--dangerLine)"}`,
               borderRadius: 10,
               font: "600 13px/1 'Inter'",
-              color: "var(--danger)",
+              color: deactivated ? "var(--sageFg)" : "var(--danger)",
               cursor: "pointer",
             }}
           >
-            {pendingDel ? "Deleting…" : "Confirm"}
+            {pendingAct ? "Saving…" : deactivated ? "Confirm reactivate" : "Confirm deactivate"}
           </button>
           <button
             type="button"
             className="a-ghostbtn"
-            disabled={pendingDel}
+            disabled={pendingAct}
             onClick={() => setArmed(false)}
             style={{
               height: 38,
@@ -101,25 +109,26 @@ export function ContractorRowActions({ contractorId }: { contractorId: string })
       ) : (
         <button
           type="button"
-          aria-label="Delete contractor"
+          aria-label={deactivated ? "Reactivate contractor" : "Deactivate contractor"}
           className="a-dangerbtn"
           onClick={() => setArmed(true)}
           style={{
-            width: 38,
             height: 38,
+            padding: deactivated ? "0 13px" : 0,
+            width: deactivated ? "auto" : 38,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            gap: 6,
             background: "var(--field)",
-            border: "1px solid var(--dangerLine)",
+            border: `1px solid ${deactivated ? "var(--fieldLine)" : "var(--dangerLine)"}`,
             borderRadius: 10,
-            color: "var(--danger)",
+            color: deactivated ? "var(--ink2)" : "var(--danger)",
             cursor: "pointer",
+            font: "600 12px/1 'Inter'",
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12" />
-          </svg>
+          {deactivated ? "Reactivate" : <TrashIcon size={18} />}
         </button>
       )}
     </div>

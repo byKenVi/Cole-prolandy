@@ -25,6 +25,8 @@ export type Session = {
   email: string | null;
   /** True in clerk mode when signed in but no contractor profile exists yet. */
   needsOnboarding: boolean;
+  /** True when the linked contractor was soft-deactivated by admin. */
+  deactivated: boolean;
 };
 
 const COOKIE = {
@@ -88,6 +90,7 @@ async function getDevSession(): Promise<Session> {
       viewingAs: Boolean(viewAs),
       email: "admin@prolandys.com",
       needsOnboarding: false,
+      deactivated: false,
     };
   }
 
@@ -98,6 +101,7 @@ async function getDevSession(): Promise<Session> {
     viewingAs: false,
     email: null,
     needsOnboarding: false,
+    deactivated: false,
   };
 }
 
@@ -113,6 +117,7 @@ async function getClerkSession(): Promise<Session> {
       viewingAs: false,
       email: null,
       needsOnboarding: false,
+      deactivated: false,
     };
   }
 
@@ -131,15 +136,27 @@ async function getClerkSession(): Promise<Session> {
       viewingAs: Boolean(viewAs),
       email,
       needsOnboarding: false,
+      deactivated: false,
     };
   }
 
   // Already linked?
   const linked = await prisma.contractor.findUnique({
     where: { clerkUserId: userId },
-    select: { id: true },
+    select: { id: true, deactivatedAt: true },
   });
   if (linked) {
+    if (linked.deactivatedAt) {
+      return {
+        role: "contractor",
+        userId,
+        contractorId: null,
+        viewingAs: false,
+        email,
+        needsOnboarding: false,
+        deactivated: true,
+      };
+    }
     return {
       role: "contractor",
       userId,
@@ -147,6 +164,7 @@ async function getClerkSession(): Promise<Session> {
       viewingAs: false,
       email,
       needsOnboarding: false,
+      deactivated: false,
     };
   }
 
@@ -156,16 +174,29 @@ async function getClerkSession(): Promise<Session> {
   // and the contractor simply signs in to adopt their existing profile.
   const verifiedEmails = collectVerifiedEmails(user);
   const verifiedPhones = collectVerifiedPhones(user);
-  const claimedId = await claimContractorForClerkUser(userId, verifiedEmails, verifiedPhones);
+  const claimed = await claimContractorForClerkUser(userId, verifiedEmails, verifiedPhones);
+
+  if (claimed?.deactivated) {
+    return {
+      role: "contractor",
+      userId,
+      contractorId: null,
+      viewingAs: false,
+      email,
+      needsOnboarding: false,
+      deactivated: true,
+    };
+  }
 
   return {
     role: "contractor",
     userId,
-    contractorId: claimedId,
+    contractorId: claimed?.id ?? null,
     viewingAs: false,
     email,
     // No existing row matched → fall back to self-service onboarding.
-    needsOnboarding: !claimedId,
+    needsOnboarding: !claimed,
+    deactivated: false,
   };
 }
 
@@ -206,7 +237,7 @@ async function claimContractorForClerkUser(
   userId: string,
   verifiedEmails: string[],
   verifiedPhones: string[],
-): Promise<string | null> {
+): Promise<{ id: string; deactivated: boolean } | null> {
   if (verifiedEmails.length === 0 && verifiedPhones.length === 0) return null;
 
   return prisma.$transaction(async (tx) => {
@@ -214,16 +245,19 @@ async function claimContractorForClerkUser(
     for (const email of verifiedEmails) {
       const candidate = await tx.contractor.findFirst({
         where: { email: { equals: email, mode: "insensitive" }, clerkUserId: null },
-        select: { id: true },
+        select: { id: true, deactivatedAt: true },
       });
       if (candidate) {
+        if (candidate.deactivatedAt) {
+          return { id: candidate.id, deactivated: true };
+        }
         const res = await tx.contractor.updateMany({
           where: { id: candidate.id, clerkUserId: null },
           data: { clerkUserId: userId },
         });
         if (res.count === 1) {
           await auditLink(tx, candidate.id, userId, "email");
-          return candidate.id;
+          return { id: candidate.id, deactivated: false };
         }
       }
     }
@@ -233,16 +267,20 @@ async function claimContractorForClerkUser(
     for (const phone of verifiedPhones) {
       const matches = await tx.contractor.findMany({
         where: { phone, clerkUserId: null },
-        select: { id: true },
+        select: { id: true, deactivatedAt: true },
       });
       if (matches.length === 1) {
+        const match = matches[0];
+        if (match.deactivatedAt) {
+          return { id: match.id, deactivated: true };
+        }
         const res = await tx.contractor.updateMany({
-          where: { id: matches[0].id, clerkUserId: null },
+          where: { id: match.id, clerkUserId: null },
           data: { clerkUserId: userId },
         });
         if (res.count === 1) {
-          await auditLink(tx, matches[0].id, userId, "phone");
-          return matches[0].id;
+          await auditLink(tx, match.id, userId, "phone");
+          return { id: match.id, deactivated: false };
         }
       }
     }

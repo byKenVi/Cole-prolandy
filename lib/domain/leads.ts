@@ -55,6 +55,7 @@ export async function distributeLead(
   const candidates = await db.contractor.findMany({
     where: {
       contractorTypeId,
+      deactivatedAt: null,
       id: { notIn: Array.from(alreadyMatchedIds) },
     },
     // TODO(phase-two): if client confirms Top Pro affects priority, order by

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { TrashIcon } from "@/components/admin/trash-icon";
 
 type DeleteResult = { ok: boolean; message?: string };
 
@@ -17,12 +18,14 @@ export function DeleteButton({
   label = "Delete",
   confirmLabel = "Confirm delete",
   size = "sm",
+  showTrashIcon = true,
 }: {
   onDelete: () => Promise<DeleteResult>;
   redirectTo?: string;
   label?: string;
   confirmLabel?: string;
   size?: "sm" | "default";
+  showTrashIcon?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -59,7 +62,10 @@ export function DeleteButton({
   return (
     <span className="relative z-10 inline-flex items-center gap-2">
       <Button variant="outline" size={size} onClick={() => setArmed(true)}>
-        {label}
+        <span className="inline-flex items-center gap-1.5">
+          {showTrashIcon && <TrashIcon size={16} />}
+          {label}
+        </span>
       </Button>
       {msg && <span className="max-w-xs text-xs text-danger">{msg}</span>}
     </span>
