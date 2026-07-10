@@ -58,7 +58,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
   const pill = match ? tierPill(match.lead.tier) : null;
 
   return (
-    <main className="min-h-screen bg-[#EFE7D8] font-inter">
+    <main className="min-h-screen bg-[#FEFBF6] font-inter">
       <header className="pb-1.5 pt-8 text-center">
         <Wordmark />
         {pending && (

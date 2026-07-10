@@ -30,7 +30,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <div className="mx-auto w-full max-w-5xl px-5 py-6">
+      <div className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-10">
         {/* Nav */}
         <header className="flex items-center justify-between duration-700 animate-in fade-in slide-in-from-top-2">
           <BrandLogo className="h-8" priority />
@@ -83,7 +83,7 @@ export default function LandingPage() {
               width={1024}
               height={768}
               priority
-              className="mx-auto h-auto w-full max-w-md animate-float drop-shadow-2xl"
+              className="mx-auto h-auto w-full max-w-lg animate-float drop-shadow-2xl"
             />
             <div className="absolute -bottom-2 left-2 w-56 rounded-md border border-border bg-surface p-3 shadow-lg animate-float-slow sm:left-6">
               <div className="flex items-center justify-between">

@@ -30,7 +30,7 @@ export function AppearancePicker() {
             display: "block",
             height: 34,
             borderRadius: 8,
-            background: "linear-gradient(#fff,#F2EAD9)",
+            background: "linear-gradient(#fff,#FEFBF6)",
             border: "1px solid #E9E1D2",
             marginBottom: 11,
           }}

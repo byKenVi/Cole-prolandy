@@ -50,7 +50,7 @@ export default async function ContractorLayout({ children }: { children: React.R
   }
 
   return (
-    <div className="min-h-screen bg-[#EFE7D8]">
+    <div className="min-h-screen bg-[#FEFBF6]">
       {session.viewingAs && <ExitViewAsBanner />}
 
       <div className="mx-4 mb-6 mt-4 flex min-h-[calc(100dvh-2.5rem)] items-stretch rounded-[26px] border border-[#E3DAC9] bg-[#FBF6EC] shadow-[0_24px_60px_rgba(58,53,45,0.12)] md:mx-6 md:min-h-[calc(100vh-2.5rem)]">
