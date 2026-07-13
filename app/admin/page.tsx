@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
 import type { RevenuePoint } from "@/components/admin/revenue-chart";
-import { RevenueHero } from "@/components/admin/revenue-hero";
+import { RevenueHero, type RevenueRange } from "@/components/admin/revenue-hero";
 import { PageHeader, GoldButtonLink, Panel, IconTile, Chip } from "@/components/admin/ui";
 import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
@@ -17,8 +17,20 @@ function greeting(): string {
   return "Good evening, Admin";
 }
 
-export default async function AdminDashboard() {
+function parseRange(raw: string | undefined): RevenueRange {
+  if (raw === "24h" || raw === "7d" || raw === "30d") return raw;
+  return "30d";
+}
+
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
   await expireLeads(prisma).catch(() => undefined);
+
+  const { range: rangeParam } = await searchParams;
+  const range = parseRange(rangeParam);
 
   const now = new Date();
   const start365 = new Date();
@@ -67,8 +79,6 @@ export default async function AdminDashboard() {
 
   const leadRevenueAllTime = Math.abs(leadChargeAgg._sum.amountCents ?? 0);
 
-  // Bucket LEAD_CHARGE (stored negative) into daily/monthly windows in JS from a
-  // single query, zero-filled so lines are continuous.
   const dailyKey = (d: Date) => {
     const x = new Date(d);
     x.setHours(0, 0, 0, 0);
@@ -94,12 +104,39 @@ export default async function AdminDashboard() {
     });
   };
 
-  const d30 = dailySeries(30);
+  const hourKey = (d: Date) => {
+    const x = new Date(d);
+    x.setMinutes(0, 0, 0);
+    return x.toISOString();
+  };
+  const byHour = new Map<string, number>();
+  const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  for (const c of charges) {
+    if (c.createdAt < since24h) continue;
+    const key = hourKey(c.createdAt);
+    byHour.set(key, (byHour.get(key) ?? 0) + Math.abs(c.amountCents));
+  }
+  const hourlySeries24h = (): RevenuePoint[] => {
+    const start = new Date(now);
+    start.setMinutes(0, 0, 0);
+    start.setHours(start.getHours() - 23);
+    return Array.from({ length: 24 }, (_, i) => {
+      const d = new Date(start);
+      d.setHours(start.getHours() + i);
+      return {
+        label: d.toLocaleTimeString(undefined, { hour: "numeric" }),
+        revenueCents: byHour.get(hourKey(d)) ?? 0,
+      };
+    });
+  };
 
-  const revenue30 = d30.reduce((s, p) => s + p.revenueCents, 0);
-  // Honest trend: second half vs first half of the 30d window.
-  const firstHalf = d30.slice(0, 15).reduce((s, p) => s + p.revenueCents, 0);
-  const secondHalf = d30.slice(15).reduce((s, p) => s + p.revenueCents, 0);
+  const series =
+    range === "24h" ? hourlySeries24h() : range === "7d" ? dailySeries(7) : dailySeries(30);
+  const revenueInRange = series.reduce((s, p) => s + p.revenueCents, 0);
+
+  const mid = Math.floor(series.length / 2);
+  const firstHalf = series.slice(0, mid).reduce((s, p) => s + p.revenueCents, 0);
+  const secondHalf = series.slice(mid).reduce((s, p) => s + p.revenueCents, 0);
   const trendPct =
     firstHalf > 0 ? Math.round(((secondHalf - firstHalf) / firstHalf) * 100) : null;
 
@@ -128,7 +165,12 @@ export default async function AdminDashboard() {
         className="admin-grid-stack"
         style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 16, marginBottom: 16 }}
       >
-        <RevenueHero value={formatMoney(revenue30)} trend={trendPct} series={d30} />
+        <RevenueHero
+          value={formatMoney(revenueInRange)}
+          trend={trendPct}
+          series={series}
+          range={range}
+        />
 
         <div style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: 16 }}>
           <div
@@ -152,7 +194,7 @@ export default async function AdminDashboard() {
                 opacity: 0.85,
               }}
             >
-              Lead revenue
+              Lead revenue · all time
             </p>
             <p
               style={{

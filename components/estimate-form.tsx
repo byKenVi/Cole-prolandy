@@ -99,13 +99,39 @@ export function EstimateForm({
 
   if (done) {
     return (
-      <Card className="flex flex-col items-center gap-3 p-8 text-center">
+      <Card className="flex flex-col items-center gap-4 p-8 text-center">
         <CheckCircle2 className="h-12 w-12 text-success" aria-hidden />
         <p className="font-fraunces text-2xl font-semibold text-text">Request received</p>
         <p className="max-w-sm font-inter text-base text-text-muted">
           Your request has been sent to our contractors — they&apos;ll reach out to you soon. No need
           to do anything else.
         </p>
+        <div className="mt-2 flex flex-col items-center gap-2 sm:flex-row">
+          <Button asChild variant="accent">
+            <a href="/">Back to home</a>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setDone(false);
+              setStep(0);
+              setForm({
+                name: "",
+                phone: "",
+                email: "",
+                location: "",
+                projectTypeId: "",
+                landTypeId: "",
+                description: "",
+                company: "",
+              });
+              setError(null);
+            }}
+          >
+            Submit another request
+          </Button>
+        </div>
       </Card>
     );
   }

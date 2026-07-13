@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Area,
   AreaChart,
@@ -9,23 +10,35 @@ import {
 import type { RevenuePoint } from "@/components/admin/revenue-chart";
 import { formatMoney } from "@/lib/money";
 
+export type RevenueRange = "24h" | "7d" | "30d";
+
+const RANGE_OPTIONS: { id: RevenueRange; label: string }[] = [
+  { id: "24h", label: "24 hours" },
+  { id: "7d", label: "7 days" },
+  { id: "30d", label: "30 days" },
+];
+
 /**
  * Dark-green lead-revenue hero with an interactive Recharts sparkline.
- * Series is real daily LEAD_CHARGE totals (server-computed, zero-filled).
+ * Series is real LEAD_CHARGE totals (server-computed, zero-filled).
  */
 export function RevenueHero({
   value,
   trend,
   series,
+  range,
 }: {
   value: string;
   trend: number | null;
   series: RevenuePoint[];
+  range: RevenueRange;
 }) {
   const chartData = series.map((p) => ({
     label: p.label,
     revenueCents: p.revenueCents,
   }));
+
+  const rangeLabel = RANGE_OPTIONS.find((o) => o.id === range)?.label ?? "30 days";
 
   return (
     <div
@@ -48,18 +61,63 @@ export function RevenueHero({
           gap: 20,
         }}
       >
-        <div>
-          <p
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
             style={{
-              margin: "0 0 10px",
-              font: "600 11px/1 var(--mono)",
-              letterSpacing: ".1em",
-              textTransform: "uppercase",
-              color: "rgba(241,231,214,.62)",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 12,
             }}
           >
-            Lead revenue · 30 days
-          </p>
+            <p
+              style={{
+                margin: 0,
+                font: "600 11px/1 var(--mono)",
+                letterSpacing: ".1em",
+                textTransform: "uppercase",
+                color: "rgba(241,231,214,.62)",
+              }}
+            >
+              Lead revenue · {rangeLabel}
+            </p>
+            <div
+              role="tablist"
+              aria-label="Revenue period"
+              style={{
+                display: "inline-flex",
+                flexWrap: "wrap",
+                gap: 4,
+                padding: 3,
+                borderRadius: 999,
+                background: "rgba(0,0,0,.18)",
+              }}
+            >
+              {RANGE_OPTIONS.map((opt) => {
+                const active = opt.id === range;
+                return (
+                  <Link
+                    key={opt.id}
+                    href={opt.id === "30d" ? "/admin" : `/admin?range=${opt.id}`}
+                    role="tab"
+                    aria-selected={active}
+                    scroll={false}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: 999,
+                      font: "600 11px/1 'Inter'",
+                      textDecoration: "none",
+                      color: active ? "#2F4A3C" : "rgba(241,231,214,.78)",
+                      background: active ? "#E0A95C" : "transparent",
+                    }}
+                  >
+                    {opt.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
           <p
             style={{
               margin: "0 0 6px",

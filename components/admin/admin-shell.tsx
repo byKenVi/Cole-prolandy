@@ -160,12 +160,6 @@ function Sidebar({
           >
             PRO
           </span>
-          <span
-            className="admin-brand-tag"
-            style={{ font: "500 12px/1 'Inter'", color: "#8FA592", marginLeft: "auto", alignSelf: "center" }}
-          >
-            Admin
-          </span>
         </Link>
 
         <button
@@ -259,18 +253,40 @@ function Sidebar({
           AD
         </span>
         <div className="admin-foot-text" style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ margin: 0, font: "600 13px/1.2 'Inter'", color: "#F1E7D6" }}>Admin Desk</p>
+          <p
+            style={{
+              margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              font: "600 13px/1.2 'Inter'",
+              color: "#F1E7D6",
+            }}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              Admin Desk
+            </span>
+            <span
+              style={{
+                flex: "none",
+                font: "700 8px/1 'Inter'",
+                letterSpacing: ".08em",
+                textTransform: "uppercase",
+                color: "#E3AB5E",
+                border: "1px solid rgba(227,171,94,.55)",
+                borderRadius: 999,
+                padding: "3px 6px",
+              }}
+            >
+              Admin
+            </span>
+          </p>
           <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "#8FA592" }}>
             Landy&apos;s Pro HQ
           </p>
         </div>
+        {showSignOut && <SignOutLink variant="adminIcon" label="Sign out" />}
       </div>
-
-      {showSignOut && (
-        <div className="admin-foot-text" style={{ padding: "0 14px 14px" }}>
-          <SignOutLink variant="admin" />
-        </div>
-      )}
     </aside>
   );
 }
