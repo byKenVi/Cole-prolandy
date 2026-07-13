@@ -121,16 +121,16 @@ function Chevron({ collapsed }: { collapsed: boolean }) {
 
 function Sidebar({
   leadCount,
-  walletFloat,
-  heldAcross,
+  leadRevenue,
+  acceptedLeads,
   collapsed,
   onToggleCollapse,
   onCloseMobile,
   showSignOut,
 }: {
   leadCount: number;
-  walletFloat: string;
-  heldAcross: number;
+  leadRevenue: string;
+  acceptedLeads: number;
   collapsed: boolean;
   onToggleCollapse: () => void;
   onCloseMobile: () => void;
@@ -209,7 +209,7 @@ function Sidebar({
               color: "#9BB09F",
             }}
           >
-            Wallet float
+            Lead revenue
           </p>
           <p
             style={{
@@ -220,10 +220,10 @@ function Sidebar({
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            {walletFloat}
+            {leadRevenue}
           </p>
           <p style={{ margin: 0, font: "500 12px/1 'Inter'", color: "#8FA592" }}>
-            held across {heldAcross} contractor{heldAcross === 1 ? "" : "s"}
+            from {acceptedLeads} accepted lead{acceptedLeads === 1 ? "" : "s"}
           </p>
         </div>
         <svg
@@ -377,8 +377,8 @@ export function AdminShell({
   initialTheme,
   initialCollapsed = false,
   leadCount,
-  walletFloat,
-  heldAcross,
+  leadRevenue,
+  acceptedLeads,
   userMenu,
   showSignOut = false,
   children,
@@ -386,8 +386,8 @@ export function AdminShell({
   initialTheme: AdminTheme;
   initialCollapsed?: boolean;
   leadCount: number;
-  walletFloat: string;
-  heldAcross: number;
+  leadRevenue: string;
+  acceptedLeads: number;
   userMenu?: React.ReactNode;
   showSignOut?: boolean;
   children: React.ReactNode;
@@ -420,8 +420,8 @@ export function AdminShell({
         >
           <Sidebar
             leadCount={leadCount}
-            walletFloat={walletFloat}
-            heldAcross={heldAcross}
+            leadRevenue={leadRevenue}
+            acceptedLeads={acceptedLeads}
             collapsed={collapsed}
             onToggleCollapse={toggleCollapse}
             onCloseMobile={() => setMobileOpen(false)}

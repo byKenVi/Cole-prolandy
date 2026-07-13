@@ -9,7 +9,7 @@ const STRIPE_DASHBOARD_PAYOUTS_URL = "https://dashboard.stripe.com/payouts";
 const STRIPE_DASHBOARD_SETTINGS_URL = "https://dashboard.stripe.com/settings/payouts";
 
 /** Σ amountCents for a given WalletTransaction type. */
-async function sumByType(type: "TOPUP" | "CARD_REFUND") {
+async function sumByType(type: "TOPUP" | "CARD_REFUND" | "LEAD_CHARGE") {
   const agg = await prisma.walletTransaction.aggregate({
     _sum: { amountCents: true },
     where: { type },
@@ -18,25 +18,50 @@ async function sumByType(type: "TOPUP" | "CARD_REFUND") {
 }
 
 export default async function AdminFinance() {
-  const [topup, cardRefund, balance, payouts] = await Promise.all([
+  const [topup, cardRefund, leadCharge, acceptedLeads, balance, payouts] = await Promise.all([
     sumByType("TOPUP"),
     sumByType("CARD_REFUND"),
+    sumByType("LEAD_CHARGE"),
+    prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
     getStripeBalance(),
     listRecentPayouts(),
   ]);
 
+  const leadRevenue = Math.abs(leadCharge);
   const cardRefundsOut = Math.abs(cardRefund);
-  const netCardCash = topup + cardRefund;
+  const prepaidOnCards = topup + cardRefund;
   const stripeUnavailable = balance.mocked || payouts.mocked;
 
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker="Cash"
+        kicker="Revenue & cash"
         title="Finance"
-        subtitle="Money collected on cards via Stripe, and payouts to the company bank."
+        subtitle="Lead sales are your revenue. Card top-ups and Stripe are how money moves — they are not the same number."
       />
 
+      <div style={{ marginBottom: 26 }}>
+        <StatCard
+          label="Lead revenue"
+          value={formatMoney(leadRevenue)}
+          caption={`Your business CA: charged when contractors accept leads (${acceptedLeads} accepted).`}
+          highlight
+          large
+        />
+      </div>
+
+      <SectionLabel title="Prepaid on cards (not revenue)" />
+      <p
+        style={{
+          margin: "8px 0 12px",
+          font: "400 13px/1.5 'Inter'",
+          color: "var(--ink3)",
+          maxWidth: 640,
+        }}
+      >
+        Contractors pay Stripe to fund their wallet. That cash sits until they buy a lead. This
+        section tracks card money in/out — not lead sales.
+      </p>
       <div
         className="admin-grid-tight"
         style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, margin: "0 0 26px" }}
@@ -44,8 +69,7 @@ export default async function AdminFinance() {
         <StatCard
           label="Card top-ups"
           value={formatMoney(topup)}
-          caption="Total charged to contractor cards (Stripe)."
-          highlight
+          caption="Total charged to contractor cards via Stripe."
         />
         <StatCard
           label="Card refunds"
@@ -53,10 +77,9 @@ export default async function AdminFinance() {
           caption="Money returned to contractor cards."
         />
         <StatCard
-          label="Net card cash"
-          value={formatMoney(netCardCash)}
-          caption="Top-ups minus card refunds."
-          highlight
+          label="Prepaid on cards (net)"
+          value={formatMoney(prepaidOnCards)}
+          caption="Top-ups minus card refunds. Wallet credit bought — not lead CA."
         />
       </div>
 
@@ -65,7 +88,7 @@ export default async function AdminFinance() {
         style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 26, alignItems: "start" }}
       >
         <div>
-          <SectionLabel title="Recent payouts" />
+          <SectionLabel title="Recent bank payouts" />
           <div
             style={{
               marginTop: 12,
@@ -129,7 +152,7 @@ export default async function AdminFinance() {
             <StatCard
               label="Stripe available"
               value={formatBalance(balance.available)}
-              caption="Settled Stripe balance ready to pay out to the bank."
+              caption="Cash ready to withdraw to the bank. Not equal to lead revenue (contractors prepaid earlier; fees & payouts also differ)."
               highlight
             />
           )}
@@ -244,11 +267,13 @@ function StatCard({
   value,
   caption,
   highlight,
+  large,
 }: {
   label: string;
   value: string;
   caption?: string;
   highlight?: boolean;
+  large?: boolean;
 }) {
   return (
     <div
@@ -257,7 +282,7 @@ function StatCard({
         display: "flex",
         flexDirection: "column",
         borderRadius: 14,
-        padding: "18px 20px",
+        padding: large ? "22px 24px" : "18px 20px",
         background: highlight ? "var(--sage)" : "var(--card)",
         border: highlight ? "none" : "1px solid var(--line)",
         boxShadow: highlight ? "none" : "var(--shadow)",
@@ -278,7 +303,7 @@ function StatCard({
       <p
         style={{
           margin: "10px 0 0",
-          font: `600 ${highlight ? "26px" : "24px"}/1 var(--display)`,
+          font: `600 ${large ? "34px" : highlight ? "26px" : "24px"}/1 var(--display)`,
           color: highlight ? "var(--sageFg)" : "var(--ink)",
           fontVariantNumeric: "tabular-nums",
         }}
@@ -292,6 +317,7 @@ function StatCard({
             font: "400 12px/1.5 'Inter'",
             color: highlight ? "var(--sageFg)" : "var(--ink3)",
             opacity: highlight ? 0.85 : 1,
+            maxWidth: large ? 520 : undefined,
           }}
         >
           {caption}

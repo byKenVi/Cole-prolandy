@@ -8,7 +8,7 @@ export function revalidateContractorShell() {
   revalidatePath("/profile", "layout");
 }
 
-/** Invalidate admin shell (wallet float) + key admin pages. */
+/** Invalidate admin shell (lead revenue) + key admin pages. */
 export function revalidateAdminShell() {
   revalidatePath("/admin", "layout");
 }

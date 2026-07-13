@@ -15,22 +15,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   const clerk = authMode() === "clerk";
 
-  // Sidebar summary + initial theme. All read-only, no money/state mutation.
-  const [theme, collapsed, openLeads, walletAgg, heldAcross] = await Promise.all([
+  // Sidebar: lead revenue (CA) — not wallet float.
+  const [theme, collapsed, openLeads, leadChargeAgg, acceptedLeads] = await Promise.all([
     getAdminTheme(),
     getAdminSidebarCollapsed(),
     prisma.lead.count({ where: { status: { in: ["NEW", "DISTRIBUTED"] } } }),
-    prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
-    prisma.contractor.count({ where: { walletBalanceCents: { gt: 0 } } }),
+    prisma.walletTransaction.aggregate({
+      _sum: { amountCents: true },
+      where: { type: "LEAD_CHARGE" },
+    }),
+    prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
   ]);
+
+  const leadRevenueCents = Math.abs(leadChargeAgg._sum.amountCents ?? 0);
 
   return (
     <AdminShell
       initialTheme={theme}
       initialCollapsed={collapsed}
       leadCount={openLeads}
-      walletFloat={formatMoney(walletAgg._sum.walletBalanceCents ?? 0)}
-      heldAcross={heldAcross}
+      leadRevenue={formatMoney(leadRevenueCents)}
+      acceptedLeads={acceptedLeads}
       userMenu={clerk ? <UserMenu /> : undefined}
       showSignOut={clerk}
     >

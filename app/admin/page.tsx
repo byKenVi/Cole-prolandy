@@ -32,8 +32,7 @@ export default async function AdminDashboard() {
     pendingMatches,
     acceptedMatches,
     expiredMatches,
-    walletAgg,
-    heldAcross,
+    leadChargeAgg,
     charges,
     recentLeads,
   ] = await Promise.all([
@@ -43,8 +42,10 @@ export default async function AdminDashboard() {
     prisma.leadMatch.count({ where: { status: "PENDING" } }),
     prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
     prisma.leadMatch.count({ where: { status: "EXPIRED" } }),
-    prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
-    prisma.contractor.count({ where: { walletBalanceCents: { gt: 0 } } }),
+    prisma.walletTransaction.aggregate({
+      _sum: { amountCents: true },
+      where: { type: "LEAD_CHARGE" },
+    }),
     prisma.walletTransaction.findMany({
       where: { type: "LEAD_CHARGE", createdAt: { gte: start365 } },
       select: { amountCents: true, createdAt: true },
@@ -64,7 +65,7 @@ export default async function AdminDashboard() {
     }),
   ]);
 
-  const walletFloat = walletAgg._sum.walletBalanceCents ?? 0;
+  const leadRevenueAllTime = Math.abs(leadChargeAgg._sum.amountCents ?? 0);
 
   // Bucket LEAD_CHARGE (stored negative) into daily/monthly windows in JS from a
   // single query, zero-filled so lines are continuous.
@@ -151,7 +152,7 @@ export default async function AdminDashboard() {
                 opacity: 0.85,
               }}
             >
-              Wallet float
+              Lead revenue
             </p>
             <p
               style={{
@@ -162,10 +163,10 @@ export default async function AdminDashboard() {
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {formatMoney(walletFloat)}
+              {formatMoney(leadRevenueAllTime)}
             </p>
             <p style={{ margin: "6px 0 0", font: "500 12px/1 'Inter'", color: "var(--sageFg)", opacity: 0.8 }}>
-              Liability held across {heldAcross} contractor{heldAcross === 1 ? "" : "s"}
+              Charged on {acceptedMatches} accepted lead{acceptedMatches === 1 ? "" : "s"}
             </p>
           </div>
           <div className="admin-grid-tight" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
