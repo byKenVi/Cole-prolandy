@@ -62,3 +62,27 @@ export function stripeAvailableUsdCents(
   if (usd) return usd.amountCents;
   return entries.reduce((sum, e) => sum + e.amountCents, 0);
 }
+
+type SumClient = {
+  walletTransaction: {
+    aggregate: (args: {
+      _sum: { amountCents: true };
+      where: { type: "LEAD_CHARGE" | "REFUND" };
+    }) => Promise<{ _sum: { amountCents: number | null } }>;
+  };
+};
+
+/** Net lead CA from the ledger (charges − internal lead refunds). */
+export async function queryNetLeadRevenueCents(db: SumClient): Promise<number> {
+  const [chargeAgg, refundAgg] = await Promise.all([
+    db.walletTransaction.aggregate({
+      _sum: { amountCents: true },
+      where: { type: "LEAD_CHARGE" },
+    }),
+    db.walletTransaction.aggregate({
+      _sum: { amountCents: true },
+      where: { type: "REFUND" },
+    }),
+  ]);
+  return netLeadRevenueCents(chargeAgg._sum.amountCents ?? 0, refundAgg._sum.amountCents ?? 0);
+}

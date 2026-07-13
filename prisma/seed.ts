@@ -5,7 +5,7 @@
  * Idempotent for reference data (upserts). Transactional data (leads, matches,
  * wallet transactions, audit) is cleared and recreated on each run.
  */
-import { PrismaClient, LeadStatus, LeadMatchStatus, WalletTransactionType } from "@prisma/client";
+import { PrismaClient, LeadStatus, LeadMatchStatus } from "@prisma/client";
 import { generateAcceptToken } from "../lib/tokens";
 import {
   LAND_TYPES,
@@ -108,7 +108,8 @@ async function main() {
       phone: "+15125550101",
       type: "Utility Trenching",
       isPro: true,
-      finalBalance: 250,
+      // Demo wallets stay at $0 — fake prepaid would inflate Finance "held" vs real Stripe.
+      finalBalance: 0,
       about: "Family-run dirt work since 1998.",
     },
     {
@@ -118,7 +119,7 @@ async function main() {
       phone: "+15125550102",
       type: "Land Grading & Leveling",
       isPro: true,
-      finalBalance: 150,
+      finalBalance: 0,
     },
     {
       key: "timberline",
@@ -128,7 +129,7 @@ async function main() {
       type: "Tree Removal & Stump Grinding",
       isPro: true,
       isTopPro: true,
-      finalBalance: 500,
+      finalBalance: 0,
       about: "Heavy clearing & mulching specialists.",
     },
     {
@@ -138,7 +139,7 @@ async function main() {
       phone: "+15125550104",
       type: "Pond Building",
       isPro: true,
-      finalBalance: 60,
+      finalBalance: 0,
       about: "Ponds, lakes, and dams.",
     },
     {
@@ -148,7 +149,7 @@ async function main() {
       phone: "+15125550105",
       type: "Pond Building",
       isPro: true,
-      finalBalance: 300,
+      finalBalance: 0,
     },
     {
       key: "lonestar",
@@ -167,7 +168,7 @@ async function main() {
       phone: "+15125550107",
       type: "Drainage Improvement",
       isPro: true,
-      finalBalance: 120,
+      finalBalance: 0,
     },
     {
       key: "redland",
@@ -176,7 +177,7 @@ async function main() {
       phone: "+15125550108",
       type: "Driveway Construction",
       isPro: true,
-      finalBalance: 80,
+      finalBalance: 0,
     },
   ];
 
@@ -310,8 +311,8 @@ async function main() {
   const landTypeIdByName: Record<string, string> = {};
   for (const lt of await prisma.landType.findMany()) landTypeIdByName[lt.name] = lt.id;
 
-  const chargesByContractor: Record<string, number> = {};
-
+  // Seed accepts are status-only — no wallet LEAD_CHARGE / TOPUP. Fake ledger
+  // rows would disagree with live Stripe on Finance (held vs available).
   for (const ls of leadSeeds) {
     const price = priceFor(ls.type, ls.tier);
     const lead = await prisma.lead.create({
@@ -332,7 +333,7 @@ async function main() {
 
     for (const m of ls.matches) {
       const contractorId = contractorIdByKey[m.contractor]!;
-      const match = await prisma.leadMatch.create({
+      await prisma.leadMatch.create({
         data: {
           leadId: lead.id,
           contractorId,
@@ -341,41 +342,13 @@ async function main() {
           acceptedAt: m.status === LeadMatchStatus.ACCEPTED ? new Date() : null,
         },
       });
-
-      if (m.status === LeadMatchStatus.ACCEPTED) {
-        chargesByContractor[m.contractor] = (chargesByContractor[m.contractor] ?? 0) + price;
-        await prisma.walletTransaction.create({
-          data: {
-            contractorId,
-            amountCents: -price,
-            type: WalletTransactionType.LEAD_CHARGE,
-            leadMatchId: match.id,
-            note: `Lead: ${ls.type}`,
-          },
-        });
-      }
     }
   }
 
   for (const c of contractorSeeds) {
-    const charges = chargesByContractor[c.key] ?? 0;
-    const finalCents = dollars(c.finalBalance);
-    const topUp = finalCents + charges;
-    const contractorId = contractorIdByKey[c.key]!;
-    if (topUp > 0) {
-      await prisma.walletTransaction.create({
-        data: {
-          contractorId,
-          amountCents: topUp,
-          type: WalletTransactionType.TOPUP,
-          note: "Initial wallet funding",
-          createdAt: new Date(now - 7 * 24 * 3600 * 1000),
-        },
-      });
-    }
     await prisma.contractor.update({
-      where: { id: contractorId },
-      data: { walletBalanceCents: finalCents },
+      where: { id: contractorIdByKey[c.key]! },
+      data: { walletBalanceCents: dollars(c.finalBalance) },
     });
   }
 

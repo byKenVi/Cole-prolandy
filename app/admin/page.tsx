@@ -5,6 +5,7 @@ import { RevenueHero, type RevenueRange } from "@/components/admin/revenue-hero"
 import { PageHeader, GoldButtonLink, Panel, IconTile, Chip } from "@/components/admin/ui";
 import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
+import { queryNetLeadRevenueCents } from "@/lib/finance";
 import { iconSrcFor } from "@/lib/project-icons";
 import { leadStatusChip } from "@/lib/admin-display";
 
@@ -44,8 +45,9 @@ export default async function AdminDashboard({
     pendingMatches,
     acceptedMatches,
     expiredMatches,
-    leadChargeAgg,
+    leadRevenueAllTime,
     charges,
+    refunds,
     recentLeads,
   ] = await Promise.all([
     prisma.contractor.count(),
@@ -54,13 +56,14 @@ export default async function AdminDashboard({
     prisma.leadMatch.count({ where: { status: "PENDING" } }),
     prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
     prisma.leadMatch.count({ where: { status: "EXPIRED" } }),
-    prisma.walletTransaction.aggregate({
-      _sum: { amountCents: true },
-      where: { type: "LEAD_CHARGE" },
-    }),
+    queryNetLeadRevenueCents(prisma),
     prisma.walletTransaction.findMany({
       where: { type: "LEAD_CHARGE", createdAt: { gte: start365 } },
-      select: { amountCents: true, createdAt: true },
+      select: { amountCents: true, createdAt: true, leadMatchId: true },
+    }),
+    prisma.walletTransaction.findMany({
+      where: { type: "REFUND", createdAt: { gte: start365 } },
+      select: { amountCents: true, createdAt: true, leadMatchId: true },
     }),
     prisma.lead.findMany({
       orderBy: { createdAt: "desc" },
@@ -77,8 +80,6 @@ export default async function AdminDashboard({
     }),
   ]);
 
-  const leadRevenueAllTime = Math.abs(leadChargeAgg._sum.amountCents ?? 0);
-
   const dailyKey = (d: Date) => {
     const x = new Date(d);
     x.setHours(0, 0, 0, 0);
@@ -88,6 +89,13 @@ export default async function AdminDashboard({
   for (const c of charges) {
     const day = dailyKey(c.createdAt);
     byDay.set(day, (byDay.get(day) ?? 0) + Math.abs(c.amountCents));
+  }
+  for (const r of refunds) {
+    const day = dailyKey(r.createdAt);
+    byDay.set(day, (byDay.get(day) ?? 0) - Math.max(0, r.amountCents));
+  }
+  for (const [day, cents] of byDay) {
+    if (cents < 0) byDay.set(day, 0);
   }
 
   const dailySeries = (days: number): RevenuePoint[] => {
@@ -115,6 +123,14 @@ export default async function AdminDashboard({
     if (c.createdAt < since24h) continue;
     const key = hourKey(c.createdAt);
     byHour.set(key, (byHour.get(key) ?? 0) + Math.abs(c.amountCents));
+  }
+  for (const r of refunds) {
+    if (r.createdAt < since24h) continue;
+    const key = hourKey(r.createdAt);
+    byHour.set(key, (byHour.get(key) ?? 0) - Math.max(0, r.amountCents));
+  }
+  for (const [key, cents] of byHour) {
+    if (cents < 0) byHour.set(key, 0);
   }
   const hourlySeries24h = (): RevenuePoint[] => {
     const start = new Date(now);

@@ -5,6 +5,7 @@ import { UserMenu } from "@/components/auth/user-menu";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { getAdminTheme, getAdminSidebarCollapsed } from "@/lib/admin-theme.server";
 import { formatMoney } from "@/lib/money";
+import { queryNetLeadRevenueCents } from "@/lib/finance";
 
 export const dynamic = "force-dynamic";
 
@@ -15,19 +16,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   const clerk = authMode() === "clerk";
 
-  // Sidebar: lead revenue (CA) — not wallet float.
-  const [theme, collapsed, openLeads, leadChargeAgg, acceptedLeads] = await Promise.all([
+  // Sidebar: net lead revenue (CA) — same definition as Finance (charges − refunds).
+  const [theme, collapsed, openLeads, leadRevenueCents, acceptedLeads] = await Promise.all([
     getAdminTheme(),
     getAdminSidebarCollapsed(),
     prisma.lead.count({ where: { status: { in: ["NEW", "DISTRIBUTED"] } } }),
-    prisma.walletTransaction.aggregate({
-      _sum: { amountCents: true },
-      where: { type: "LEAD_CHARGE" },
-    }),
+    queryNetLeadRevenueCents(prisma),
     prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
   ]);
-
-  const leadRevenueCents = Math.abs(leadChargeAgg._sum.amountCents ?? 0);
 
   return (
     <AdminShell
