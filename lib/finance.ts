@@ -11,57 +11,97 @@ export function netLeadRevenueCents(leadChargeSumCents: number, leadRefundSumCen
   return Math.max(0, charged - refunded);
 }
 
+/**
+ * Rough US card fee estimate (~2.9% + $0.30 per charge).
+ * Used only for admin clarity — not a Stripe invoice.
+ */
+export function estimateStripeFeesCents(topupTotalCents: number, topupCount: number): number {
+  const volume = Math.max(0, Math.trunc(topupTotalCents));
+  const n = Math.max(0, Math.trunc(topupCount));
+  return Math.round(volume * 0.029) + n * 30;
+}
+
+/**
+ * Wallet float that must stay in Stripe. Promo grants are not real card cash,
+ * so we exclude lifetime PROMO_CREDIT from held (conservative floor at 0).
+ */
+export function cashHeldForContractorsCents(
+  walletBalanceSumCents: number,
+  promoCreditSumCents: number,
+): number {
+  return Math.max(0, Math.trunc(walletBalanceSumCents) - Math.max(0, Math.trunc(promoCreditSumCents)));
+}
+
 export type SafeToWithdrawInput = {
   /** Net earned from accepted leads (after lead refunds). */
   netLeadRevenueCents: number;
-  /** Σ contractor wallet balances — prepaid still owed / spendable. */
+  /** Prepaid still owed on wallets (cash-like; promo excluded when possible). */
   heldForContractorsCents: number;
   /**
    * Stripe available balance in cents, or null when live Stripe data is
    * unavailable (mock / missing keys / API error).
    */
   stripeAvailableCents: number | null;
+  /** Stripe pending (settling) balance — not withdrawable yet. */
+  stripePendingCents?: number | null;
 };
 
 export type SafeToWithdrawResult = {
   /**
-   * Cash from lead sales that can be withdrawn without dipping into prepaid
-   * still sitting on contractor wallets. Null when Stripe balance is unknown.
+   * Cash from lead sales that can be withdrawn now (available − held).
+   * Null when Stripe balance is unknown.
    */
   safeToWithdrawCents: number | null;
-  /** How much wallet liability exceeds Stripe cash (0 if covered). */
+  /**
+   * Same idea after pending settles into available.
+   * Null when Stripe balance is unknown.
+   */
+  safeAfterPendingCents: number | null;
+  /**
+   * How much wallet liability exceeds available + pending (0 if covered once
+   * pending clears). Avoids alarming when cash is only settling.
+   */
   uncoveredLiabilityCents: number;
 };
 
 /**
- * Safe withdraw ≈ min(net lead revenue, Stripe available − wallet liability).
- * Prior bank payouts reduce Stripe available, so we do not need payout history.
+ * Safe withdraw ≈ min(net lead revenue, Stripe cash − wallet liability).
+ * "Now" uses available only; "after pending" adds settling funds.
  */
 export function computeSafeToWithdraw(input: SafeToWithdrawInput): SafeToWithdrawResult {
   const held = Math.max(0, Math.trunc(input.heldForContractorsCents));
   const earned = Math.max(0, Math.trunc(input.netLeadRevenueCents));
 
   if (input.stripeAvailableCents === null) {
-    return { safeToWithdrawCents: null, uncoveredLiabilityCents: 0 };
+    return {
+      safeToWithdrawCents: null,
+      safeAfterPendingCents: null,
+      uncoveredLiabilityCents: 0,
+    };
   }
 
-  const stripe = Math.trunc(input.stripeAvailableCents);
-  const cashBeyondLiability = stripe - held;
-  const uncoveredLiabilityCents = Math.max(0, -cashBeyondLiability);
-  const safeToWithdrawCents = Math.max(0, Math.min(earned, cashBeyondLiability));
+  const available = Math.trunc(input.stripeAvailableCents);
+  const pending = Math.max(0, Math.trunc(input.stripePendingCents ?? 0));
+  const beyondAvailable = available - held;
+  const beyondSettled = available + pending - held;
 
-  return { safeToWithdrawCents, uncoveredLiabilityCents };
+  return {
+    safeToWithdrawCents: Math.max(0, Math.min(earned, beyondAvailable)),
+    safeAfterPendingCents: Math.max(0, Math.min(earned, beyondSettled)),
+    uncoveredLiabilityCents: Math.max(0, -beyondSettled),
+  };
 }
 
 /** Prefer USD from a multi-currency Stripe balance list; else sum all. */
-export function stripeAvailableUsdCents(
-  entries: { amountCents: number; currency: string }[],
-): number {
+export function stripeUsdCents(entries: { amountCents: number; currency: string }[]): number {
   if (entries.length === 0) return 0;
   const usd = entries.find((e) => e.currency.toLowerCase() === "usd");
   if (usd) return usd.amountCents;
   return entries.reduce((sum, e) => sum + e.amountCents, 0);
 }
+
+/** @deprecated Use stripeUsdCents — kept for existing imports. */
+export const stripeAvailableUsdCents = stripeUsdCents;
 
 type SumClient = {
   walletTransaction: {

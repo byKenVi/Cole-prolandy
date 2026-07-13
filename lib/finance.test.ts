@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  cashHeldForContractorsCents,
   computeSafeToWithdraw,
+  estimateStripeFeesCents,
   netLeadRevenueCents,
-  stripeAvailableUsdCents,
+  stripeUsdCents,
 } from "./finance";
 
 describe("netLeadRevenueCents", () => {
@@ -20,6 +22,23 @@ describe("netLeadRevenueCents", () => {
   });
 });
 
+describe("estimateStripeFeesCents", () => {
+  it("applies 2.9% plus 30c per top-up", () => {
+    expect(estimateStripeFeesCents(10_000, 1)).toBe(290 + 30);
+    expect(estimateStripeFeesCents(20_000, 2)).toBe(580 + 60);
+  });
+});
+
+describe("cashHeldForContractorsCents", () => {
+  it("excludes promo grants from held", () => {
+    expect(cashHeldForContractorsCents(15_000, 5_000)).toBe(10_000);
+  });
+
+  it("floors at zero", () => {
+    expect(cashHeldForContractorsCents(1_000, 5_000)).toBe(0);
+  });
+});
+
 describe("computeSafeToWithdraw", () => {
   it("matches top-up then lead purchase (200 in, 80 sold)", () => {
     const r = computeSafeToWithdraw({
@@ -28,6 +47,7 @@ describe("computeSafeToWithdraw", () => {
       stripeAvailableCents: 20_000,
     });
     expect(r.safeToWithdrawCents).toBe(8_000);
+    expect(r.safeAfterPendingCents).toBe(8_000);
     expect(r.uncoveredLiabilityCents).toBe(0);
   });
 
@@ -65,24 +85,41 @@ describe("computeSafeToWithdraw", () => {
       stripeAvailableCents: null,
     });
     expect(r.safeToWithdrawCents).toBeNull();
+    expect(r.safeAfterPendingCents).toBeNull();
     expect(r.uncoveredLiabilityCents).toBe(0);
   });
 
-  it("flags uncovered liability when wallets exceed Stripe cash", () => {
+  it("uses pending for after-settle safe and coverage", () => {
     const r = computeSafeToWithdraw({
       netLeadRevenueCents: 8_000,
       heldForContractorsCents: 15_000,
       stripeAvailableCents: 10_000,
+      stripePendingCents: 6_000,
+    });
+    // Now: available 10k − held 15k → 0
+    expect(r.safeToWithdrawCents).toBe(0);
+    // After pending: 16k − 15k = 1k
+    expect(r.safeAfterPendingCents).toBe(1_000);
+    expect(r.uncoveredLiabilityCents).toBe(0);
+  });
+
+  it("flags uncovered when available+pending still short", () => {
+    const r = computeSafeToWithdraw({
+      netLeadRevenueCents: 8_000,
+      heldForContractorsCents: 15_000,
+      stripeAvailableCents: 10_000,
+      stripePendingCents: 2_000,
     });
     expect(r.safeToWithdrawCents).toBe(0);
-    expect(r.uncoveredLiabilityCents).toBe(5_000);
+    expect(r.safeAfterPendingCents).toBe(0);
+    expect(r.uncoveredLiabilityCents).toBe(3_000);
   });
 });
 
-describe("stripeAvailableUsdCents", () => {
+describe("stripeUsdCents", () => {
   it("prefers usd", () => {
     expect(
-      stripeAvailableUsdCents([
+      stripeUsdCents([
         { amountCents: 100, currency: "eur" },
         { amountCents: 500, currency: "usd" },
       ]),
@@ -91,7 +128,7 @@ describe("stripeAvailableUsdCents", () => {
 
   it("sums when no usd", () => {
     expect(
-      stripeAvailableUsdCents([
+      stripeUsdCents([
         { amountCents: 100, currency: "eur" },
         { amountCents: 50, currency: "cad" },
       ]),

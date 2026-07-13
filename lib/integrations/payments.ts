@@ -409,7 +409,13 @@ export type StripePayout = {
 
 export type StripePayoutsResult = {
   mocked: boolean;
+  /** Up to 10 most recent payouts for the table. */
   payouts: StripePayout[];
+  /**
+   * Sum of paid + in_transit payouts from the last 100 Stripe payouts
+   * (approximation of cash already sent / en route to the bank).
+   */
+  totalPaidOutCents: number;
 };
 
 /**
@@ -440,23 +446,29 @@ export async function getStripeBalance(): Promise<StripeBalanceResult> {
  */
 export async function listRecentPayouts(): Promise<StripePayoutsResult> {
   if (isMock() || !process.env.STRIPE_SECRET_KEY) {
-    return { mocked: true, payouts: [] };
+    return { mocked: true, payouts: [], totalPaidOutCents: 0 };
   }
   try {
     const stripe = await getStripe();
-    const list = await stripe.payouts.list({ limit: 10 });
+    // Fetch enough to total "already paid out"; show the newest 10 in the UI.
+    const list = await stripe.payouts.list({ limit: 100 });
+    const mapped = list.data.map((p) => ({
+      id: p.id,
+      amountCents: p.amount,
+      currency: p.currency,
+      status: p.status,
+      arrivalDate: p.arrival_date ? p.arrival_date * 1000 : null,
+      created: p.created ? p.created * 1000 : null,
+    }));
+    const totalPaidOutCents = mapped
+      .filter((p) => p.status === "paid" || p.status === "in_transit")
+      .reduce((sum, p) => sum + p.amountCents, 0);
     return {
       mocked: false,
-      payouts: list.data.map((p) => ({
-        id: p.id,
-        amountCents: p.amount,
-        currency: p.currency,
-        status: p.status,
-        arrivalDate: p.arrival_date ? p.arrival_date * 1000 : null,
-        created: p.created ? p.created * 1000 : null,
-      })),
+      payouts: mapped.slice(0, 10),
+      totalPaidOutCents,
     };
   } catch {
-    return { mocked: true, payouts: [] };
+    return { mocked: true, payouts: [], totalPaidOutCents: 0 };
   }
 }

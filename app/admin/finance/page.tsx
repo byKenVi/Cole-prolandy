@@ -3,9 +3,11 @@ import { getStripeBalance, listRecentPayouts } from "@/lib/integrations/payments
 import { PageHeader } from "@/components/admin/ui";
 import { formatMoney } from "@/lib/money";
 import {
+  cashHeldForContractorsCents,
   computeSafeToWithdraw,
+  estimateStripeFeesCents,
   netLeadRevenueCents,
-  stripeAvailableUsdCents,
+  stripeUsdCents,
 } from "@/lib/finance";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +16,9 @@ const STRIPE_DASHBOARD_PAYOUTS_URL = "https://dashboard.stripe.com/payouts";
 const STRIPE_DASHBOARD_SETTINGS_URL = "https://dashboard.stripe.com/settings/payouts";
 
 /** Σ amountCents for a given WalletTransaction type. */
-async function sumByType(type: "TOPUP" | "CARD_REFUND" | "LEAD_CHARGE" | "REFUND") {
+async function sumByType(
+  type: "TOPUP" | "CARD_REFUND" | "LEAD_CHARGE" | "REFUND" | "PROMO_CREDIT",
+) {
   const agg = await prisma.walletTransaction.aggregate({
     _sum: { amountCents: true },
     where: { type },
@@ -23,31 +27,50 @@ async function sumByType(type: "TOPUP" | "CARD_REFUND" | "LEAD_CHARGE" | "REFUND
 }
 
 export default async function AdminFinance() {
-  const [topup, cardRefund, leadCharge, leadRefund, acceptedLeads, walletAgg, balance, payouts] =
-    await Promise.all([
-      sumByType("TOPUP"),
-      sumByType("CARD_REFUND"),
-      sumByType("LEAD_CHARGE"),
-      sumByType("REFUND"),
-      prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
-      prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
-      getStripeBalance(),
-      listRecentPayouts(),
-    ]);
+  const [
+    topup,
+    topupCount,
+    cardRefund,
+    leadCharge,
+    leadRefund,
+    paidAccepts,
+    refundCount,
+    promoCredit,
+    walletAgg,
+    balance,
+    payouts,
+  ] = await Promise.all([
+    sumByType("TOPUP"),
+    prisma.walletTransaction.count({ where: { type: "TOPUP" } }),
+    sumByType("CARD_REFUND"),
+    sumByType("LEAD_CHARGE"),
+    sumByType("REFUND"),
+    // Paid accepts only (seed accepts with no charge are excluded).
+    prisma.walletTransaction.count({ where: { type: "LEAD_CHARGE" } }),
+    prisma.walletTransaction.count({ where: { type: "REFUND" } }),
+    sumByType("PROMO_CREDIT"),
+    prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
+    getStripeBalance(),
+    listRecentPayouts(),
+  ]);
 
   const leadRevenue = netLeadRevenueCents(leadCharge, leadRefund);
   const cardRefundsOut = Math.abs(cardRefund);
   const prepaidOnCards = topup + cardRefund;
-  const heldForContractors = Math.max(0, walletAgg._sum.walletBalanceCents ?? 0);
+  const walletSum = Math.max(0, walletAgg._sum.walletBalanceCents ?? 0);
+  const promoGranted = Math.max(0, promoCredit);
+  const heldForContractors = cashHeldForContractorsCents(walletSum, promoGranted);
+  const estFees = estimateStripeFeesCents(topup, topupCount);
   const stripeUnavailable = balance.mocked || payouts.mocked;
-  const stripeAvailableCents = stripeUnavailable
-    ? null
-    : stripeAvailableUsdCents(balance.available);
-  const { safeToWithdrawCents, uncoveredLiabilityCents } = computeSafeToWithdraw({
-    netLeadRevenueCents: leadRevenue,
-    heldForContractorsCents: heldForContractors,
-    stripeAvailableCents,
-  });
+  const stripeAvailableCents = stripeUnavailable ? null : stripeUsdCents(balance.available);
+  const stripePendingCents = stripeUnavailable ? null : stripeUsdCents(balance.pending);
+  const { safeToWithdrawCents, safeAfterPendingCents, uncoveredLiabilityCents } =
+    computeSafeToWithdraw({
+      netLeadRevenueCents: leadRevenue,
+      heldForContractorsCents: heldForContractors,
+      stripeAvailableCents,
+      stripePendingCents,
+    });
 
   return (
     <div className="admin-fade-up">
@@ -61,7 +84,9 @@ export default async function AdminFinance() {
         <StatCard
           label="Lead revenue"
           value={formatMoney(leadRevenue)}
-          caption={`Your business CA: charged when contractors accept leads (${acceptedLeads} accepted), minus lead refunds.`}
+          caption={`Your business CA: ${paidAccepts} paid accept${paidAccepts === 1 ? "" : "s"}${
+            refundCount > 0 ? `, ${refundCount} refunded` : ""
+          }.`}
           highlight
           large
         />
@@ -77,13 +102,13 @@ export default async function AdminFinance() {
         }}
       >
         Example: contractor tops up $200 then buys an $80 lead — $120 stays held on their wallet;
-        only the $80 is withdrawable as revenue (Stripe fees may reduce it).
+        only the $80 is withdrawable as revenue (Stripe fees and pending settlement may reduce it).
       </p>
       <div
         className="admin-grid-tight"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3,1fr)",
+          gridTemplateColumns: "repeat(2,1fr)",
           gap: 14,
           margin: "0 0 14px",
         }}
@@ -91,7 +116,11 @@ export default async function AdminFinance() {
         <StatCard
           label="Held for contractors"
           value={formatMoney(heldForContractors)}
-          caption="Prepaid still on wallets — not yours to withdraw."
+          caption={
+            promoGranted > 0
+              ? `Cash-like wallet float (promo granted ${formatMoney(promoGranted)} excluded).`
+              : "Prepaid still on wallets — not yours to withdraw."
+          }
         />
         <StatCard
           label="Stripe available"
@@ -103,15 +132,30 @@ export default async function AdminFinance() {
           caption={
             stripeUnavailable
               ? "Live Stripe balance unavailable in mock mode."
-              : "Cash in Stripe (includes prepaid + earned)."
+              : "Withdrawable now (includes prepaid + earned)."
           }
+        />
+        <StatCard
+          label="Stripe pending"
+          value={
+            stripeUnavailable || stripePendingCents === null
+              ? "—"
+              : formatMoney(stripePendingCents)
+          }
+          caption="Settling into available — not withdrawable yet."
         />
         <StatCard
           label="Safe to withdraw"
           value={
             safeToWithdrawCents === null ? "—" : formatMoney(safeToWithdrawCents)
           }
-          caption="Lead-sales cash still in Stripe after reserving wallets."
+          caption={
+            safeAfterPendingCents !== null &&
+            safeToWithdrawCents !== null &&
+            safeAfterPendingCents > safeToWithdrawCents
+              ? `Now. After pending settles: ~${formatMoney(safeAfterPendingCents)}.`
+              : "Lead-sales cash still in Stripe after reserving wallets."
+          }
           highlight
         />
       </div>
@@ -124,8 +168,9 @@ export default async function AdminFinance() {
             maxWidth: 640,
           }}
         >
-          Wallet balances exceed Stripe cash by {formatMoney(uncoveredLiabilityCents)}. Avoid
-          further payouts until cards settle or wallets are spent.
+          Wallet balances exceed Stripe cash (available + pending) by{" "}
+          {formatMoney(uncoveredLiabilityCents)}. Avoid further payouts until cards settle or
+          wallets are spent.
         </p>
       )}
       {uncoveredLiabilityCents === 0 && <div style={{ marginBottom: 26 }} />}
@@ -157,6 +202,13 @@ export default async function AdminFinance() {
           caption="Money returned to contractor cards."
         />
         <StatCard
+          label="Est. Stripe fees"
+          value={formatMoney(estFees)}
+          caption={`≈2.9% + $0.30 × ${topupCount} top-up${topupCount === 1 ? "" : "s"} (estimate).`}
+        />
+      </div>
+      <div style={{ margin: "-12px 0 26px" }}>
+        <StatCard
           label="Prepaid on cards (net)"
           value={formatMoney(prepaidOnCards)}
           caption="Top-ups minus card refunds. Wallet credit bought — not lead CA."
@@ -169,6 +221,20 @@ export default async function AdminFinance() {
       >
         <div>
           <SectionLabel title="Recent bank payouts" />
+          {!stripeUnavailable && (
+            <p
+              style={{
+                margin: "8px 0 0",
+                font: "400 13px/1.5 'Inter'",
+                color: "var(--ink3)",
+              }}
+            >
+              Paid / in transit (last 100):{" "}
+              <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                {formatMoney(payouts.totalPaidOutCents)}
+              </span>
+            </p>
+          )}
           <div
             style={{
               marginTop: 12,
@@ -251,7 +317,7 @@ export default async function AdminFinance() {
             </h2>
             <p style={{ margin: "10px 0 0", font: "400 14px/1.6 'Inter'", color: "rgba(241,231,214,.85)" }}>
               Withdraw up to <strong>Safe to withdraw</strong> in Stripe — leave prepaid wallets
-              covered. Bank details stay in Stripe.
+              covered. Pending funds appear when they settle. Bank details stay in Stripe.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
               <a
