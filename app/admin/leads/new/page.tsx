@@ -10,7 +10,7 @@ export default async function NewLeadPage() {
   const [projectTypes, landTypes] = await Promise.all([
     prisma.projectType.findMany({
       orderBy: { name: "asc" },
-      include: { contractorType: { select: { name: true } } },
+      include: { contractorType: { select: { name: true, icon: true } } },
     }),
     prisma.landType.findMany({ orderBy: { name: "asc" } }),
   ]);
@@ -39,6 +39,7 @@ export default async function NewLeadPage() {
             id: p.id,
             name: p.name,
             contractorTypeName: p.contractorType.name,
+            icon: p.contractorType.icon,
           }))}
           landTypes={landTypes}
         />

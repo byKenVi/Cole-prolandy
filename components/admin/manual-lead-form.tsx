@@ -9,9 +9,15 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { ProjectTypePicker } from "@/components/project-type-picker";
 import { createManualLead } from "@/app/actions/admin";
 
-type ProjectType = { id: string; name: string; contractorTypeName: string };
+type ProjectType = {
+  id: string;
+  name: string;
+  contractorTypeName: string;
+  icon?: string | null;
+};
 
 const EMPTY = {
   landownerName: "",
@@ -38,10 +44,7 @@ export function ManualLeadForm({
   const [done, setDone] = useState<{ leadId: string; recipients: number } | null>(null);
   const [step, setStep] = useState(0);
 
-  const [form, setForm] = useState({
-    ...EMPTY,
-    projectTypeId: projectTypes[0]?.id ?? "",
-  });
+  const [form, setForm] = useState({ ...EMPTY });
 
   function set<K extends keyof typeof form>(k: K, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -130,7 +133,7 @@ export function ManualLeadForm({
           <Button
             variant="outline"
             onClick={() => {
-              setForm({ ...EMPTY, projectTypeId: projectTypes[0]?.id ?? "" });
+              setForm({ ...EMPTY });
               setDone(null);
               setStep(0);
             }}
@@ -223,21 +226,15 @@ export function ManualLeadForm({
           <StepTitle title="Job details" subtitle="What work and which tier? Review before creating." />
           <div>
             <Label htmlFor="pt">Project type</Label>
-            <Select
-              id="pt"
-              className="h-14 text-lg"
-              value={form.projectTypeId}
-              onChange={(e) => set("projectTypeId", e.target.value)}
-            >
-              <option value="" disabled>
-                Choose a project type
-              </option>
-              {projectTypes.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.contractorTypeName} — {p.name}
-                </option>
-              ))}
-            </Select>
+            <div className="mt-2">
+              <ProjectTypePicker
+                id="pt"
+                projectTypes={projectTypes}
+                value={form.projectTypeId}
+                onChange={(id) => set("projectTypeId", id)}
+                density="compact"
+              />
+            </div>
           </div>
           <div>
             <Label htmlFor="tier">Tier</Label>

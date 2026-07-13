@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { ProjectIcon } from "@/components/project-icon";
+import { ProjectTypePicker } from "@/components/project-type-picker";
 import { cn } from "@/lib/utils";
 
 type ProjectType = {
@@ -152,50 +153,13 @@ export function EstimateForm({
         {step === 0 && (
           <Step
             title="What do you need done?"
-            subtitle="Pick the service that fits your project best."
+            subtitle="Pick a category, then the service that fits best."
           >
-            <fieldset>
-              <legend className="sr-only">Choose a service</legend>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {projectTypes.map((p) => {
-                  const selected = p.id === form.projectTypeId;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => set("projectTypeId", p.id)}
-                      className={cn(
-                        "group relative flex flex-col items-center gap-2 rounded-md border bg-surface p-4 text-center transition-all",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2",
-                        selected
-                          ? "border-accent bg-accent/5 shadow-sm ring-1 ring-accent"
-                          : "border-border hover:border-accent/60 hover:bg-primary-soft/40",
-                      )}
-                    >
-                      {selected && (
-                        <span
-                          className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground"
-                          aria-hidden
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                        </span>
-                      )}
-                      <ProjectIcon
-                        icon={p.icon}
-                        category={p.contractorTypeName}
-                        project={p.name}
-                        size="lg"
-                        className="transition-transform group-hover:scale-105"
-                      />
-                      <span className="font-inter text-sm font-medium leading-tight text-text">
-                        {p.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </fieldset>
+            <ProjectTypePicker
+              projectTypes={projectTypes}
+              value={form.projectTypeId}
+              onChange={(id) => set("projectTypeId", id)}
+            />
           </Step>
         )}
 
