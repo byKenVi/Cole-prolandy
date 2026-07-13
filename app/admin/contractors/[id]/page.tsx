@@ -233,6 +233,7 @@ export default async function ContractorDetail({
               page={matchesMeta.page}
               totalPages={matchesMeta.totalPages}
               totalCount={matchCount}
+              pageSize={DEFAULT_PAGE_SIZE}
               pathname={`/admin/contractors/${id}`}
               pageParam="matchesPage"
               params={{ txPage: listParams.txPage }}
@@ -274,6 +275,7 @@ export default async function ContractorDetail({
               page={txMeta.page}
               totalPages={txMeta.totalPages}
               totalCount={txCount}
+              pageSize={DEFAULT_PAGE_SIZE}
               pathname={`/admin/contractors/${id}`}
               pageParam="txPage"
               params={{ matchesPage: listParams.matchesPage }}

@@ -36,7 +36,7 @@ export function ContractorFeed({
 }: {
   rows: FeedRow[];
   walletCents: number;
-  pagination?: { page: number; totalPages: number; totalCount: number };
+  pagination?: { page: number; totalPages: number; totalCount: number; pageSize: number };
 }) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<TierTab>("all");
@@ -190,6 +190,7 @@ export function ContractorFeed({
                 page={pagination.page}
                 totalPages={pagination.totalPages}
                 totalCount={pagination.totalCount}
+                pageSize={pagination.pageSize}
                 pathname="/home"
               />
             )}

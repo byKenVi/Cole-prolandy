@@ -38,7 +38,6 @@ export function PaginationControls({
   className,
   variant = "contractor",
 }: PaginationControlsProps) {
-  const showSize = pageSize != null && pageSizeOptions.length > 0;
   if (totalCount <= 0) return null;
 
   const base: PaginationParams = { ...params };

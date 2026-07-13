@@ -57,7 +57,7 @@ export default async function ContractorHome({
     <ContractorFeed
       rows={rows}
       walletCents={contractor.walletBalanceCents}
-      pagination={{ page, totalPages, totalCount }}
+      pagination={{ page, totalPages, totalCount, pageSize: DEFAULT_PAGE_SIZE }}
     />
   );
 }

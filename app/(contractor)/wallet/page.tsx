@@ -146,6 +146,7 @@ export default async function WalletPage({
                   page={page}
                   totalPages={totalPages}
                   totalCount={totalCount}
+                  pageSize={DEFAULT_PAGE_SIZE}
                   pathname="/wallet"
                   params={{ topup: topup || undefined }}
                 />

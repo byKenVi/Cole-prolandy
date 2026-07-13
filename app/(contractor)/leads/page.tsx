@@ -33,7 +33,9 @@ export default async function MyLeadsPage({
   searchParams: Promise<{ page?: string }>;
 }) {
   const session = await getSession();
-  if (!session.contractorId) return <Shell rows={[]} totalCount={0} page={1} totalPages={1} />;
+  if (!session.contractorId) {
+    return <Shell rows={[]} totalCount={0} page={1} totalPages={1} pageSize={DEFAULT_PAGE_SIZE} />;
+  }
 
   const where = { contractorId: session.contractorId, status: "ACCEPTED" as const };
   const requestedPage = parsePage((await searchParams).page);
@@ -65,7 +67,15 @@ export default async function MyLeadsPage({
     contactEmail: m.lead.landownerEmail,
   }));
 
-  return <Shell rows={rows} totalCount={totalCount} page={page} totalPages={totalPages} />;
+  return (
+    <Shell
+      rows={rows}
+      totalCount={totalCount}
+      page={page}
+      totalPages={totalPages}
+      pageSize={DEFAULT_PAGE_SIZE}
+    />
+  );
 }
 
 function Shell({
@@ -73,11 +83,13 @@ function Shell({
   totalCount,
   page,
   totalPages,
+  pageSize,
 }: {
   rows: Row[];
   totalCount: number;
   page: number;
   totalPages: number;
+  pageSize: number;
 }) {
   return (
     <div className="flex min-h-full flex-col">
@@ -142,6 +154,7 @@ function Shell({
               page={page}
               totalPages={totalPages}
               totalCount={totalCount}
+              pageSize={pageSize}
               pathname="/leads"
             />
           </>
