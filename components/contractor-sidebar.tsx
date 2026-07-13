@@ -92,7 +92,7 @@ export function ContractorSidebar({
         </div>
       )}
 
-      {/* Profile row */}
+      {/* Profile row — sign-out is an icon on the right (no extra full-width row). */}
       <div className="flex items-center gap-[11px] border-t border-white/[0.07] px-[6px] pb-[2px] pt-4">
         {userMenu ? (
           <span className="flex-none">{userMenu}</span>
@@ -112,14 +112,12 @@ export function ContractorSidebar({
             <p className="mt-0.5 truncate text-[12px] leading-none text-[#9A9084]">{subtitle}</p>
           )}
         </Link>
-        <ChevronRight className="h-4 w-4 flex-none text-[#9A9084]" strokeWidth={1.8} aria-hidden />
+        {showSignOut ? (
+          <SignOutLink variant="sidebarIcon" label="Sign out" />
+        ) : (
+          <ChevronRight className="h-4 w-4 flex-none text-[#9A9084]" strokeWidth={1.8} aria-hidden />
+        )}
       </div>
-
-      {showSignOut && (
-        <div className="mt-3 px-[6px]">
-          <SignOutLink />
-        </div>
-      )}
     </aside>
   );
 }
