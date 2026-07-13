@@ -4,11 +4,16 @@ import { getSession } from "@/lib/auth";
 import { expireLeads } from "@/lib/domain/leads";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
+import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
 import { ContractorFeed, type FeedRow } from "./feed-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContractorHome() {
+export default async function ContractorHome({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const session = await getSession();
   if (!session.contractorId) return <NoContractor />;
 
@@ -20,9 +25,20 @@ export default async function ContractorHome() {
   });
   if (!contractor) return <NoContractor />;
 
+  const where = { contractorId: contractor.id, status: "PENDING" as const };
+  const requestedPage = parsePage((await searchParams).page);
+  const totalCount = await prisma.leadMatch.count({ where });
+  const { page, skip, take, totalPages } = paginationMeta(
+    totalCount,
+    requestedPage,
+    DEFAULT_PAGE_SIZE,
+  );
+
   const matches = await prisma.leadMatch.findMany({
-    where: { contractorId: contractor.id, status: "PENDING" },
+    where,
     orderBy: { createdAt: "desc" },
+    skip,
+    take,
     include: { lead: { include: { projectType: { include: { contractorType: true } } } } },
   });
 
@@ -37,7 +53,13 @@ export default async function ContractorHome() {
     receivedAt: m.createdAt,
   }));
 
-  return <ContractorFeed rows={rows} walletCents={contractor.walletBalanceCents} />;
+  return (
+    <ContractorFeed
+      rows={rows}
+      walletCents={contractor.walletBalanceCents}
+      pagination={{ page, totalPages, totalCount }}
+    />
+  );
 }
 
 function NoContractor() {

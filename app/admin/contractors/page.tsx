@@ -4,7 +4,9 @@ import { PageHeader, GoldButtonLink, StatCard, Chip } from "@/components/admin/u
 import { ContractorFilters } from "@/components/admin/contractor-filters";
 import { ContractorRowActions } from "@/components/admin/contractor-row-actions";
 import { RowLink } from "@/components/admin/row-link";
+import { PaginationControls } from "@/components/pagination-controls";
 import { formatMoney } from "@/lib/money";
+import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +26,10 @@ function initials(name: string): string {
 export default async function AdminContractors({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string }>;
+  searchParams: Promise<{ q?: string; filter?: string; page?: string }>;
 }) {
-  const { q, filter } = await searchParams;
+  const { q, filter, page: pageRaw } = await searchParams;
+  const requestedPage = parsePage(pageRaw);
 
   const where: Prisma.ContractorWhereInput = {};
   if (q) {
@@ -41,16 +44,26 @@ export default async function AdminContractors({
   if (filter === "deactivated") where.deactivatedAt = { not: null };
   else if (filter !== "all") where.deactivatedAt = null;
 
-  const [contractors, totalCount, proCount, walletAgg] = await Promise.all([
-    prisma.contractor.findMany({
-      where,
-      orderBy: { name: "asc" },
-      include: { contractorType: { select: { name: true } } },
-    }),
+  const [filteredCount, totalCount, proCount, walletAgg] = await Promise.all([
+    prisma.contractor.count({ where }),
     prisma.contractor.count(),
     prisma.contractor.count({ where: { isPro: true } }),
     prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
   ]);
+
+  const { page, skip, take, totalPages } = paginationMeta(
+    filteredCount,
+    requestedPage,
+    DEFAULT_PAGE_SIZE,
+  );
+
+  const contractors = await prisma.contractor.findMany({
+    where,
+    orderBy: { name: "asc" },
+    skip,
+    take,
+    include: { contractorType: { select: { name: true } } },
+  });
 
   return (
     <div className="admin-fade-up">
@@ -179,6 +192,14 @@ export default async function AdminContractors({
             </div>
           ))
         )}
+        <PaginationControls
+          variant="admin"
+          page={page}
+          totalPages={totalPages}
+          totalCount={filteredCount}
+          pathname="/admin/contractors"
+          params={{ q: q || undefined, filter: filter || undefined }}
+        />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { MapPin, Search, ChevronDown, Hammer, MessageSquare } from "lucide-react";
 import { WalletCard } from "@/components/wallet-card";
 import { LeadFeedCard } from "@/components/lead-feed-card";
+import { PaginationControls } from "@/components/pagination-controls";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
@@ -28,11 +29,20 @@ const GRID =
 type TierTab = "all" | "t1" | "t2" | "t3";
 type SortOrder = "newest" | "oldest";
 
-export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletCents: number }) {
+export function ContractorFeed({
+  rows,
+  walletCents,
+  pagination,
+}: {
+  rows: FeedRow[];
+  walletCents: number;
+  pagination?: { page: number; totalPages: number; totalCount: number };
+}) {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<TierTab>("all");
   const [sort, setSort] = useState<SortOrder>("newest");
 
+  const totalOpen = pagination?.totalCount ?? rows.length;
   const countAll = rows.length;
   const countT1 = rows.filter((r) => r.tier === 1).length;
   const countT2 = rows.filter((r) => r.tier === 2).length;
@@ -66,14 +76,13 @@ export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletC
 
   return (
     <div className="flex min-h-full flex-col">
-      {/* Header */}
       <header className="flex flex-col gap-4 border-b border-[#EDE4D3] px-5 pb-5 pt-6 md:flex-row md:items-center md:justify-between md:px-[34px] md:pt-[26px]">
         <div>
           <h1 className="font-fraunces text-[30px] font-semibold tracking-[-0.01em] text-[#3A352D]">
             New leads
           </h1>
           <p className="mt-[5px] text-[14px] text-[#8A7E68]">
-            {countAll} open {countAll === 1 ? "job" : "jobs"} matched to your trade
+            {totalOpen} open {totalOpen === 1 ? "job" : "jobs"} matched to your trade
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -88,21 +97,19 @@ export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletC
               className="w-full border-none bg-transparent text-[14px] text-[#3A352D] outline-none placeholder:text-[#8A7E68]"
             />
           </label>
-          {countAll > 0 && (
+          {totalOpen > 0 && (
             <span className="inline-flex h-[42px] items-center gap-[7px] whitespace-nowrap rounded-[12px] bg-[#F4EAD3] px-[14px] text-[13px] font-semibold text-[#8A6B2E]">
               <span className="h-[7px] w-[7px] rounded-full bg-[#C0803C]" />
-              {countAll} new
+              {totalOpen} new
             </span>
           )}
         </div>
       </header>
 
-      {/* Mobile wallet */}
       <div className="px-5 pt-5 md:hidden">
         <WalletCard cents={walletCents} />
       </div>
 
-      {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 px-5 py-4 md:px-[34px]">
         <div
           role="tablist"
@@ -125,15 +132,13 @@ export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletC
         </button>
       </div>
 
-      {/* List */}
       <div className="flex flex-1 flex-col px-5 pb-8 md:px-[34px]">
-        {rows.length === 0 ? (
+        {totalOpen === 0 ? (
           <EmptyFeed />
         ) : shown.length === 0 ? (
           <NoMatches />
         ) : (
           <>
-            {/* Mobile: stacked cards */}
             <div className="flex flex-col gap-3 md:hidden">
               {shown.map((r) => (
                 <LeadFeedCard
@@ -153,7 +158,6 @@ export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletC
               ))}
             </div>
 
-            {/* Desktop: table */}
             <div className="hidden overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)] md:block">
               <div className="overflow-x-auto">
                 <div
@@ -172,13 +176,23 @@ export function ContractorFeed({ rows, walletCents }: { rows: FeedRow[]; walletC
               </div>
               <div className="flex flex-col gap-1 bg-[#FAF4E9] px-6 py-[14px] sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-[13px] text-[#8A7E68]">
-                  Showing {shown.length} of {countAll} open leads
+                  Showing {shown.length} of {countAll} on this page · {totalOpen} open total
                 </span>
                 <span className="text-[13px] font-medium text-[#8A6B2E]">
                   New jobs are texted to you the moment they come in.
                 </span>
               </div>
             </div>
+
+            {pagination && (
+              <PaginationControls
+                variant="contractor"
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                totalCount={pagination.totalCount}
+                pathname="/home"
+              />
+            )}
           </>
         )}
       </div>
@@ -223,7 +237,11 @@ function Tab({
 }
 
 function FeedTableRow({ row }: { row: FeedRow }) {
-  const src = iconSrcFor({ icon: row.categoryIcon, category: row.categoryName, project: row.projectTypeName });
+  const src = iconSrcFor({
+    icon: row.categoryIcon,
+    category: row.categoryName,
+    project: row.projectTypeName,
+  });
   const pill = tierPill(row.tier);
   return (
     <Link
@@ -233,7 +251,14 @@ function FeedTableRow({ row }: { row: FeedRow }) {
       <div className="flex min-w-0 items-center gap-[14px]">
         <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-[13px] bg-[#F5EEDF]">
           {src ? (
-            <Image src={src} alt="" aria-hidden width={60} height={60} className="h-[30px] w-[30px] object-contain" />
+            <Image
+              src={src}
+              alt=""
+              aria-hidden
+              width={60}
+              height={60}
+              className="h-[30px] w-[30px] object-contain"
+            />
           ) : (
             <Hammer className="h-[26px] w-[26px] text-[#9A6E2E]" aria-hidden />
           )}

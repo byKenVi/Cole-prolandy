@@ -28,18 +28,22 @@ const HEAD_CELL: React.CSSProperties = {
 };
 
 /**
- * Leads table with All / Distributed / Expired tabs. The full lead list is
- * fetched server-side (real data); the tabs filter it client-side, matching the
- * design model. Each row is a stretched link to the real lead detail page.
+ * Leads table with All / Distributed / Expired tabs. Rows are server-paginated;
+ * search + tabs filter the current page client-side. Each row links to detail.
  */
 export function LeadsTable({
   leads,
   total,
+  pageCount,
   initialQuery = "",
+  pagination,
 }: {
   leads: LeadRow[];
   total: number;
+  /** Rows on the current server page (before client filter). */
+  pageCount?: number;
   initialQuery?: string;
+  pagination?: React.ReactNode;
 }) {
   const [tab, setTab] = useState<"all" | "distributed" | "expired">("all");
   const [query, setQuery] = useState(initialQuery);
@@ -272,19 +276,25 @@ export function LeadsTable({
         <div
           style={{
             display: "flex",
+            flexWrap: "wrap",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 8,
             padding: "14px 24px",
             background: "var(--card2)",
           }}
         >
           <span style={{ font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
-            Showing {shown.length} of {total} lead{total === 1 ? "" : "s"}
+            Showing {shown.length}
+            {pageCount != null ? ` of ${pageCount} on this page` : ""}
+            {" · "}
+            {total} lead{total === 1 ? "" : "s"} total
           </span>
           <span style={{ font: "500 13px/1 'Inter'", color: "var(--goldSoftFg)" }}>
             Prices are snapshotted at send — matrix edits don&apos;t affect these.
           </span>
         </div>
+        {pagination}
       </div>
     </>
   );

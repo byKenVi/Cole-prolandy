@@ -6,6 +6,8 @@ import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import { LeadFeedCard } from "@/components/lead-feed-card";
+import { PaginationControls } from "@/components/pagination-controls";
+import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +27,28 @@ type Row = {
 const GRID =
   "grid-cols-[minmax(180px,2fr)_minmax(120px,1.2fr)_minmax(180px,1.8fr)_78px_100px]";
 
-export default async function MyLeadsPage() {
+export default async function MyLeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const session = await getSession();
-  if (!session.contractorId) return <Shell rows={[]} />;
+  if (!session.contractorId) return <Shell rows={[]} totalCount={0} page={1} totalPages={1} />;
+
+  const where = { contractorId: session.contractorId, status: "ACCEPTED" as const };
+  const requestedPage = parsePage((await searchParams).page);
+  const totalCount = await prisma.leadMatch.count({ where });
+  const { page, skip, take, totalPages } = paginationMeta(
+    totalCount,
+    requestedPage,
+    DEFAULT_PAGE_SIZE,
+  );
 
   const matches = await prisma.leadMatch.findMany({
-    where: { contractorId: session.contractorId, status: "ACCEPTED" },
+    where,
     orderBy: { acceptedAt: "desc" },
+    skip,
+    take,
     include: { lead: { include: { projectType: { include: { contractorType: true } } } } },
   });
 
@@ -48,10 +65,20 @@ export default async function MyLeadsPage() {
     contactEmail: m.lead.landownerEmail,
   }));
 
-  return <Shell rows={rows} />;
+  return <Shell rows={rows} totalCount={totalCount} page={page} totalPages={totalPages} />;
 }
 
-function Shell({ rows }: { rows: Row[] }) {
+function Shell({
+  rows,
+  totalCount,
+  page,
+  totalPages,
+}: {
+  rows: Row[];
+  totalCount: number;
+  page: number;
+  totalPages: number;
+}) {
   return (
     <div className="flex min-h-full flex-col">
       <header className="flex items-center justify-between gap-4 border-b border-[#EDE4D3] px-5 pb-5 pt-6 md:px-[34px] md:pt-[26px]">
@@ -60,13 +87,13 @@ function Shell({ rows }: { rows: Row[] }) {
             My leads
           </h1>
           <p className="mt-[5px] text-[14px] text-[#8A7E68]">
-            {rows.length} accepted {rows.length === 1 ? "job" : "jobs"} — contacts unlocked
+            {totalCount} accepted {totalCount === 1 ? "job" : "jobs"} — contacts unlocked
           </p>
         </div>
       </header>
 
       <div className="flex flex-1 flex-col px-5 py-6 md:px-[34px]">
-        {rows.length === 0 ? (
+        {totalCount === 0 ? (
           <Empty />
         ) : (
           <>
@@ -109,6 +136,14 @@ function Shell({ rows }: { rows: Row[] }) {
                 ))}
               </div>
             </div>
+
+            <PaginationControls
+              variant="contractor"
+              page={page}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              pathname="/leads"
+            />
           </>
         )}
       </div>

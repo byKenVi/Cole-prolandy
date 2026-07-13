@@ -3,10 +3,12 @@ import { getSession } from "@/lib/auth";
 import { TopUp } from "@/components/topup";
 import { SavedCardPanel } from "@/components/saved-card-panel";
 import { EmptyState } from "@/components/empty-state";
+import { PaginationControls } from "@/components/pagination-controls";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { formatCardLabel } from "@/lib/card-display";
 import { cn } from "@/lib/utils";
+import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +24,9 @@ const TYPE_LABEL: Record<string, string> = {
 export default async function WalletPage({
   searchParams,
 }: {
-  searchParams: Promise<{ topup?: string }>;
+  searchParams: Promise<{ topup?: string; page?: string }>;
 }) {
-  const { topup } = await searchParams;
+  const { topup, page: pageRaw } = await searchParams;
   const session = await getSession();
   if (!session.contractorId) {
     return (
@@ -44,10 +46,20 @@ export default async function WalletPage({
     },
   });
   const hasSavedCard = Boolean(contractor?.stripeDefaultPaymentMethodId);
+
+  const where = { contractorId: session.contractorId };
+  const totalCount = await prisma.walletTransaction.count({ where });
+  const { page, skip, take, totalPages } = paginationMeta(
+    totalCount,
+    parsePage(pageRaw),
+    DEFAULT_PAGE_SIZE,
+  );
+
   const txns = await prisma.walletTransaction.findMany({
-    where: { contractorId: session.contractorId },
+    where,
     orderBy: { createdAt: "desc" },
-    take: 50,
+    skip,
+    take,
   });
 
   return (
@@ -108,26 +120,36 @@ export default async function WalletPage({
                 <p className="mt-1 text-sm text-[#8A7E68]">Your top-ups and charges will show here.</p>
               </div>
             ) : (
-              <div className="-mx-2 divide-y divide-[#F2EBDD]">
-                {txns.map((t) => (
-                  <div key={t.id} className="flex items-center justify-between gap-3 px-2 py-3.5">
-                    <div className="min-w-0">
-                      <p className="font-medium text-[#3A352D]">{TYPE_LABEL[t.type] ?? t.type}</p>
-                      <p className="text-xs text-[#A79E8D]">{formatDate(t.createdAt)}</p>
-                      {t.note && <p className="truncate text-xs text-[#A79E8D]">{t.note}</p>}
+              <>
+                <div className="-mx-2 divide-y divide-[#F2EBDD]">
+                  {txns.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between gap-3 px-2 py-3.5">
+                      <div className="min-w-0">
+                        <p className="font-medium text-[#3A352D]">{TYPE_LABEL[t.type] ?? t.type}</p>
+                        <p className="text-xs text-[#A79E8D]">{formatDate(t.createdAt)}</p>
+                        {t.note && <p className="truncate text-xs text-[#A79E8D]">{t.note}</p>}
+                      </div>
+                      <span
+                        className={cn(
+                          "shrink-0 font-semibold tabular-nums",
+                          t.amountCents >= 0 ? "text-[#1E7A4C]" : "text-[#C0392B]",
+                        )}
+                      >
+                        {t.amountCents >= 0 ? "+" : "−"}
+                        {formatMoney(Math.abs(t.amountCents))}
+                      </span>
                     </div>
-                    <span
-                      className={cn(
-                        "shrink-0 font-semibold tabular-nums",
-                        t.amountCents >= 0 ? "text-[#1E7A4C]" : "text-[#C0392B]",
-                      )}
-                    >
-                      {t.amountCents >= 0 ? "+" : "−"}
-                      {formatMoney(Math.abs(t.amountCents))}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <PaginationControls
+                  variant="contractor"
+                  page={page}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  pathname="/wallet"
+                  params={{ topup: topup || undefined }}
+                />
+              </>
             )}
           </div>
         </div>

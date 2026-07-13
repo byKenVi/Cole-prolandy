@@ -17,6 +17,7 @@ export function ContractorFilters({ q, filter }: { q: string; filter: string }) 
     const params = new URLSearchParams();
     if (nextQ.trim()) params.set("q", nextQ.trim());
     if (nextPlan) params.set("filter", nextPlan);
+    // Reset to page 1 whenever search/filter changes.
     const qs = params.toString();
     router.push(qs ? `/admin/contractors?${qs}` : "/admin/contractors");
   }

@@ -11,12 +11,14 @@ import { LeadRestitutionList } from "@/components/admin/lead-restitution-list";
 import { ViewAsButton } from "@/components/admin/view-as-button";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { RowLink } from "@/components/admin/row-link";
+import { PaginationControls } from "@/components/pagination-controls";
 import { deactivateContractor, reactivateContractor } from "@/app/actions/admin";
 import { LeadMatchStatusBadge } from "@/components/status-badge";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { formatCardLabel } from "@/lib/card-display";
 import { cn } from "@/lib/utils";
+import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -31,45 +33,80 @@ const TYPE_LABEL: Record<string, string> = {
 
 export default async function ContractorDetail({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ matchesPage?: string; txPage?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
 
   const contractor = await prisma.contractor.findUnique({
     where: { id },
     include: {
       contractorType: true,
       services: { include: { service: true } },
-      walletTransactions: { orderBy: { createdAt: "desc" }, take: 30 },
-      leadMatches: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          lead: { include: { projectType: true } },
-          walletTransactions: { select: { type: true } },
-        },
-      },
     },
   });
   if (!contractor) notFound();
 
-  const topupAgg = await prisma.walletTransaction.aggregate({
-    _sum: { amountCents: true },
-    where: { contractorId: id, type: "TOPUP" },
-  });
+  const matchesWhere = { contractorId: id };
+  const txWhere = { contractorId: id };
+
+  const [matchCount, txCount, topupAgg, acceptedMatches] = await Promise.all([
+    prisma.leadMatch.count({ where: matchesWhere }),
+    prisma.walletTransaction.count({ where: txWhere }),
+    prisma.walletTransaction.aggregate({
+      _sum: { amountCents: true },
+      where: { contractorId: id, type: "TOPUP" },
+    }),
+    prisma.leadMatch.findMany({
+      where: { contractorId: id, status: "ACCEPTED" },
+      orderBy: { acceptedAt: "desc" },
+      include: {
+        lead: { include: { projectType: true } },
+        walletTransactions: { select: { type: true } },
+      },
+    }),
+  ]);
+
+  const matchesMeta = paginationMeta(matchCount, parsePage(sp.matchesPage), DEFAULT_PAGE_SIZE);
+  const txMeta = paginationMeta(txCount, parsePage(sp.txPage), DEFAULT_PAGE_SIZE);
+
+  const [leadMatches, walletTransactions] = await Promise.all([
+    prisma.leadMatch.findMany({
+      where: matchesWhere,
+      orderBy: { createdAt: "desc" },
+      skip: matchesMeta.skip,
+      take: matchesMeta.take,
+      include: {
+        lead: { include: { projectType: true } },
+      },
+    }),
+    prisma.walletTransaction.findMany({
+      where: txWhere,
+      orderBy: { createdAt: "desc" },
+      skip: txMeta.skip,
+      take: txMeta.take,
+    }),
+  ]);
+
   const topupTotalCents = topupAgg._sum.amountCents ?? 0;
   const hasSavedCard = Boolean(contractor.stripeDefaultPaymentMethodId);
   const cardLabel = formatCardLabel(contractor.cardBrand, contractor.cardLast4);
 
-  const acceptedLeads = contractor.leadMatches
-    .filter((m) => m.status === "ACCEPTED")
-    .map((m) => ({
-      matchId: m.id,
-      projectName: m.lead.projectType.name,
-      location: m.lead.propertyLocation,
-      priceCents: m.lead.priceCents,
-      alreadyRefunded: m.walletTransactions.some((t) => t.type === "REFUND"),
-    }));
+  const acceptedLeads = acceptedMatches.map((m) => ({
+    matchId: m.id,
+    projectName: m.lead.projectType.name,
+    location: m.lead.propertyLocation,
+    priceCents: m.lead.priceCents,
+    alreadyRefunded: m.walletTransactions.some((t) => t.type === "REFUND"),
+  }));
+
+  const listParams = {
+    matchesPage: matchesMeta.page > 1 ? matchesMeta.page : undefined,
+    txPage: txMeta.page > 1 ? txMeta.page : undefined,
+  };
 
   return (
     <div className="admin-fade-up flex flex-col gap-6">
@@ -169,11 +206,11 @@ export default async function ContractorDetail({
         <h2 className="mb-3 text-lg font-semibold" style={{ color: "var(--ink)" }}>
           Leads
         </h2>
-        {contractor.leadMatches.length === 0 ? (
+        {matchCount === 0 ? (
           <p className="text-sm text-text-muted">No leads yet.</p>
         ) : (
-          <Card className="divide-y divide-border p-0">
-            {contractor.leadMatches.map((m) => (
+          <Card className="divide-y divide-border p-0 overflow-hidden">
+            {leadMatches.map((m) => (
               <div
                 key={m.id}
                 className="relative flex items-center justify-between px-5 py-3 transition-colors hover:bg-primary-soft"
@@ -191,6 +228,15 @@ export default async function ContractorDetail({
                 </div>
               </div>
             ))}
+            <PaginationControls
+              variant="admin"
+              page={matchesMeta.page}
+              totalPages={matchesMeta.totalPages}
+              totalCount={matchCount}
+              pathname={`/admin/contractors/${id}`}
+              pageParam="matchesPage"
+              params={{ txPage: listParams.txPage }}
+            />
           </Card>
         )}
       </section>
@@ -199,11 +245,11 @@ export default async function ContractorDetail({
         <h2 className="mb-3 text-lg font-semibold" style={{ color: "var(--ink)" }}>
           Transactions
         </h2>
-        {contractor.walletTransactions.length === 0 ? (
+        {txCount === 0 ? (
           <p className="text-sm text-text-muted">No transactions.</p>
         ) : (
-          <Card className="divide-y divide-border p-0">
-            {contractor.walletTransactions.map((t) => (
+          <Card className="divide-y divide-border p-0 overflow-hidden">
+            {walletTransactions.map((t) => (
               <div key={t.id} className="flex items-center justify-between px-5 py-3">
                 <div>
                   <p className="font-medium text-text">{TYPE_LABEL[t.type] ?? t.type}</p>
@@ -223,6 +269,15 @@ export default async function ContractorDetail({
                 </span>
               </div>
             ))}
+            <PaginationControls
+              variant="admin"
+              page={txMeta.page}
+              totalPages={txMeta.totalPages}
+              totalCount={txCount}
+              pathname={`/admin/contractors/${id}`}
+              pageParam="txPage"
+              params={{ matchesPage: listParams.matchesPage }}
+            />
           </Card>
         )}
       </section>

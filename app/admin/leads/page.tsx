@@ -2,25 +2,43 @@ import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
 import { PageHeader, GoldButtonLink, StatCard } from "@/components/admin/ui";
 import { LeadsTable, type LeadRow } from "@/components/admin/leads-table";
+import { PaginationControls } from "@/components/pagination-controls";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { iconSrcFor } from "@/lib/project-icons";
 import { leadStatusChip, tierChip } from "@/lib/admin-display";
+import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLeads({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
-  const initialQuery = typeof q === "string" ? q : "";
+  const sp = await searchParams;
+  const initialQuery = typeof sp.q === "string" ? sp.q : "";
+  const requestedPage = parsePage(sp.page);
 
   await expireLeads(prisma).catch(() => undefined);
 
+  const [totalCount, distributed, expired, listedAgg] = await Promise.all([
+    prisma.lead.count(),
+    prisma.lead.count({ where: { status: "DISTRIBUTED" } }),
+    prisma.lead.count({ where: { status: "EXPIRED" } }),
+    prisma.lead.aggregate({ _sum: { priceCents: true } }),
+  ]);
+
+  const { page, skip, take, totalPages } = paginationMeta(
+    totalCount,
+    requestedPage,
+    DEFAULT_PAGE_SIZE,
+  );
+
   const leads = await prisma.lead.findMany({
     orderBy: { createdAt: "desc" },
+    skip,
+    take,
     select: {
       id: true,
       tier: true,
@@ -35,9 +53,7 @@ export default async function AdminLeads({
     },
   });
 
-  const distributed = leads.filter((l) => l.status === "DISTRIBUTED").length;
-  const expired = leads.filter((l) => l.status === "EXPIRED").length;
-  const listedValue = leads.reduce((s, l) => s + l.priceCents, 0);
+  const listedValue = listedAgg._sum.priceCents ?? 0;
 
   const rows: LeadRow[] = leads.map((l) => ({
     id: l.id,
@@ -76,13 +92,28 @@ export default async function AdminLeads({
           marginBottom: 20,
         }}
       >
-        <StatCard label="Total leads" value={String(leads.length)} />
+        <StatCard label="Total leads" value={String(totalCount)} />
         <StatCard label="Distributed" value={String(distributed)} valueColor="var(--sageFg)" />
         <StatCard label="Expired" value={String(expired)} valueColor="var(--danger)" />
         <StatCard label="Listed value" value={formatMoney(listedValue)} />
       </div>
 
-      <LeadsTable leads={rows} total={leads.length} initialQuery={initialQuery} />
+      <LeadsTable
+        leads={rows}
+        total={totalCount}
+        pageCount={leads.length}
+        initialQuery={initialQuery}
+        pagination={
+          <PaginationControls
+            variant="admin"
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pathname="/admin/leads"
+            params={{ q: initialQuery || undefined }}
+          />
+        }
+      />
     </div>
   );
 }
