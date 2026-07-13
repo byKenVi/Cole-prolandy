@@ -7,6 +7,13 @@ import { authMode } from "@/lib/auth";
 export const metadata: Metadata = {
   title: "Landy's Pro",
   description: "Land-service leads for contractors. Simple for the pro, premium for the brand.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon", type: "image/png", sizes: "32x32" },
+    ],
+    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
+  },
 };
 
 export const viewport: Viewport = {
