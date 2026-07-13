@@ -7,17 +7,17 @@
  * neutral fallback).
  */
 const ICON_RULES: { keywords: string[]; src: string }[] = [
-  { keywords: ["excavation", "dirt", "dig", "trench"], src: "/icons/excavation.png" },
-  { keywords: ["land clearing", "clearing", "mulch"], src: "/icons/land-clearing.png" },
+  { keywords: ["excavation", "dirt", "dig", "trench", "utility"], src: "/icons/excavation.png" },
+  { keywords: ["land clearing", "clearing", "mulch", "brush hog", "brush"], src: "/icons/land-clearing.png" },
   { keywords: ["pond", "dam", "levee", "dredg"], src: "/icons/pond.png" },
-  { keywords: ["fenc", "gate"], src: "/icons/fencing.png" },
+  { keywords: ["fenc", "gate", "gated"], src: "/icons/fencing.png" },
   { keywords: ["survey", "boundary", "plat", "topograph"], src: "/icons/surveying.png" },
   { keywords: ["tree", "stump"], src: "/icons/tree-service.png" },
   { keywords: ["road", "driveway", "gravel"], src: "/icons/road.png" },
-  { keywords: ["drain", "culvert", "french"], src: "/icons/drainage.png" },
-  { keywords: ["brush", "mow", "pasture", "forestry"], src: "/icons/brush-mowing.png" },
+  { keywords: ["drain", "culvert", "french", "irrigation"], src: "/icons/drainage.png" },
+  { keywords: ["brush", "mow", "pasture", "forestry", "hogging"], src: "/icons/brush-mowing.png" },
   { keywords: ["septic", "perc"], src: "/icons/septic.png" },
-  { keywords: ["grad", "pad ", "level"], src: "/icons/grading.png" },
+  { keywords: ["grad", "pad ", "level", "cabin", "barndo", "retaining"], src: "/icons/grading.png" },
   { keywords: ["well", "drill", "pump"], src: "/icons/well-drilling.png" },
 ];
 

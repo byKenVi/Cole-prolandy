@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getMaxLeadRecipients, getLeadExpiryHours } from "@/lib/domain/settings";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { CategoriesManager } from "@/components/admin/categories-manager";
+import { LandTypesManager } from "@/components/admin/land-types-manager";
 import { AppearancePicker } from "@/components/admin/appearance-picker";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ const descStyle: React.CSSProperties = {
 };
 
 export default async function SettingsPage() {
-  const [maxLeadRecipients, leadExpiryHours, categories] = await Promise.all([
+  const [maxLeadRecipients, leadExpiryHours, categories, landTypes] = await Promise.all([
     getMaxLeadRecipients(prisma),
     getLeadExpiryHours(prisma),
     prisma.contractorType.findMany({
@@ -36,6 +37,10 @@ export default async function SettingsPage() {
         icon: true,
         _count: { select: { contractors: true, projectTypes: true } },
       },
+    }),
+    prisma.landType.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, _count: { select: { leads: true } } },
     }),
   ]);
 
@@ -54,14 +59,17 @@ export default async function SettingsPage() {
         Settings
       </h1>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }} className="admin-grid-stack">
-        <div style={cardStyle}>
-          <p style={titleStyle}>Lead distribution</p>
-          <p style={descStyle}>How leads are shared and how long they stay open.</p>
-          <SettingsForm maxLeadRecipients={maxLeadRecipients} leadExpiryHours={leadExpiryHours} />
-        </div>
-
+      <div
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}
+        className="admin-grid-stack"
+      >
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={cardStyle}>
+            <p style={titleStyle}>Lead distribution</p>
+            <p style={descStyle}>How leads are shared and how long they stay open.</p>
+            <SettingsForm maxLeadRecipients={maxLeadRecipients} leadExpiryHours={leadExpiryHours} />
+          </div>
+
           <div style={cardStyle}>
             <p style={titleStyle}>Appearance</p>
             <p style={{ ...descStyle, marginBottom: 18 }}>Choose how the admin panel looks.</p>
@@ -69,21 +77,36 @@ export default async function SettingsPage() {
           </div>
 
           <div style={cardStyle}>
-            <p style={titleStyle}>Contractor categories</p>
+            <p style={titleStyle}>Land types</p>
             <p style={{ ...descStyle, marginBottom: 18 }}>
-              The trades contractors and leads are grouped by. Renaming is safe; a category can only
-              be deleted once no contractors or project types reference it.
+              Property classifications for leads. Renaming is safe; delete only when no leads use the
+              type.
             </p>
-            <CategoriesManager
-              categories={categories.map((c) => ({
-                id: c.id,
-                name: c.name,
-                icon: c.icon,
-                contractors: c._count.contractors,
-                projectTypes: c._count.projectTypes,
+            <LandTypesManager
+              landTypes={landTypes.map((t) => ({
+                id: t.id,
+                name: t.name,
+                leads: t._count.leads,
               }))}
             />
           </div>
+        </div>
+
+        <div style={cardStyle}>
+          <p style={titleStyle}>Project types</p>
+          <p style={{ ...descStyle, marginBottom: 18 }}>
+            Services contractors sell and leads request. Rename anytime; delete only when unused.
+            Adding a type also creates pricing tiers you can edit under Pricing.
+          </p>
+          <CategoriesManager
+            categories={categories.map((c) => ({
+              id: c.id,
+              name: c.name,
+              icon: c.icon,
+              contractors: c._count.contractors,
+              projectTypes: c._count.projectTypes,
+            }))}
+          />
         </div>
       </div>
     </div>

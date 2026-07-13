@@ -173,7 +173,13 @@ export function ProjectTypePicker({
               <button
                 key={c.name}
                 type="button"
-                onClick={() => setCategoryName(c.name)}
+                onClick={() => {
+                  setCategoryName(c.name);
+                  // 1:1 catalog: picking the category selects its only project.
+                  if (c.projects.length === 1) {
+                    pickProject(c.projects[0]!.id);
+                  }
+                }}
                 className={cn(
                   "group flex flex-col items-center gap-2 rounded-md border border-border bg-surface text-center transition-all",
                   "hover:border-accent/60 hover:bg-primary-soft/40",

@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "db:sync-catalog": "node scripts/sync-catalog.mjs",
     "postinstall": "prisma generate"
   },
   "prisma": {

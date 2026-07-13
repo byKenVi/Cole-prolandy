@@ -345,6 +345,28 @@ export async function createContractorType(name: string, icon?: string): Promise
     data: { name: clean, icon: iconValue },
     select: { id: true },
   });
+
+  // New categories get a matching project type + default tier prices so leads
+  // and pricing work immediately (admins can rename/adjust later).
+  const { DEFAULT_PROJECT_PRICES } = await import("@/lib/catalog");
+  const pt = await prisma.projectType.create({
+    data: { name: clean, contractorTypeId: created.id },
+    select: { id: true },
+  });
+  await prisma.service.create({
+    data: { name: clean, contractorTypeId: created.id },
+  });
+  for (let tier = 1; tier <= 3; tier++) {
+    await prisma.priceTier.create({
+      data: {
+        contractorTypeId: created.id,
+        projectTypeId: pt.id,
+        tier,
+        priceCents: DEFAULT_PROJECT_PRICES[tier - 1]! * 100,
+      },
+    });
+  }
+
   await prisma.auditLog.create({
     data: {
       actorType: "admin",
@@ -357,6 +379,7 @@ export async function createContractorType(name: string, icon?: string): Promise
   });
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
+  revalidatePath("/admin/leads/new");
   return { ok: true, message: "Category added", id: created.id };
 }
 
@@ -379,8 +402,26 @@ export async function updateContractorType(id: string, name: string, icon?: stri
   const iconValue = parsed.data.icon ?? current.icon ?? ICON_AUTO;
 
   // Renaming is safe: leads, pricing and contractors reference the category by
-  // id, not name, so existing data stays intact.
-  await prisma.contractorType.update({ where: { id }, data: { name: clean, icon: iconValue } });
+  // id, not name, so existing data stays intact. When the category has a single
+  // project type (1:1 catalog), keep that project name in sync.
+  await prisma.$transaction(async (tx) => {
+    await tx.contractorType.update({ where: { id }, data: { name: clean, icon: iconValue } });
+    const projects = await tx.projectType.findMany({
+      where: { contractorTypeId: id },
+      select: { id: true, name: true },
+    });
+    if (projects.length === 1) {
+      await tx.projectType.update({
+        where: { id: projects[0]!.id },
+        data: { name: clean },
+      });
+    } else {
+      const matching = projects.find((p) => p.name === current.name);
+      if (matching) {
+        await tx.projectType.update({ where: { id: matching.id }, data: { name: clean } });
+      }
+    }
+  });
   await prisma.auditLog.create({
     data: {
       actorType: "admin",
@@ -393,6 +434,7 @@ export async function updateContractorType(id: string, name: string, icon?: stri
   });
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
+  revalidatePath("/admin/leads/new");
   return { ok: true, message: "Category saved" };
 }
 
@@ -433,6 +475,98 @@ export async function deleteContractorType(id: string): Promise<Result> {
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
   return { ok: true, message: "Category deleted" };
+}
+
+// ── Land types CRUD ──
+const LandTypeSchema = z.object({
+  name: z.string().trim().min(2, "Name is required").max(80),
+});
+
+export async function createLandType(name: string): Promise<Result & { id?: string }> {
+  const admin = await requireAdmin();
+  const parsed = LandTypeSchema.safeParse({ name });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
+  }
+  const clean = parsed.data.name;
+  const existing = await prisma.landType.findUnique({ where: { name: clean }, select: { id: true } });
+  if (existing) return { ok: false, message: "A land type with this name already exists." };
+
+  const created = await prisma.landType.create({ data: { name: clean }, select: { id: true } });
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      actorId: admin.email,
+      action: "landType.created.admin",
+      targetType: "LandType",
+      targetId: created.id,
+      metadata: { name: clean },
+    },
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/leads/new");
+  return { ok: true, message: "Land type added", id: created.id };
+}
+
+export async function updateLandType(id: string, name: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const parsed = LandTypeSchema.safeParse({ name });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
+  }
+  const clean = parsed.data.name;
+  const current = await prisma.landType.findUnique({ where: { id }, select: { name: true } });
+  if (!current) return { ok: false, message: "Land type not found." };
+
+  const owner = await prisma.landType.findUnique({ where: { name: clean }, select: { id: true } });
+  if (owner && owner.id !== id) {
+    return { ok: false, message: "Another land type already uses this name." };
+  }
+
+  await prisma.landType.update({ where: { id }, data: { name: clean } });
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      actorId: admin.email,
+      action: "landType.updated.admin",
+      targetType: "LandType",
+      targetId: id,
+      metadata: { from: current.name, to: clean },
+    },
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/leads/new");
+  return { ok: true, message: "Land type saved" };
+}
+
+export async function deleteLandType(id: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const lt = await prisma.landType.findUnique({
+    where: { id },
+    select: { id: true, name: true, _count: { select: { leads: true } } },
+  });
+  if (!lt) return { ok: false, message: "Land type not found." };
+  if (lt._count.leads > 0) {
+    return {
+      ok: false,
+      message: `Can't delete "${lt.name}" — ${lt._count.leads} lead(s) still reference it.`,
+    };
+  }
+
+  await prisma.landType.delete({ where: { id } });
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      actorId: admin.email,
+      action: "landType.deleted.admin",
+      targetType: "LandType",
+      targetId: id,
+      metadata: { name: lt.name },
+    },
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/leads/new");
+  return { ok: true, message: "Land type deleted" };
 }
 
 // ── Contractor creation / editing (admin-driven, no Clerk account required) ──
