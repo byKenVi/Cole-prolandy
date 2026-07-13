@@ -45,6 +45,13 @@ function hasTwilioCreds(): boolean {
   return Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN);
 }
 
+/** Real Twilio Messaging Service SIDs look like MGxxxxxxxx (34 chars). */
+function validMessagingServiceSid(raw: string | undefined): string | undefined {
+  const sid = raw?.trim();
+  if (!sid || !/^MG[a-f0-9]{32}$/i.test(sid)) return undefined;
+  return sid;
+}
+
 export class MockSmsProvider implements SmsProvider {
   async send({ to, body }: SendSmsParams): Promise<SendSmsResult> {
     const id = `sms_mock_${Date.now()}`;
@@ -64,16 +71,21 @@ export class TwilioSmsProvider implements SmsProvider {
         process.env.TWILIO_AUTH_TOKEN,
       );
 
-      // Sender resolution: prefer a Messaging Service (required for prod A2P
-      // 10DLC), otherwise fall back to a plain from-number (trial accounts).
-      const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
-      const from = process.env.TWILIO_FROM;
+      // Sender resolution: prefer a real Messaging Service (prod A2P 10DLC),
+      // otherwise use TWILIO_FROM (trial). Ignore placeholders like "MG...".
+      const messagingServiceSid = validMessagingServiceSid(
+        process.env.TWILIO_MESSAGING_SERVICE_SID,
+      );
+      const from =
+        process.env.TWILIO_FROM?.trim() ||
+        process.env.TWILIO_FROM_NUMBER?.trim() ||
+        "";
       if (!messagingServiceSid && !from) {
         return {
           ok: false,
           mocked: false,
           error:
-            "Twilio sender not configured: set TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM.",
+            "Twilio sender not configured: set TWILIO_FROM (trial) or a real TWILIO_MESSAGING_SERVICE_SID.",
         };
       }
 
@@ -82,7 +94,7 @@ export class TwilioSmsProvider implements SmsProvider {
         body,
         ...(messagingServiceSid
           ? { messagingServiceSid }
-          : { from: from as string }),
+          : { from }),
       });
 
       return { ok: true, id: msg.sid, mocked: false };
