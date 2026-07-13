@@ -40,7 +40,6 @@ export function PaginationControls({
 }: PaginationControlsProps) {
   const showSize = pageSize != null && pageSizeOptions.length > 0;
   if (totalCount <= 0) return null;
-  if (totalPages <= 1 && !showSize) return null;
 
   const base: PaginationParams = { ...params };
   if (pageSize != null) base[pageSizeParam] = pageSize;

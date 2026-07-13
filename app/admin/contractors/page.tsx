@@ -6,7 +6,7 @@ import { ContractorRowActions } from "@/components/admin/contractor-row-actions"
 import { RowLink } from "@/components/admin/row-link";
 import { PaginationControls } from "@/components/pagination-controls";
 import { formatMoney } from "@/lib/money";
-import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage, parsePageSize } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +26,11 @@ function initials(name: string): string {
 export default async function AdminContractors({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; filter?: string; page?: string; pageSize?: string }>;
 }) {
-  const { q, filter, page: pageRaw } = await searchParams;
+  const { q, filter, page: pageRaw, pageSize: pageSizeRaw } = await searchParams;
   const requestedPage = parsePage(pageRaw);
+  const pageSize = parsePageSize(pageSizeRaw, DEFAULT_PAGE_SIZE);
 
   const where: Prisma.ContractorWhereInput = {};
   if (q) {
@@ -54,7 +55,7 @@ export default async function AdminContractors({
   const { page, skip, take, totalPages } = paginationMeta(
     filteredCount,
     requestedPage,
-    DEFAULT_PAGE_SIZE,
+    pageSize,
   );
 
   const contractors = await prisma.contractor.findMany({
@@ -197,6 +198,7 @@ export default async function AdminContractors({
           page={page}
           totalPages={totalPages}
           totalCount={filteredCount}
+          pageSize={pageSize}
           pathname="/admin/contractors"
           params={{ q: q || undefined, filter: filter || undefined }}
         />

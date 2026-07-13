@@ -11,9 +11,9 @@ describe("pagination helpers", () => {
   });
 
   it("parsePageSize only allows listed sizes", () => {
-    expect(parsePageSize(undefined)).toBe(20);
+    expect(parsePageSize(undefined)).toBe(10);
     expect(parsePageSize("25")).toBe(25);
-    expect(parsePageSize("99")).toBe(20);
+    expect(parsePageSize("99")).toBe(10);
   });
 
   it("paginationMeta computes skip/take and clamps page", () => {
@@ -29,6 +29,12 @@ describe("pagination helpers", () => {
       page: 1,
       skip: 0,
       take: 20,
+    });
+    expect(paginationMeta(19, 1, 10)).toEqual({
+      totalPages: 2,
+      page: 1,
+      skip: 0,
+      take: 10,
     });
   });
 

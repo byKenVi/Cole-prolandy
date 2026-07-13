@@ -273,28 +273,31 @@ export function LeadsTable({
           </p>
         )}
 
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-            padding: "14px 24px",
-            background: "var(--card2)",
-          }}
-        >
-          <span style={{ font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
-            Showing {shown.length}
-            {pageCount != null ? ` of ${pageCount} on this page` : ""}
-            {" · "}
-            {total} lead{total === 1 ? "" : "s"} total
-          </span>
-          <span style={{ font: "500 13px/1 'Inter'", color: "var(--goldSoftFg)" }}>
-            Prices are snapshotted at send — matrix edits don&apos;t affect these.
-          </span>
-        </div>
-        {pagination}
+        {pagination ? (
+          pagination
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              padding: "14px 24px",
+              background: "var(--card2)",
+            }}
+          >
+            <span style={{ font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
+              Showing {shown.length}
+              {pageCount != null ? ` of ${pageCount} on this page` : ""}
+              {" · "}
+              {total} lead{total === 1 ? "" : "s"} total
+            </span>
+            <span style={{ font: "500 13px/1 'Inter'", color: "var(--goldSoftFg)" }}>
+              Prices are snapshotted at send — matrix edits don&apos;t affect these.
+            </span>
+          </div>
+        )}
       </div>
     </>
   );

@@ -7,18 +7,19 @@ import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { iconSrcFor } from "@/lib/project-icons";
 import { leadStatusChip, tierChip } from "@/lib/admin-display";
-import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage, parsePageSize } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLeads({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; pageSize?: string }>;
 }) {
   const sp = await searchParams;
   const initialQuery = typeof sp.q === "string" ? sp.q : "";
   const requestedPage = parsePage(sp.page);
+  const pageSize = parsePageSize(sp.pageSize, DEFAULT_PAGE_SIZE);
 
   await expireLeads(prisma).catch(() => undefined);
 
@@ -29,11 +30,7 @@ export default async function AdminLeads({
     prisma.lead.aggregate({ _sum: { priceCents: true } }),
   ]);
 
-  const { page, skip, take, totalPages } = paginationMeta(
-    totalCount,
-    requestedPage,
-    DEFAULT_PAGE_SIZE,
-  );
+  const { page, skip, take, totalPages } = paginationMeta(totalCount, requestedPage, pageSize);
 
   const leads = await prisma.lead.findMany({
     orderBy: { createdAt: "desc" },
@@ -109,6 +106,7 @@ export default async function AdminLeads({
             page={page}
             totalPages={totalPages}
             totalCount={totalCount}
+            pageSize={pageSize}
             pathname="/admin/leads"
             params={{ q: initialQuery || undefined }}
           />

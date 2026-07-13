@@ -1,5 +1,5 @@
-/** Default page size for list screens (wallet may use 20 or 25). */
-export const DEFAULT_PAGE_SIZE = 20;
+/** Default page size for list screens. */
+export const DEFAULT_PAGE_SIZE = 10;
 
 export function parsePage(raw: string | string[] | undefined, fallback = 1): number {
   const value = Array.isArray(raw) ? raw[0] : raw;
