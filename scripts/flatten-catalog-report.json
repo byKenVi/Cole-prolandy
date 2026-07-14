@@ -1,0 +1,584 @@
+{
+  "generatedAt": "2026-07-14T15:29:09.856Z",
+  "projectsSeeded": [
+    {
+      "name": "Culvert Install",
+      "icon": "drainage",
+      "pricesUsd": [
+        40,
+        75,
+        110
+      ],
+      "contractorTypeId": "cmrj9ekm30006h5dsoiiyv63o",
+      "projectTypeId": "cmrj9enee000ah5dspl4lt1mq"
+    },
+    {
+      "name": "Barndominium Building",
+      "icon": "grading",
+      "pricesUsd": [
+        100,
+        160,
+        220
+      ],
+      "contractorTypeId": "cmrj9err0000hh5dsya5ihimi",
+      "projectTypeId": "cmrj9euc9000lh5dsry0dafv8"
+    },
+    {
+      "name": "Brush Hogging",
+      "icon": "brush-mowing",
+      "pricesUsd": [
+        40,
+        70,
+        110
+      ],
+      "contractorTypeId": "cmrj9eyrh000sh5ds2kfryfzu",
+      "projectTypeId": "cmrj9f1ib000wh5dsc6dkym26"
+    },
+    {
+      "name": "Pond Building",
+      "icon": "pond",
+      "pricesUsd": [
+        90,
+        140,
+        200
+      ],
+      "contractorTypeId": "cmr54to0a0020h58oobz7hih4",
+      "projectTypeId": "cmrj9f9cb0017h5ds645ur4cc"
+    },
+    {
+      "name": "Cabin Construction",
+      "icon": "grading",
+      "pricesUsd": [
+        100,
+        160,
+        220
+      ],
+      "contractorTypeId": "cmrj9fe4h001eh5dsd4llcgbh",
+      "projectTypeId": "cmrj9fguo001ih5dsmgs428ay"
+    },
+    {
+      "name": "Driveway Construction",
+      "icon": "road",
+      "pricesUsd": [
+        50,
+        95,
+        150
+      ],
+      "contractorTypeId": "cmrj9flas001ph5dsfrv3kioh",
+      "projectTypeId": "cmrj9fnz9001th5dskq8bxxnk"
+    },
+    {
+      "name": "Water Well Drilling",
+      "icon": "well-drilling",
+      "pricesUsd": [
+        80,
+        130,
+        200
+      ],
+      "contractorTypeId": "cmrj9fsjh0020h5ds2hvxm9e2",
+      "projectTypeId": "cmrj9fv4y0024h5ds4wolzepk"
+    },
+    {
+      "name": "Gated Entrance",
+      "icon": "fencing",
+      "pricesUsd": [
+        45,
+        80,
+        130
+      ],
+      "contractorTypeId": "cmrj9fzqk002bh5ds2gluz1lq",
+      "projectTypeId": "cmrj9g28u002fh5dsfwgomiyz"
+    },
+    {
+      "name": "Drainage Improvement",
+      "icon": "drainage",
+      "pricesUsd": [
+        45,
+        85,
+        140
+      ],
+      "contractorTypeId": "cmrj9g6fu002mh5dsaas5an51",
+      "projectTypeId": "cmrj9g8wo002qh5dsvbcl9fhb"
+    },
+    {
+      "name": "Irrigation System Installation",
+      "icon": "drainage",
+      "pricesUsd": [
+        55,
+        100,
+        160
+      ],
+      "contractorTypeId": "cmrj9gdbd002xh5dswwn1ex7d",
+      "projectTypeId": "cmrj9gfp50031h5dsf7w9vce4"
+    },
+    {
+      "name": "Retaining Wall Construction",
+      "icon": "grading",
+      "pricesUsd": [
+        70,
+        120,
+        185
+      ],
+      "contractorTypeId": "cmrj9gjzr0038h5dsw6a3u08h",
+      "projectTypeId": "cmrj9gmfn003ch5dsa4b2t7h4"
+    },
+    {
+      "name": "Utility Trenching",
+      "icon": "excavation",
+      "pricesUsd": [
+        45,
+        85,
+        140
+      ],
+      "contractorTypeId": "cmrj9gqvt003jh5dsdqxgoyae",
+      "projectTypeId": "cmrj9gth2003nh5dsxeq02bmr"
+    },
+    {
+      "name": "Tree Removal & Stump Grinding",
+      "icon": "tree-service",
+      "pricesUsd": [
+        50,
+        95,
+        150
+      ],
+      "contractorTypeId": "cmrj9gxu4003uh5dsvjnap5ok",
+      "projectTypeId": "cmrj9h0mu003yh5ds8vpx213d"
+    },
+    {
+      "name": "Land Grading & Leveling",
+      "icon": "grading",
+      "pricesUsd": [
+        50,
+        95,
+        150
+      ],
+      "contractorTypeId": "cmrj9h56v0045h5ds9tsf2opk",
+      "projectTypeId": "cmrj9h7p80049h5ds9fh2zn90"
+    }
+  ],
+  "contractors": [
+    {
+      "id": "cmr8cz0o00001h5uk023gwd04",
+      "name": "land castle llc",
+      "email": "lihounhintoe@gmail.com",
+      "fromType": "Excavation / Dirt Work",
+      "toProject": "Utility Trenching"
+    },
+    {
+      "id": "cmr5506cp00avh58ouoqdr9ck",
+      "name": "Ridgeline Excavation",
+      "email": "ridgeline@example.com",
+      "fromType": "Excavation / Dirt Work",
+      "toProject": "Land Grading & Leveling"
+    },
+    {
+      "id": "cmr550d6q00b3h58olzj0q07u",
+      "name": "Timberline Land Clearing",
+      "email": "timberline@example.com",
+      "fromType": "Land Clearing",
+      "toProject": "Tree Removal & Stump Grinding"
+    },
+    {
+      "id": "cmr550k8k00bbh58oszemdylm",
+      "name": "Still Waters Ponds",
+      "email": "stillwaters@example.com",
+      "fromType": "Pond Building",
+      "toProject": "Pond Building"
+    },
+    {
+      "id": "cmr550t2z00bjh58o6ddo61lq",
+      "name": "Clearwater Ponds",
+      "email": "clearwater@example.com",
+      "fromType": "Pond Building",
+      "toProject": "Pond Building"
+    },
+    {
+      "id": "cmr550ztn00brh58on8a69iqn",
+      "name": "Lone Star Fencing",
+      "email": "lonestar@example.com",
+      "fromType": "Fencing",
+      "toProject": "Gated Entrance"
+    },
+    {
+      "id": "cmr5517q900bzh58o1sv7t3kw",
+      "name": "Hill Country Drainage",
+      "email": "hillcountry@example.com",
+      "fromType": "Drainage / Culvert",
+      "toProject": "Drainage Improvement"
+    },
+    {
+      "id": "cmr551etx00c7h58o9cbqs2u1",
+      "name": "Redland Roads & Grading",
+      "email": "redland@example.com",
+      "fromType": "Road / Driveway",
+      "toProject": "Driveway Construction"
+    },
+    {
+      "id": "cmr54zxk200anh58obizqvpia",
+      "name": "Big Sky Excavation",
+      "email": "bigsky@example.com",
+      "fromType": "Excavation / Dirt Work",
+      "toProject": "Utility Trenching"
+    },
+    {
+      "id": "cmraqzwqh0001l404dgpossvx",
+      "name": "LIHOUNHINTO Kevin Espoir",
+      "email": "kevin.linhounhinto@techma.ca",
+      "fromType": "Land Clearing",
+      "toProject": "Tree Removal & Stump Grinding"
+    },
+    {
+      "id": "cmr913iqg0003h5c8t3atl34v",
+      "name": "Kevin",
+      "email": "kekcontactpro@gmail.com",
+      "fromType": "Well Drilling",
+      "toProject": "Water Well Drilling"
+    }
+  ],
+  "leads": [
+    {
+      "id": "cmr94snot00cfh5tc16jyz3kv",
+      "fromProjectType": "Site Excavation",
+      "fromCategory": "Excavation / Dirt Work",
+      "toProject": "Utility Trenching",
+      "tier": 2,
+      "priceCentsKept": 11000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmr94sqxd00crh5tc1mz5m8tt",
+      "fromProjectType": "Pond Excavation",
+      "fromCategory": "Pond Building",
+      "toProject": "Pond Building",
+      "tier": 2,
+      "priceCentsKept": 18000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmr94suby00d3h5tc8gmh29oe",
+      "fromProjectType": "Culvert Installation",
+      "fromCategory": "Drainage / Culvert",
+      "toProject": "Culvert Install",
+      "tier": 1,
+      "priceCentsKept": 4000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmr94svvk00d9h5tc78ld2fhe",
+      "fromProjectType": "Lot Clearing",
+      "fromCategory": "Land Clearing",
+      "toProject": "Tree Removal & Stump Grinding",
+      "tier": 3,
+      "priceCentsKept": 20000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmr94syb500dhh5tcsk3oizki",
+      "fromProjectType": "Farm / Field Fence",
+      "fromCategory": "Fencing",
+      "toProject": "Gated Entrance",
+      "tier": 1,
+      "priceCentsKept": 4000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmr953w110004h59kpe7t7gs3",
+      "fromProjectType": "Water Well Drilling",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 3,
+      "priceCentsKept": 27000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmr95edfk000eh59k9sy1iqfg",
+      "fromProjectType": "Foundation Dig",
+      "fromCategory": "Excavation / Dirt Work",
+      "toProject": "Land Grading & Leveling",
+      "tier": 2,
+      "priceCentsKept": 12000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmratmwxo0001jk04xkpoqawv",
+      "fromProjectType": "Well Pump Install / Repair",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 1,
+      "priceCentsKept": 7000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmrar3h7b0001l8041zfnpltv",
+      "fromProjectType": "Water Well Drilling",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 1,
+      "priceCentsKept": 12000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmrawsmbh0001l404x8hj8qwc",
+      "fromProjectType": "Well Pump Install / Repair",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 1,
+      "priceCentsKept": 7000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmraxhrek0001lb04n5xic8ap",
+      "fromProjectType": "Water Well Drilling",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 1,
+      "priceCentsKept": 12000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmrf0hn210001h54kyv4i74po",
+      "fromProjectType": "Boundary Survey",
+      "fromCategory": "Surveying",
+      "toProject": "Land Grading & Leveling",
+      "tier": 1,
+      "priceCentsKept": 5000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmrf4uit80001l2047qh12nwl",
+      "fromProjectType": "Boundary Survey",
+      "fromCategory": "Surveying",
+      "toProject": "Land Grading & Leveling",
+      "tier": 1,
+      "priceCentsKept": 5000,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmrf864v80001l405ifrfbz02",
+      "fromProjectType": "Well Site Evaluation",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 2,
+      "priceCentsKept": 8500,
+      "status": "EXPIRED"
+    },
+    {
+      "id": "cmrj1dw930001jr04ezrx1qnz",
+      "fromProjectType": "Well Site Evaluation",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 1,
+      "priceCentsKept": 5000,
+      "status": "DISTRIBUTED"
+    },
+    {
+      "id": "cmrj23n1f0001h5mcg9y3kv2m",
+      "fromProjectType": "Site Excavation",
+      "fromCategory": "Excavation / Dirt Work",
+      "toProject": "Utility Trenching",
+      "tier": 2,
+      "priceCentsKept": 11000,
+      "status": "DISTRIBUTED"
+    },
+    {
+      "id": "cmrj3avd30001h5347u5t5c8t",
+      "fromProjectType": "Well Pump Install / Repair",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 3,
+      "priceCentsKept": 18000,
+      "status": "DISTRIBUTED"
+    },
+    {
+      "id": "cmrj3ndy60007h534kyyjp125",
+      "fromProjectType": "Well Pump Install / Repair",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 3,
+      "priceCentsKept": 18000,
+      "status": "DISTRIBUTED"
+    },
+    {
+      "id": "cmrj5y59n0001jl059yofa262",
+      "fromProjectType": "Well Pump Install / Repair",
+      "fromCategory": "Well Drilling",
+      "toProject": "Water Well Drilling",
+      "tier": 2,
+      "priceCentsKept": 12000,
+      "status": "DISTRIBUTED"
+    },
+    {
+      "id": "cmrjqutei0001ib04hf91maw2",
+      "fromProjectType": "Cabin Construction",
+      "fromCategory": "Cabin Construction",
+      "toProject": "Cabin Construction",
+      "tier": 2,
+      "priceCentsKept": 25000,
+      "status": "NEW"
+    }
+  ],
+  "deletedContractorTypes": [
+    {
+      "id": "cmr54sjhf0006h58olgrb4dry",
+      "name": "Excavation / Dirt Work"
+    },
+    {
+      "id": "cmr54t3ls0013h58o3pbv9fcd",
+      "name": "Land Clearing"
+    },
+    {
+      "id": "cmr54u6s5002vh58o76c6ck6j",
+      "name": "Fencing"
+    },
+    {
+      "id": "cmr54uq0s003qh58op3lpx3ym",
+      "name": "Surveying"
+    },
+    {
+      "id": "cmr54ve56004lh58o42zh7uqb",
+      "name": "Tree Service"
+    },
+    {
+      "id": "cmr54xznn0081h58o9wxsajkh",
+      "name": "Septic"
+    },
+    {
+      "id": "cmr54yjvu008wh58ofv4bnffs",
+      "name": "Grading"
+    },
+    {
+      "id": "cmr54z4iq009rh58o6clgtjjq",
+      "name": "Well Drilling"
+    },
+    {
+      "id": "cmr54xf6v0076h58ocgjcegp0",
+      "name": "Brush Mowing"
+    },
+    {
+      "id": "cmr54wvgk006bh58ou47rca0o",
+      "name": "Drainage / Culvert"
+    },
+    {
+      "id": "cmr54w994005gh58oqgta9pru",
+      "name": "Road / Driveway"
+    }
+  ],
+  "deletedProjectTypes": [
+    {
+      "id": "cmr54u2ha002oh58o2qczpxb5",
+      "name": "Dam / Levee Construction",
+      "under": "Pond Building"
+    },
+    {
+      "id": "cmr54ttz40028h58oht1xz1or",
+      "name": "Pond Excavation",
+      "under": "Pond Building"
+    },
+    {
+      "id": "cmr54tydm002gh58ol3mookkc",
+      "name": "Pond Dredging / Cleanout",
+      "under": "Pond Building"
+    }
+  ],
+  "notes": [],
+  "finalProjects": [
+    {
+      "name": "Barndominium Building",
+      "contractors": 0,
+      "projectTypes": [
+        "Barndominium Building"
+      ]
+    },
+    {
+      "name": "Brush Hogging",
+      "contractors": 0,
+      "projectTypes": [
+        "Brush Hogging"
+      ]
+    },
+    {
+      "name": "Cabin Construction",
+      "contractors": 0,
+      "projectTypes": [
+        "Cabin Construction"
+      ]
+    },
+    {
+      "name": "Culvert Install",
+      "contractors": 0,
+      "projectTypes": [
+        "Culvert Install"
+      ]
+    },
+    {
+      "name": "Drainage Improvement",
+      "contractors": 1,
+      "projectTypes": [
+        "Drainage Improvement"
+      ]
+    },
+    {
+      "name": "Driveway Construction",
+      "contractors": 1,
+      "projectTypes": [
+        "Driveway Construction"
+      ]
+    },
+    {
+      "name": "Gated Entrance",
+      "contractors": 1,
+      "projectTypes": [
+        "Gated Entrance"
+      ]
+    },
+    {
+      "name": "Irrigation System Installation",
+      "contractors": 0,
+      "projectTypes": [
+        "Irrigation System Installation"
+      ]
+    },
+    {
+      "name": "Land Grading & Leveling",
+      "contractors": 1,
+      "projectTypes": [
+        "Land Grading & Leveling"
+      ]
+    },
+    {
+      "name": "Pond Building",
+      "contractors": 2,
+      "projectTypes": [
+        "Pond Building"
+      ]
+    },
+    {
+      "name": "Retaining Wall Construction",
+      "contractors": 0,
+      "projectTypes": [
+        "Retaining Wall Construction"
+      ]
+    },
+    {
+      "name": "Tree Removal & Stump Grinding",
+      "contractors": 2,
+      "projectTypes": [
+        "Tree Removal & Stump Grinding"
+      ]
+    },
+    {
+      "name": "Utility Trenching",
+      "contractors": 2,
+      "projectTypes": [
+        "Utility Trenching"
+      ]
+    },
+    {
+      "name": "Water Well Drilling",
+      "contractors": 1,
+      "projectTypes": [
+        "Water Well Drilling"
+      ]
+    }
+  ]
+}

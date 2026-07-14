@@ -1,5 +1,5 @@
 /**
- * Upsert the canonical project + land catalog without wiping leads.
+ * Upsert the canonical project catalog (Project → 3 tiers) without wiping leads.
  * Usage: node scripts/sync-catalog.mjs
  */
 import { readFileSync } from "fs";
@@ -24,30 +24,30 @@ const LAND_TYPES = [
   "Hunting",
 ];
 
-const DEFAULT_PRICES = [75, 135, 220];
+const DEFAULT_PRICES = [50, 95, 150];
 
 const PROJECT_CATALOG = [
-  { name: "Culvert Install", icon: "drainage", prices: [60, 110, 180] },
-  { name: "Barndominium Building", icon: "grading", prices: [150, 250, 400] },
-  { name: "Brush Hogging", icon: "brush-mowing", prices: [40, 75, 120] },
-  { name: "Pond Building", icon: "pond", prices: [120, 200, 300] },
-  { name: "Cabin Construction", icon: "grading", prices: [150, 250, 400] },
-  { name: "Driveway Construction", icon: "road", prices: [70, 130, 210] },
-  { name: "Water Well Drilling", icon: "well-drilling", prices: [120, 200, 300] },
-  { name: "Gated Entrance", icon: "fencing", prices: [50, 90, 150] },
-  { name: "Drainage Improvement", icon: "drainage", prices: [60, 110, 180] },
-  { name: "Irrigation System Installation", icon: "drainage", prices: [80, 140, 220] },
-  { name: "Retaining Wall Construction", icon: "grading", prices: [90, 160, 250] },
-  { name: "Utility Trenching", icon: "excavation", prices: [50, 90, 150] },
-  { name: "Tree Removal & Stump Grinding", icon: "tree-service", prices: [60, 110, 180] },
-  { name: "Land Grading & Leveling", icon: "grading", prices: [70, 130, 210] },
+  { name: "Culvert Install", icon: "drainage", prices: [40, 75, 110] },
+  { name: "Barndominium Building", icon: "grading", prices: [100, 160, 220] },
+  { name: "Brush Hogging", icon: "brush-mowing", prices: [40, 70, 110] },
+  { name: "Pond Building", icon: "pond", prices: [90, 140, 200] },
+  { name: "Cabin Construction", icon: "grading", prices: [100, 160, 220] },
+  { name: "Driveway Construction", icon: "road", prices: [50, 95, 150] },
+  { name: "Water Well Drilling", icon: "well-drilling", prices: [80, 130, 200] },
+  { name: "Gated Entrance", icon: "fencing", prices: [45, 80, 130] },
+  { name: "Drainage Improvement", icon: "drainage", prices: [45, 85, 140] },
+  { name: "Irrigation System Installation", icon: "drainage", prices: [55, 100, 160] },
+  { name: "Retaining Wall Construction", icon: "grading", prices: [70, 120, 185] },
+  { name: "Utility Trenching", icon: "excavation", prices: [45, 85, 140] },
+  { name: "Tree Removal & Stump Grinding", icon: "tree-service", prices: [50, 95, 150] },
+  { name: "Land Grading & Leveling", icon: "grading", prices: [50, 95, 150] },
 ];
 
 const prisma = new PrismaClient();
 const dollars = (d) => d * 100;
 
 async function main() {
-  console.log("Syncing catalog…");
+  console.log("Syncing catalog (Project → 3 tiers)…");
 
   for (const name of LAND_TYPES) {
     await prisma.landType.upsert({ where: { name }, update: {}, create: { name } });
@@ -68,11 +68,14 @@ async function main() {
       create: { name: typeName, contractorTypeId: ct.id },
     });
 
-    const pt = await prisma.projectType.upsert({
-      where: { name_contractorTypeId: { name: typeName, contractorTypeId: ct.id } },
-      update: {},
-      create: { name: typeName, contractorTypeId: ct.id },
+    let pt = await prisma.projectType.findFirst({
+      where: { contractorTypeId: ct.id, name: typeName },
     });
+    if (!pt) {
+      pt = await prisma.projectType.create({
+        data: { name: typeName, contractorTypeId: ct.id },
+      });
+    }
 
     for (let i = 0; i < 3; i++) {
       const tier = i + 1;
@@ -96,7 +99,7 @@ async function main() {
   }
 
   console.log(
-    `Done. Upserted ${PROJECT_CATALOG.length} project types and ${LAND_TYPES.length} land types.`,
+    `Done. Upserted ${PROJECT_CATALOG.length} projects (each with 3 tiers) and ${LAND_TYPES.length} land types.`,
   );
 }
 

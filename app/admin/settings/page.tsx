@@ -35,7 +35,8 @@ export default async function SettingsPage() {
         id: true,
         name: true,
         icon: true,
-        _count: { select: { contractors: true, projectTypes: true } },
+        _count: { select: { contractors: true } },
+        projectTypes: { select: { _count: { select: { leads: true } } } },
       },
     }),
     prisma.landType.findMany({
@@ -93,10 +94,12 @@ export default async function SettingsPage() {
         </div>
 
         <div style={cardStyle}>
-          <p style={titleStyle}>Project types</p>
+          <p style={titleStyle}>Projects</p>
           <p style={{ ...descStyle, marginBottom: 18 }}>
-            Services contractors sell and leads request. Rename anytime; delete only when unused.
-            Adding a type also creates pricing tiers you can edit under Pricing.
+            Jobs landowners request and contractors fulfill. Hierarchy is{" "}
+            <b style={{ color: "var(--ink)" }}>Project → 3 tiers</b> (small / medium / large lead
+            prices). Rename anytime; delete only when unused. New projects get default tier prices you
+            can edit under Pricing.
           </p>
           <CategoriesManager
             categories={categories.map((c) => ({
@@ -104,7 +107,7 @@ export default async function SettingsPage() {
               name: c.name,
               icon: c.icon,
               contractors: c._count.contractors,
-              projectTypes: c._count.projectTypes,
+              leads: c.projectTypes.reduce((sum, p) => sum + p._count.leads, 0),
             }))}
           />
         </div>

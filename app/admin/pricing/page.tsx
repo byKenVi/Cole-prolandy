@@ -12,12 +12,14 @@ const TIER_LEGEND = [
 ];
 
 export default async function PricingPage() {
+  // One group per project (1:1 CT ↔ PT). Each group has a single pricing row = 3 tiers.
   const types = await prisma.contractorType.findMany({
     orderBy: { name: "asc" },
     include: {
       projectTypes: {
         orderBy: { name: "asc" },
         include: { priceTiers: true },
+        take: 1,
       },
     },
   });
@@ -59,8 +61,9 @@ export default async function PricingPage() {
           </h1>
           <p style={{ margin: "9px 0 0", color: "var(--ink2)", fontSize: 15, lineHeight: 1.6 }}>
             What a contractor pays for a lead, set per{" "}
-            <b style={{ color: "var(--ink)" }}>trade × project × tier</b>. Edits apply to new leads
-            only — existing leads keep their snapshotted price.
+            <b style={{ color: "var(--ink)" }}>project × tier</b>. Each project has exactly three
+            tiers (small / medium / large). Edits apply to new leads only — existing leads keep their
+            snapshotted price.
           </p>
         </div>
         <div
@@ -153,21 +156,29 @@ export default async function PricingPage() {
         </div>
       ) : (
         <PricingBrowser
-          groups={types.map((ct) => ({
-            id: ct.id,
-            name: ct.name,
-            sub: `${ct.projectTypes.length} project type${ct.projectTypes.length === 1 ? "" : "s"}`,
-            iconSrc: iconSrcFor({ icon: ct.icon, category: ct.name }),
-            rows: ct.projectTypes.map((pt) => ({
-              projectTypeId: pt.id,
-              name: pt.name,
-              tiers: pt.priceTiers.map((t) => ({
-                id: t.id,
-                tier: t.tier,
-                priceCents: t.priceCents,
-              })),
-            })),
-          }))}
+          groups={types
+            .map((ct) => {
+              const pt = ct.projectTypes[0];
+              if (!pt) return null;
+              return {
+                id: ct.id,
+                name: ct.name,
+                sub: "3 tiers · Project → Tier",
+                iconSrc: iconSrcFor({ icon: ct.icon, category: ct.name }),
+                rows: [
+                  {
+                    projectTypeId: pt.id,
+                    name: "Lead price by scale",
+                    tiers: pt.priceTiers.map((t) => ({
+                      id: t.id,
+                      tier: t.tier,
+                      priceCents: t.priceCents,
+                    })),
+                  },
+                ],
+              };
+            })
+            .filter((g): g is NonNullable<typeof g> => g != null)}
         />
       )}
     </div>

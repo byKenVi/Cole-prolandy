@@ -24,7 +24,7 @@ type Category = {
   name: string;
   icon: string | null;
   contractors: number;
-  projectTypes: number;
+  leads: number;
 };
 
 const LIST_PAGE_SIZE = 8;
@@ -201,12 +201,12 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
           background: "var(--card2)",
         }}
       >
-        <p style={{ margin: 0, font: "600 13px/1 'Inter'", color: "var(--ink)" }}>Add project type</p>
+        <p style={{ margin: 0, font: "600 13px/1 'Inter'", color: "var(--ink)" }}>Add project</p>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="New category name (e.g. Fencing)"
+            placeholder="New project name (e.g. Culvert Install)"
             style={{ ...inputStyle, flex: 1, minWidth: 200 }}
           />
           <button
@@ -234,7 +234,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
               opacity: pending || newName.trim().length < 2 ? 0.6 : 1,
             }}
           >
-            Add category
+            Add project
           </button>
         </div>
         <div>
@@ -259,8 +259,8 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
         <input
           value={query}
           onChange={(e) => onQuery(e.target.value)}
-          placeholder="Search project types…"
-          aria-label="Search project types"
+          placeholder="Search projects…"
+          aria-label="Search projects"
           style={{
             flex: 1,
             minWidth: 0,
@@ -338,8 +338,9 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
                       {c.name}
                     </p>
                     <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                      {c.contractors} contractor{c.contractors === 1 ? "" : "s"} · {c.projectTypes}{" "}
-                      project type{c.projectTypes === 1 ? "" : "s"}
+                      {c.contractors} contractor{c.contractors === 1 ? "" : "s"}
+                      {typeof c.leads === "number" ? ` · ${c.leads} lead${c.leads === 1 ? "" : "s"}` : ""}
+                      {" · 3 tiers"}
                     </p>
                   </div>
                 </div>
@@ -385,7 +386,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
         ))}
         {pageItems.length === 0 && (
           <p style={{ padding: "13px 16px", font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
-            {query.trim() ? `No types match “${query.trim()}”.` : "No categories yet."}
+            {query.trim() ? `No projects match “${query.trim()}”.` : "No projects yet."}
           </p>
         )}
 

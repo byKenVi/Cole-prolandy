@@ -369,15 +369,15 @@ export async function createContractorType(name: string, icon?: string): Promise
   const clean = parsed.data.name;
   const iconValue = parsed.data.icon ?? ICON_AUTO;
   const existing = await prisma.contractorType.findUnique({ where: { name: clean }, select: { id: true } });
-  if (existing) return { ok: false, message: "A category with this name already exists." };
+  if (existing) return { ok: false, message: "A project with this name already exists." };
 
   const created = await prisma.contractorType.create({
     data: { name: clean, icon: iconValue },
     select: { id: true },
   });
 
-  // New categories get a matching project type + default tier prices so leads
-  // and pricing work immediately (admins can rename/adjust later).
+  // Every project is 1:1 with a selectable ProjectType + exactly 3 tiers.
+  // Admins never manage a nested project-type level.
   const { DEFAULT_PROJECT_PRICES } = await import("@/lib/catalog");
   const pt = await prisma.projectType.create({
     data: { name: clean, contractorTypeId: created.id },
@@ -401,7 +401,7 @@ export async function createContractorType(name: string, icon?: string): Promise
     data: {
       actorType: "admin",
       actorId: admin.email,
-      action: "category.created.admin",
+      action: "project.created.admin",
       targetType: "ContractorType",
       targetId: created.id,
       metadata: { name: clean, icon: iconValue },
@@ -410,7 +410,7 @@ export async function createContractorType(name: string, icon?: string): Promise
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
   revalidatePath("/admin/leads/new");
-  return { ok: true, message: "Category added", id: created.id };
+  return { ok: true, message: "Project added", id: created.id };
 }
 
 export async function updateContractorType(id: string, name: string, icon?: string): Promise<Result> {
@@ -425,38 +425,41 @@ export async function updateContractorType(id: string, name: string, icon?: stri
 
   const owner = await prisma.contractorType.findUnique({ where: { name: clean }, select: { id: true } });
   if (owner && owner.id !== id) {
-    return { ok: false, message: "Another category already uses this name." };
+    return { ok: false, message: "Another project already uses this name." };
   }
 
   // If no icon arg was supplied, preserve the existing one (rename-only path).
   const iconValue = parsed.data.icon ?? current.icon ?? ICON_AUTO;
 
-  // Renaming is safe: leads, pricing and contractors reference the category by
-  // id, not name, so existing data stays intact. When the category has a single
-  // project type (1:1 catalog), keep that project name in sync.
+  // Keep the 1:1 ProjectType name in sync — UI only exposes the project level.
   await prisma.$transaction(async (tx) => {
     await tx.contractorType.update({ where: { id }, data: { name: clean, icon: iconValue } });
     const projects = await tx.projectType.findMany({
       where: { contractorTypeId: id },
       select: { id: true, name: true },
+      orderBy: { createdAt: "asc" },
     });
     if (projects.length === 1) {
       await tx.projectType.update({
         where: { id: projects[0]!.id },
         data: { name: clean },
       });
-    } else {
-      const matching = projects.find((p) => p.name === current.name);
-      if (matching) {
-        await tx.projectType.update({ where: { id: matching.id }, data: { name: clean } });
-      }
+    } else if (projects.length > 1) {
+      // Collapse extras: rename primary, leave cleanup to flatten script if needed.
+      const primary =
+        projects.find((p) => p.name === current.name) ?? projects[0]!;
+      await tx.projectType.update({ where: { id: primary.id }, data: { name: clean } });
     }
+    await tx.service.updateMany({
+      where: { contractorTypeId: id, name: current.name },
+      data: { name: clean },
+    });
   });
   await prisma.auditLog.create({
     data: {
       actorType: "admin",
       actorId: admin.email,
-      action: "category.updated.admin",
+      action: "project.updated.admin",
       targetType: "ContractorType",
       targetId: id,
       metadata: { from: current.name, to: clean, icon: iconValue },
@@ -465,7 +468,7 @@ export async function updateContractorType(id: string, name: string, icon?: stri
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
   revalidatePath("/admin/leads/new");
-  return { ok: true, message: "Category saved" };
+  return { ok: true, message: "Project saved" };
 }
 
 export async function deleteContractorType(id: string): Promise<Result> {
@@ -475,27 +478,34 @@ export async function deleteContractorType(id: string): Promise<Result> {
     select: {
       id: true,
       name: true,
-      _count: { select: { contractors: true, projectTypes: true } },
+      _count: { select: { contractors: true } },
+      projectTypes: {
+        select: { id: true, _count: { select: { leads: true } } },
+      },
     },
   });
-  if (!ct) return { ok: false, message: "Category not found." };
+  if (!ct) return { ok: false, message: "Project not found." };
 
-  // Block deletion while anything still references it, so we never orphan
-  // contractors, project types, pricing or leads.
-  if (ct._count.contractors > 0 || ct._count.projectTypes > 0) {
+  const leadCount = ct.projectTypes.reduce((sum, p) => sum + p._count.leads, 0);
+  // Block while in use so we never orphan contractors or leads.
+  if (ct._count.contractors > 0 || leadCount > 0) {
     return {
       ok: false,
-      message: `Can't delete "${ct.name}" — it still has ${ct._count.contractors} contractor(s) and ${ct._count.projectTypes} project type(s). Reassign or remove those first.`,
+      message: `Can't delete "${ct.name}" — it still has ${ct._count.contractors} contractor(s) and ${leadCount} lead(s). Reassign those first.`,
     };
   }
 
   await prisma.$transaction(async (tx) => {
+    // Cascade the 1:1 shadow project type + its three tiers + services.
+    await tx.priceTier.deleteMany({ where: { contractorTypeId: id } });
+    await tx.projectType.deleteMany({ where: { contractorTypeId: id } });
+    await tx.service.deleteMany({ where: { contractorTypeId: id } });
     await tx.contractorType.delete({ where: { id } });
     await tx.auditLog.create({
       data: {
         actorType: "admin",
         actorId: admin.email,
-        action: "category.deleted.admin",
+        action: "project.deleted.admin",
         targetType: "ContractorType",
         targetId: id,
         metadata: { name: ct.name },
@@ -504,7 +514,8 @@ export async function deleteContractorType(id: string): Promise<Result> {
   });
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
-  return { ok: true, message: "Category deleted" };
+  revalidatePath("/admin/leads/new");
+  return { ok: true, message: "Project deleted" };
 }
 
 // ── Land types CRUD ──

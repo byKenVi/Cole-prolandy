@@ -13,13 +13,19 @@ datasource db {
 
 // ─────────────────────────────────────────────────────────────
 // Reference / taxonomy
+//
+// Intended hierarchy (exactly two levels for pricing):
+//   Project (ContractorType, 1:1 with a ProjectType of the same name)
+//     └─ Tier 1 / 2 / 3 (PriceTier rows — lead price by job scale)
+// There must not be multiple ProjectTypes nested under a ContractorType in
+// normal operation; Settings + Pricing UIs treat ContractorType as "Project".
 // ─────────────────────────────────────────────────────────────
 
 model ContractorType {
   id        String   @id @default(cuid())
   name      String   @unique
   // Admin-selected 3D icon. Convention:
-  //   null / "auto" → resolve by keyword from the category/project name
+  //   null / "auto" → resolve by keyword from the project name
   //   "none"        → intentionally no icon (neutral fallback glyph)
   //   otherwise     → an icon key = base filename in /public/icons (e.g. "pond")
   icon      String?
