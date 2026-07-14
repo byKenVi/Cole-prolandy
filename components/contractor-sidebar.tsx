@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
 import { SignOutLink } from "@/components/auth/sign-out-link";
 import { ExitViewAsButton } from "@/components/auth/exit-view-as";
 
-const NAV: { href: string; label: string; icon: string; badgeKey?: "pendingLeads" }[] = [
+const NAV: { href: string; label: string; icon: string }[] = [
   { href: "/home", label: "Home", icon: "/nav-icons/nav-home.png" },
-  { href: "/leads", label: "My leads", icon: "/nav-icons/nav-leads.png", badgeKey: "pendingLeads" },
+  { href: "/leads", label: "My leads", icon: "/nav-icons/nav-leads.png" },
   { href: "/wallet", label: "Wallet", icon: "/nav-icons/nav-wallet.png" },
   { href: "/profile", label: "Profile", icon: "/nav-icons/nav-profile.png" },
 ];
@@ -25,7 +25,6 @@ export function ContractorSidebar({
   userMenu,
   showSignOut = false,
   viewingAs = false,
-  pendingLeadCount = 0,
 }: {
   walletCents?: number | null;
   name?: string | null;
@@ -34,8 +33,6 @@ export function ContractorSidebar({
   userMenu?: ReactNode;
   showSignOut?: boolean;
   viewingAs?: boolean;
-  /** Open/pending lead matches — shown on My leads for attention. */
-  pendingLeadCount?: number;
 }) {
   const pathname = usePathname();
   return (
@@ -50,17 +47,13 @@ export function ContractorSidebar({
         </span>
       </div>
 
-      {viewingAs && <ExitViewAsButton variant="sidebar" />}
-
       {/* Nav */}
       <nav className="mt-[34px] flex flex-col gap-[3px]">
-        {NAV.map(({ href, label, icon, badgeKey }) => {
+        {NAV.map(({ href, label, icon }) => {
           const active =
             href === "/home"
               ? pathname === "/home"
               : pathname === href || pathname.startsWith(`${href}/`);
-          const badge =
-            badgeKey === "pendingLeads" && pendingLeadCount > 0 ? pendingLeadCount : undefined;
           return (
             <Link
               key={href}
@@ -74,11 +67,6 @@ export function ContractorSidebar({
             >
               <NavIcon icon={icon} active={active} />
               <span className="min-w-0 flex-1">{label}</span>
-              {typeof badge === "number" && (
-                <span className="contractor-nav-badge" aria-label={`${badge} open leads`}>
-                  {badge}
-                </span>
-              )}
             </Link>
           );
         })}
@@ -86,7 +74,7 @@ export function ContractorSidebar({
 
       <div className="flex-1" />
 
-      {/* Wallet inset */}
+      {/* Wallet inset — Exit View As sits under the wallet when impersonating */}
       {typeof walletCents === "number" && (
         <div className="mb-4 rounded-[18px] border border-white/[0.08] bg-white/[0.055] px-[18px] pb-4 pt-[18px]">
           <div className="mb-1.5 flex items-center justify-between">
@@ -104,6 +92,12 @@ export function ContractorSidebar({
           >
             <Plus className="h-[17px] w-[17px]" strokeWidth={2.2} aria-hidden /> Add funds
           </Link>
+          {viewingAs && <ExitViewAsButton variant="sidebar" />}
+        </div>
+      )}
+      {viewingAs && typeof walletCents !== "number" && (
+        <div className="mb-4">
+          <ExitViewAsButton variant="sidebar" />
         </div>
       )}
 

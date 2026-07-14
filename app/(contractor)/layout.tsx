@@ -41,9 +41,6 @@ export default async function ContractorLayout({ children }: { children: React.R
           name: true,
           deactivatedAt: true,
           contractorType: { select: { name: true } },
-          _count: {
-            select: { leadMatches: { where: { status: "PENDING" } } },
-          },
         },
       })
     : null;
@@ -51,8 +48,6 @@ export default async function ContractorLayout({ children }: { children: React.R
   if (contractor?.deactivatedAt) {
     redirect("/deactivated");
   }
-
-  const pendingLeadCount = contractor?._count.leadMatches ?? 0;
 
   return (
     <div className="flex min-h-screen bg-[#FEFBF6]">
@@ -64,7 +59,6 @@ export default async function ContractorLayout({ children }: { children: React.R
         userMenu={clerk ? <UserMenu /> : undefined}
         showSignOut={clerk}
         viewingAs={session.viewingAs}
-        pendingLeadCount={pendingLeadCount}
       />
 
       <main className="flex min-w-0 flex-1 flex-col bg-[#FEFBF6]">
@@ -86,7 +80,7 @@ export default async function ContractorLayout({ children }: { children: React.R
         <div className="flex-1 pb-24 md:pb-0">{children}</div>
       </main>
 
-      <ContractorTabs pendingLeadCount={pendingLeadCount} />
+      <ContractorTabs />
     </div>
   );
 }

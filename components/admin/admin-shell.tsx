@@ -23,18 +23,16 @@ import { AdminGlobalSearch } from "@/components/admin/global-search";
  * root; only decorative styling stays inline here.
  */
 
-type NavItem = { href: string; label: string; icon: string; badge?: number };
+type NavItem = { href: string; label: string; icon: string };
 
-function navItems(leadCount: number): NavItem[] {
-  return [
-    { href: "/admin", label: "Dashboard", icon: "/admin-icons/dashboard.png" },
-    { href: "/admin/leads", label: "Leads", badge: leadCount, icon: "/admin-icons/leads.png" },
-    { href: "/admin/contractors", label: "Contractors", icon: "/admin-icons/contractors.png" },
-    { href: "/admin/finance", label: "Finance", icon: "/admin-icons/finance.png" },
-    { href: "/admin/pricing", label: "Pricing", icon: "/admin-icons/pricing.png" },
-    { href: "/admin/settings", label: "Settings", icon: "/admin-icons/settings.png" },
-  ];
-}
+const NAV_ITEMS: NavItem[] = [
+  { href: "/admin", label: "Dashboard", icon: "/admin-icons/dashboard.png" },
+  { href: "/admin/leads", label: "Leads", icon: "/admin-icons/leads.png" },
+  { href: "/admin/contractors", label: "Contractors", icon: "/admin-icons/contractors.png" },
+  { href: "/admin/finance", label: "Finance", icon: "/admin-icons/finance.png" },
+  { href: "/admin/pricing", label: "Pricing", icon: "/admin-icons/pricing.png" },
+  { href: "/admin/settings", label: "Settings", icon: "/admin-icons/settings.png" },
+];
 
 function isActive(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
@@ -53,20 +51,17 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
           className="admin-nav-icon-img"
         />
       </span>
-      <NavLabel label={item.label} badge={item.badge} />
+      <NavLabel label={item.label} />
     </Link>
   );
 }
 
-function NavLabel({ label, badge }: { label: string; badge?: number }) {
+function NavLabel({ label }: { label: string }) {
   const { pending } = useLinkStatus();
   return (
     <>
       <span className="admin-nav-label">{label}</span>
       {pending && <Loader2 style={{ width: 14, height: 14 }} className="animate-spin admin-nav-label" aria-hidden />}
-      {typeof badge === "number" && badge > 0 && !pending && (
-        <span className="admin-lead-badge">{badge}</span>
-      )}
     </>
   );
 }
@@ -121,7 +116,6 @@ function Chevron({ collapsed }: { collapsed: boolean }) {
 }
 
 function Sidebar({
-  leadCount,
   leadRevenue,
   acceptedLeads,
   collapsed,
@@ -129,7 +123,6 @@ function Sidebar({
   onCloseMobile,
   showSignOut,
 }: {
-  leadCount: number;
   leadRevenue: string;
   acceptedLeads: number;
   collapsed: boolean;
@@ -138,7 +131,6 @@ function Sidebar({
   showSignOut?: boolean;
 }) {
   const pathname = usePathname();
-  const items = navItems(leadCount);
   return (
     <aside className="admin-sidebar">
       <RingTexture />
@@ -186,7 +178,7 @@ function Sidebar({
       </div>
 
       <nav className="admin-nav">
-        {items.map((item) => (
+        {NAV_ITEMS.map((item) => (
           <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
         ))}
       </nav>
@@ -357,7 +349,6 @@ function Topbar({
 export function AdminShell({
   initialTheme,
   initialCollapsed = false,
-  leadCount,
   leadRevenue,
   acceptedLeads,
   userMenu,
@@ -366,7 +357,6 @@ export function AdminShell({
 }: {
   initialTheme: AdminTheme;
   initialCollapsed?: boolean;
-  leadCount: number;
   leadRevenue: string;
   acceptedLeads: number;
   userMenu?: React.ReactNode;
@@ -400,7 +390,6 @@ export function AdminShell({
           data-mobile-open={mobileOpen}
         >
           <Sidebar
-            leadCount={leadCount}
             leadRevenue={leadRevenue}
             acceptedLeads={acceptedLeads}
             collapsed={collapsed}

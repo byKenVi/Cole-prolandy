@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useDeferredValue, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import {
   createContractorType,
   updateContractorType,
@@ -25,6 +26,8 @@ type Category = {
   contractors: number;
   projectTypes: number;
 };
+
+const LIST_PAGE_SIZE = 8;
 
 function normalizeIcon(icon: string | null): string {
   return icon || ICON_AUTO;
@@ -138,6 +141,24 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
   const [editName, setEditName] = useState("");
   const [editIcon, setEditIcon] = useState<string>(ICON_AUTO);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const deferredQuery = useDeferredValue(query);
+
+  const filtered = useMemo(() => {
+    const q = deferredQuery.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((c) => c.name.toLowerCase().includes(q));
+  }, [categories, deferredQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / LIST_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * LIST_PAGE_SIZE, safePage * LIST_PAGE_SIZE);
+
+  function onQuery(next: string) {
+    setQuery(next);
+    setPage(1);
+  }
 
   function run(fn: () => Promise<{ ok: boolean; message?: string }>, onOk?: () => void) {
     setError(null);
@@ -169,8 +190,91 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
         </p>
       )}
 
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          border: "1px solid var(--line)",
+          borderRadius: 12,
+          padding: 16,
+          background: "var(--card2)",
+        }}
+      >
+        <p style={{ margin: 0, font: "600 13px/1 'Inter'", color: "var(--ink)" }}>Add project type</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="New category name (e.g. Fencing)"
+            style={{ ...inputStyle, flex: 1, minWidth: 200 }}
+          />
+          <button
+            type="button"
+            className="a-gold"
+            disabled={pending || newName.trim().length < 2}
+            onClick={() =>
+              run(
+                () => createContractorType(newName, newIcon),
+                () => {
+                  setNewName("");
+                  setNewIcon(ICON_AUTO);
+                },
+              )
+            }
+            style={{
+              height: 40,
+              padding: "0 18px",
+              background: "var(--gold)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 10,
+              font: "600 13px/1 'Inter'",
+              cursor: "pointer",
+              opacity: pending || newName.trim().length < 2 ? 0.6 : 1,
+            }}
+          >
+            Add category
+          </button>
+        </div>
+        <div>
+          <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>Icon</p>
+          <IconPicker value={newIcon} onChange={setNewIcon} disabled={pending} />
+        </div>
+      </div>
+
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          height: 42,
+          padding: "0 12px",
+          background: "var(--field)",
+          border: "1px solid var(--fieldLine)",
+          borderRadius: 10,
+        }}
+      >
+        <Search size={15} aria-hidden style={{ color: "var(--ink3)", flex: "none" }} />
+        <input
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          placeholder="Search project types…"
+          aria-label="Search project types"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            border: "none",
+            outline: "none",
+            background: "transparent",
+            font: "500 14px/1 'Inter'",
+            color: "var(--ink)",
+          }}
+        />
+      </label>
+
       <div style={{ border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
-        {categories.map((c) => (
+        {pageItems.map((c) => (
           <div
             key={c.id}
             style={{ padding: "13px 16px", borderBottom: "1px solid var(--line2)" }}
@@ -279,62 +383,60 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
             )}
           </div>
         ))}
-        {categories.length === 0 && (
+        {pageItems.length === 0 && (
           <p style={{ padding: "13px 16px", font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
-            No categories yet.
+            {query.trim() ? `No types match “${query.trim()}”.` : "No categories yet."}
           </p>
         )}
-      </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          border: "1px solid var(--line)",
-          borderRadius: 12,
-          padding: 16,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="New category name (e.g. Fencing)"
-            style={{ ...inputStyle, flex: 1, minWidth: 200 }}
-          />
-          <button
-            type="button"
-            className="a-gold"
-            disabled={pending || newName.trim().length < 2}
-            onClick={() =>
-              run(
-                () => createContractorType(newName, newIcon),
-                () => {
-                  setNewName("");
-                  setNewIcon(ICON_AUTO);
-                },
-              )
-            }
+        {filtered.length > LIST_PAGE_SIZE && (
+          <div
             style={{
-              height: 40,
-              padding: "0 18px",
-              background: "var(--gold)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 10,
-              font: "600 13px/1 'Inter'",
-              cursor: "pointer",
-              opacity: pending || newName.trim().length < 2 ? 0.6 : 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              padding: "10px 14px",
+              background: "var(--card2)",
             }}
           >
-            Add category
-          </button>
-        </div>
-        <div>
-          <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>Icon</p>
-          <IconPicker value={newIcon} onChange={setNewIcon} disabled={pending} />
-        </div>
+            <p style={{ margin: 0, font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
+              Page {safePage} of {totalPages} · {filtered.length} total
+            </p>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                type="button"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+                style={{
+                  ...smallBtn,
+                  opacity: safePage <= 1 ? 0.5 : 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 2,
+                }}
+              >
+                <ChevronLeft size={14} aria-hidden /> Prev
+              </button>
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+                style={{
+                  ...smallBtn,
+                  opacity: safePage >= totalPages ? 0.5 : 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 2,
+                }}
+              >
+                Next <ChevronRight size={14} aria-hidden />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
     // Lint is run separately in CI; don't fail production builds on lint.
     ignoreDuringBuilds: true,
   },
+  // Logo upload allows up to 2 MB; default Server Action body cap is 1 MB.
+  serverActions: {
+    bodySizeLimit: "3mb",
+  },
 };
 
 export default nextConfig;

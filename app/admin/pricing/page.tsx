@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { PricingGroup } from "@/components/admin/pricing-group";
+import { PricingBrowser } from "@/components/admin/pricing-browser";
 import { formatMoney } from "@/lib/money";
 import { iconSrcFor } from "@/lib/project-icons";
 
@@ -97,7 +97,6 @@ export default async function PricingPage() {
         </div>
       </div>
 
-      {/* tier legend */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 22 }}>
         {TIER_LEGEND.map((t) => (
           <div
@@ -153,25 +152,23 @@ export default async function PricingPage() {
           No pricing configured. Seed the database to populate the matrix.
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {types.map((ct) => (
-            <PricingGroup
-              key={ct.id}
-              name={ct.name}
-              sub={`${ct.projectTypes.length} project type${ct.projectTypes.length === 1 ? "" : "s"}`}
-              iconSrc={iconSrcFor({ icon: ct.icon, category: ct.name })}
-              rows={ct.projectTypes.map((pt) => ({
-                projectTypeId: pt.id,
-                name: pt.name,
-                tiers: pt.priceTiers.map((t) => ({
-                  id: t.id,
-                  tier: t.tier,
-                  priceCents: t.priceCents,
-                })),
-              }))}
-            />
-          ))}
-        </div>
+        <PricingBrowser
+          groups={types.map((ct) => ({
+            id: ct.id,
+            name: ct.name,
+            sub: `${ct.projectTypes.length} project type${ct.projectTypes.length === 1 ? "" : "s"}`,
+            iconSrc: iconSrcFor({ icon: ct.icon, category: ct.name }),
+            rows: ct.projectTypes.map((pt) => ({
+              projectTypeId: pt.id,
+              name: pt.name,
+              tiers: pt.priceTiers.map((t) => ({
+                id: t.id,
+                tier: t.tier,
+                priceCents: t.priceCents,
+              })),
+            })),
+          }))}
+        />
       )}
     </div>
   );
