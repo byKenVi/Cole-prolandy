@@ -1,32 +1,32 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { saveProfile } from "@/app/actions/onboarding";
 import { BusinessHoursPicker } from "@/components/business-hours-picker";
-import { cn } from "@/lib/utils";
 
-type Svc = { id: string; name: string; contractorTypeId: string };
-
+/**
+ * Contractor self-service profile editor.
+ * Project assignment is read-only here — Landy's assigns projects (PENDING CLIENT:
+ * whether contractors ever get self-service over assignment).
+ */
 export function OnboardingForm({
   initial,
-  contractorTypes,
-  services,
+  assignedProjects,
+  mode = "edit",
 }: {
   initial: {
     name: string;
     phone: string;
-    contractorTypeId: string;
     aboutSection: string;
     businessHours: string;
-    serviceIds: string[];
   };
-  contractorTypes: { id: string; name: string }[];
-  services: Svc[];
+  /** Admin-assigned projects this contractor receives leads for. */
+  assignedProjects: { id: string; name: string }[];
+  mode?: "edit" | "claim";
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -35,21 +35,8 @@ export function OnboardingForm({
 
   const [name, setName] = useState(initial.name);
   const [phone, setPhone] = useState(initial.phone);
-  const [typeId, setTypeId] = useState(initial.contractorTypeId);
   const [about, setAbout] = useState(initial.aboutSection);
   const [hours, setHours] = useState(initial.businessHours);
-  const [serviceIds, setServiceIds] = useState<string[]>(initial.serviceIds);
-
-  const typeServices = useMemo(
-    () => services.filter((s) => s.contractorTypeId === typeId),
-    [services, typeId],
-  );
-
-  function toggleService(id: string) {
-    setServiceIds((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
-    );
-  }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,10 +46,8 @@ export function OnboardingForm({
       const res = await saveProfile({
         name,
         phone,
-        contractorTypeId: typeId,
         aboutSection: about,
         businessHours: hours,
-        serviceIds: serviceIds.filter((id) => typeServices.some((s) => s.id === id)),
       });
       if (res.ok) {
         setSaved(true);
@@ -77,6 +62,29 @@ export function OnboardingForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <div>
+        <Label>Jobs you receive leads for</Label>
+        {assignedProjects.length === 0 ? (
+          <p className="mt-2 rounded-[12px] border border-[#EBE3D4] bg-[#F7F0E3] px-3 py-3 text-sm text-[#8A7E68]">
+            No projects assigned yet. Contact Landy’s to get set up.
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {assignedProjects.map((p) => (
+              <li
+                key={p.id}
+                className="rounded-full border border-[#E6DFD1] bg-[#FEFBF6] px-3 py-1.5 text-[13px] font-medium text-[#5A4E3E]"
+              >
+                {p.name}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-2 text-[13px] text-[#8A7E68]">
+          To change the jobs you receive, contact Landy’s.
+        </p>
+      </div>
+
+      <div>
         <Label htmlFor="name">Business / your name</Label>
         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
       </div>
@@ -90,48 +98,6 @@ export function OnboardingForm({
           onChange={(e) => setPhone(e.target.value)}
           required
         />
-      </div>
-
-      <div>
-        <Label htmlFor="type">Your trade</Label>
-        <Select id="type" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-          {contractorTypes.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      <div>
-        <Label>Services you offer</Label>
-        <div className="flex flex-col gap-2">
-          {typeServices.length === 0 && (
-            <p className="text-sm text-text-muted">No services listed for this trade.</p>
-          )}
-          {typeServices.map((s) => {
-            const checked = serviceIds.includes(s.id);
-            return (
-              <label
-                key={s.id}
-                className={cn(
-                  "flex min-h-tap cursor-pointer items-center gap-3 rounded-sm border px-3 py-3 transition-colors",
-                  checked
-                    ? "border-primary bg-primary-soft"
-                    : "border-border bg-surface hover:bg-primary-soft",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 accent-[var(--color-primary)]"
-                  checked={checked}
-                  onChange={() => toggleService(s.id)}
-                />
-                <span className="text-base text-text">{s.name}</span>
-              </label>
-            );
-          })}
-        </div>
       </div>
 
       <div>
@@ -161,7 +127,7 @@ export function OnboardingForm({
       )}
 
       <Button type="submit" variant="accent" size="cta" loading={pending} disabled={pending}>
-        Save profile
+        {mode === "claim" ? "Claim profile" : "Save profile"}
       </Button>
     </form>
   );

@@ -7,10 +7,7 @@ import { ContractorForm } from "@/components/admin/contractor-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewContractorPage() {
-  const [contractorTypes, services] = await Promise.all([
-    prisma.contractorType.findMany({ orderBy: { name: "asc" } }),
-    prisma.service.findMany({ orderBy: { name: "asc" } }),
-  ]);
+  const contractorTypes = await prisma.contractorType.findMany({ orderBy: { name: "asc" } });
 
   return (
     <div className="admin-fade-up flex w-full flex-col gap-6">
@@ -27,9 +24,9 @@ export default async function NewContractorPage() {
           New contractor
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
-          Enter the contractor&apos;s details. They can receive leads and hold a wallet balance
-          right away — no login required. When they sign in with this email, their profile links
-          automatically.
+          Enter the contractor&apos;s details and assign the projects they receive leads for.
+          They can hold a wallet balance right away — no login required. When they sign in with
+          this email, their profile links automatically.
         </p>
       </header>
 
@@ -37,15 +34,13 @@ export default async function NewContractorPage() {
         <ContractorForm
           mode="create"
           contractorTypes={contractorTypes}
-          services={services}
           initial={{
             name: "",
             email: "",
             phone: "",
-            contractorTypeId: contractorTypes[0]?.id ?? "",
+            projectIds: contractorTypes[0] ? [contractorTypes[0].id] : [],
             aboutSection: "",
             businessHours: "",
-            serviceIds: [],
             isPro: false,
           }}
         />

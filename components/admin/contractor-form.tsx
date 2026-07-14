@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -8,23 +8,24 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { createContractor, updateContractor, type ContractorInput } from "@/app/actions/admin";
 import { BusinessHoursPicker } from "@/components/business-hours-picker";
+import { cn } from "@/lib/utils";
 
-type Svc = { id: string; name: string; contractorTypeId: string };
+const STEPS = ["Basics", "Projects", "Profile"] as const;
 
-const STEPS = ["Basics", "Trade & services", "Profile"] as const;
-
+/**
+ * Admin contractor form. Project assignment is multi-select and admin-only
+ * (PENDING CLIENT: confirm single vs multi + any contractor self-service).
+ */
 export function ContractorForm({
   mode,
   contractorId,
   initial,
   contractorTypes,
-  services,
 }: {
   mode: "create" | "edit";
   contractorId?: string;
   initial: ContractorInput;
   contractorTypes: { id: string; name: string }[];
-  services: Svc[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -34,21 +35,15 @@ export function ContractorForm({
   const [name, setName] = useState(initial.name);
   const [email, setEmail] = useState(initial.email);
   const [phone, setPhone] = useState(initial.phone);
-  const [typeId, setTypeId] = useState(initial.contractorTypeId);
+  const [projectIds, setProjectIds] = useState<string[]>(initial.projectIds);
   const [about, setAbout] = useState(initial.aboutSection ?? "");
   const [hours, setHours] = useState(initial.businessHours ?? "");
-  const [serviceIds, setServiceIds] = useState<string[]>(initial.serviceIds);
   const [isPro, setIsPro] = useState(initial.isPro);
 
   const isCreate = mode === "create";
 
-  const typeServices = useMemo(
-    () => services.filter((s) => s.contractorTypeId === typeId),
-    [services, typeId],
-  );
-
-  function toggleService(id: string) {
-    setServiceIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+  function toggleProject(id: string) {
+    setProjectIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
 
   function validateStep(s: number): string | null {
@@ -58,7 +53,7 @@ export function ContractorForm({
       if (!phone.trim()) return "Phone is required.";
     }
     if (s === 1) {
-      if (!typeId) return "Choose a trade.";
+      if (projectIds.length === 0) return "Assign at least one project.";
     }
     return null;
   }
@@ -81,15 +76,18 @@ export function ContractorForm({
         return;
       }
     }
+    if (projectIds.length === 0) {
+      setMessage("Assign at least one project.");
+      return;
+    }
     setMessage(null);
     const payload: ContractorInput = {
       name,
       email,
       phone,
-      contractorTypeId: typeId,
+      projectIds,
       aboutSection: about,
       businessHours: hours,
-      serviceIds: serviceIds.filter((id) => typeServices.some((s) => s.id === id)),
       isPro,
     };
     startTransition(async () => {
@@ -109,7 +107,6 @@ export function ContractorForm({
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // Enter advances steps only — never creates via implicit submit.
     if (isCreate && step < STEPS.length - 1) goNext();
   }
 
@@ -157,47 +154,70 @@ export function ContractorForm({
 
       {(!isCreate || step === 1) && (
         <section className="flex flex-col gap-6">
-          {isCreate && <StepTitle title="Trade & services" subtitle="What work do they take?" />}
-          <div>
-            <Label htmlFor="type">Trade</Label>
-            <Select
-              id="type"
-              className="h-14 text-lg"
-              value={typeId}
-              onChange={(e) => setTypeId(e.target.value)}
-            >
-              <option value="" disabled>
-                Choose a trade
-              </option>
-              {contractorTypes.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <Label>Services offered</Label>
-            <div className="flex flex-col gap-2">
-              {typeServices.length === 0 && (
-                <p className="text-sm text-text-muted">Choose a trade to see its services.</p>
-              )}
-              {typeServices.map((s) => (
+          {isCreate && (
+            <StepTitle
+              title="Assigned projects"
+              subtitle="Which jobs should they receive leads for? Select one or more."
+            />
+          )}
+          {!isCreate && (
+            <div>
+              <Label>Assigned projects</Label>
+              <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
+                Determines which leads this contractor receives. Multi-select allowed.
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            {contractorTypes.length === 0 && (
+              <p className="text-sm text-text-muted">No projects in the catalog yet.</p>
+            )}
+            {contractorTypes.map((p) => {
+              const checked = projectIds.includes(p.id);
+              return (
                 <label
-                  key={s.id}
-                  className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-4 py-3"
+                  key={p.id}
+                  className={cn(
+                    "flex min-h-tap cursor-pointer items-center gap-3 rounded-sm border px-4 py-3 transition-colors",
+                    checked
+                      ? "border-primary bg-primary-soft"
+                      : "border-border bg-surface hover:bg-primary-soft",
+                  )}
                 >
                   <input
                     type="checkbox"
-                    className="h-5 w-5"
-                    checked={serviceIds.includes(s.id)}
-                    onChange={() => toggleService(s.id)}
+                    className="h-5 w-5 accent-[var(--color-primary)]"
+                    checked={checked}
+                    onChange={() => toggleProject(p.id)}
                   />
-                  <span className="text-base text-text">{s.name}</span>
+                  <span className="text-base text-text">{p.name}</span>
                 </label>
-              ))}
-            </div>
+              );
+            })}
           </div>
+          {projectIds.length > 0 && (
+            <div>
+              <Label htmlFor="primary">Primary project (shown on profile)</Label>
+              <Select
+                id="primary"
+                className="h-14 text-lg"
+                value={projectIds[0]}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setProjectIds([id, ...projectIds.filter((p) => p !== id)]);
+                }}
+              >
+                {projectIds.map((id) => {
+                  const p = contractorTypes.find((t) => t.id === id);
+                  return (
+                    <option key={id} value={id}>
+                      {p?.name ?? id}
+                    </option>
+                  );
+                })}
+              </Select>
+            </div>
+          )}
         </section>
       )}
 

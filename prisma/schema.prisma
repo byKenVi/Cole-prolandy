@@ -31,10 +31,11 @@ model ContractorType {
   icon      String?
   createdAt DateTime @default(now())
 
-  contractors  Contractor[]
-  services     Service[]
-  projectTypes ProjectType[]
-  priceTiers   PriceTier[]
+  contractors          Contractor[]
+  assignedContractors  ContractorProject[] @relation("ContractorAssignedProjects")
+  services             Service[]
+  projectTypes         ProjectType[]
+  priceTiers           PriceTier[]
 }
 
 model Service {
@@ -82,6 +83,10 @@ model Contractor {
   phone              String
   aboutSection       String?
   businessHours      String?
+  // Primary / display project (first assigned). Kept for display + compatibility.
+  // Lead matching uses `projects` (ContractorProject), not this field alone.
+  // PENDING CLIENT: single vs multi-project + any contractor self-service over
+  // assignment — default is multi-project, admin-controlled only.
   contractorTypeId   String
   isPro              Boolean  @default(false)
   isTopPro           Boolean  @default(false) // RESERVED (phase-two): does NOT affect distribution yet.
@@ -103,12 +108,27 @@ model Contractor {
   updatedAt          DateTime @updatedAt
 
   contractorType     ContractorType      @relation(fields: [contractorTypeId], references: [id])
-  services           ContractorService[]
+  projects           ContractorProject[]
+  services           ContractorService[] // LEGACY — unused in UI; prefer `projects`
   leadMatches        LeadMatch[]
   walletTransactions WalletTransaction[]
 
   @@index([contractorTypeId])
   @@index([deactivatedAt])
+}
+
+/** Projects a contractor is eligible to receive leads for (admin-assigned). */
+model ContractorProject {
+  id               String @id @default(cuid())
+  contractorId     String
+  contractorTypeId String
+
+  contractor     Contractor     @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contractorType ContractorType @relation("ContractorAssignedProjects", fields: [contractorTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([contractorId, contractorTypeId])
+  @@index([contractorId])
+  @@index([contractorTypeId])
 }
 
 model ContractorService {

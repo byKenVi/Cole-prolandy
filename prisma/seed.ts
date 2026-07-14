@@ -209,17 +209,17 @@ async function main() {
     });
     contractorIdByKey[c.key] = created.id;
 
-    const svcs = await prisma.service.findMany({
-      where: { contractorTypeId: typeIdByName[c.type] },
-      take: 3,
+    const typeId = typeIdByName[c.type]!;
+    await prisma.contractorProject.upsert({
+      where: {
+        contractorId_contractorTypeId: {
+          contractorId: created.id,
+          contractorTypeId: typeId,
+        },
+      },
+      update: {},
+      create: { contractorId: created.id, contractorTypeId: typeId },
     });
-    for (const s of svcs) {
-      await prisma.contractorService.upsert({
-        where: { contractorId_serviceId: { contractorId: created.id, serviceId: s.id } },
-        update: {},
-        create: { contractorId: created.id, serviceId: s.id },
-      });
-    }
   }
 
   const priceFor = (typeName: string, tier: number) => {

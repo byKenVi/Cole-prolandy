@@ -45,11 +45,18 @@ export default async function ContractorDetail({
     where: { id },
     include: {
       contractorType: true,
-      services: { include: { service: true } },
+      projects: {
+        include: { contractorType: { select: { id: true, name: true } } },
+        orderBy: { contractorType: { name: "asc" } },
+      },
     },
   });
   if (!contractor) notFound();
 
+  const assignedProjects =
+    contractor.projects.length > 0
+      ? contractor.projects.map((p) => p.contractorType)
+      : [{ id: contractor.contractorType.id, name: contractor.contractorType.name }];
   const matchesWhere = { contractorId: id };
   const txWhere = { contractorId: id };
 
@@ -135,7 +142,7 @@ export default async function ContractorDetail({
             {contractor.deactivatedAt && <Badge variant="danger">Deactivated</Badge>}
           </div>
           <p className="text-sm" style={{ color: "var(--ink2)" }}>
-            {contractor.contractorType.name} · {contractor.email} · {contractor.phone}
+            {assignedProjects.map((p) => p.name).join(" · ")} · {contractor.email} · {contractor.phone}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -180,9 +187,9 @@ export default async function ContractorDetail({
               {contractor.aboutSection}
             </p>
           )}
-          {contractor.services.length > 0 && (
+          {assignedProjects.length > 0 && (
             <p className="text-sm text-text-muted">
-              Services: {contractor.services.map((s) => s.service.name).join(", ")}
+              Projects: {assignedProjects.map((p) => p.name).join(", ")}
             </p>
           )}
         </Card>

@@ -194,6 +194,19 @@ The flow: contractor picks a preset ($50/$100/$250) or custom amount (min $10, m
 
 ---
 
+## Catalog & contractor assignment
+
+Hierarchy is **Project → 3 tiers** (lead price by job scale). There is no separate “services” level in the product UI.
+
+**PENDING CLIENT CONFIRMATION**
+
+- Whether a contractor serves **one or multiple** projects.
+- Whether contractors ever get **self-service** over which projects they receive.
+
+**Default in this codebase:** multi-project assignment is supported; assignment is **admin-controlled only**. Contractors can edit name / phone / hours / about / logo, but not projects. Lead distribution matches on `ContractorProject` (assigned projects).
+
+---
+
 ## Business rules (enforced in code)
 
 1. Leads are **shared**, not exclusive — up to `maxLeadRecipients` (admin-configurable, min 1); all recipients may accept.

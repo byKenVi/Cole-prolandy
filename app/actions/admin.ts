@@ -478,7 +478,12 @@ export async function deleteContractorType(id: string): Promise<Result> {
     select: {
       id: true,
       name: true,
-      _count: { select: { contractors: true } },
+      _count: {
+        select: {
+          contractors: true,
+          assignedContractors: true,
+        },
+      },
       projectTypes: {
         select: { id: true, _count: { select: { leads: true } } },
       },
@@ -487,11 +492,12 @@ export async function deleteContractorType(id: string): Promise<Result> {
   if (!ct) return { ok: false, message: "Project not found." };
 
   const leadCount = ct.projectTypes.reduce((sum, p) => sum + p._count.leads, 0);
+  const assigned = ct._count.assignedContractors + ct._count.contractors;
   // Block while in use so we never orphan contractors or leads.
-  if (ct._count.contractors > 0 || leadCount > 0) {
+  if (assigned > 0 || leadCount > 0) {
     return {
       ok: false,
-      message: `Can't delete "${ct.name}" — it still has ${ct._count.contractors} contractor(s) and ${leadCount} lead(s). Reassign those first.`,
+      message: `Can't delete "${ct.name}" — it still has ${ct._count.assignedContractors || ct._count.contractors} contractor assignment(s) and ${leadCount} lead(s). Reassign those first.`,
     };
   }
 
@@ -611,26 +617,50 @@ export async function deleteLandType(id: string): Promise<Result> {
 }
 
 // ── Contractor creation / editing (admin-driven, no Clerk account required) ──
+// PENDING CLIENT: single vs multi-project assignment + any contractor self-service.
+// Default: multi-project, admin-only.
 const ContractorSchema = z.object({
   name: z.string().min(2, "Name is required"),
   email: z.string().email("A valid email is required"),
   phone: z.string().min(7, "A valid phone number is required"),
-  contractorTypeId: z.string().min(1, "Choose a trade"),
+  /** Assigned projects (ContractorType ids). At least one required. */
+  projectIds: z.array(z.string().min(1)).min(1, "Assign at least one project"),
   aboutSection: z.string().max(1000).optional().or(z.literal("")),
   businessHours: z.string().max(280).optional().or(z.literal("")),
-  serviceIds: z.array(z.string()).default([]),
   isPro: z.boolean().default(false),
 });
 
 export type ContractorInput = z.infer<typeof ContractorSchema>;
 
-async function validServiceIds(contractorTypeId: string, serviceIds: string[]): Promise<string[]> {
-  if (serviceIds.length === 0) return [];
-  const rows = await prisma.service.findMany({
-    where: { id: { in: serviceIds }, contractorTypeId },
+async function validProjectIds(projectIds: string[]): Promise<string[]> {
+  const unique = Array.from(new Set(projectIds.filter(Boolean)));
+  if (unique.length === 0) return [];
+  const rows = await prisma.contractorType.findMany({
+    where: { id: { in: unique } },
     select: { id: true },
   });
   return rows.map((r) => r.id);
+}
+
+async function syncContractorProjects(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: any,
+  contractorId: string,
+  projectIds: string[],
+  primaryProjectId: string,
+) {
+  await tx.contractorProject.deleteMany({ where: { contractorId } });
+  for (const contractorTypeId of projectIds) {
+    await tx.contractorProject.create({
+      data: { contractorId, contractorTypeId },
+    });
+  }
+  // Clear legacy 1:1 service joins — projects replace them.
+  await tx.contractorService.deleteMany({ where: { contractorId } });
+  await tx.contractor.update({
+    where: { id: contractorId },
+    data: { contractorTypeId: primaryProjectId },
+  });
 }
 
 export async function createContractor(
@@ -651,7 +681,11 @@ export async function createContractor(
     return { ok: false, message: "A contractor with this email already exists." };
   }
 
-  const svcIds = await validServiceIds(data.contractorTypeId, data.serviceIds);
+  const projectIds = await validProjectIds(data.projectIds);
+  if (projectIds.length === 0) {
+    return { ok: false, message: "Assign at least one valid project." };
+  }
+  const primaryProjectId = projectIds[0]!;
 
   try {
     const contractor = await prisma.$transaction(async (tx) => {
@@ -662,11 +696,13 @@ export async function createContractor(
           email,
           name: data.name,
           phone,
-          contractorTypeId: data.contractorTypeId,
+          contractorTypeId: primaryProjectId,
           aboutSection: data.aboutSection || null,
           businessHours: data.businessHours || null,
           isPro: data.isPro,
-          services: { create: svcIds.map((serviceId) => ({ serviceId })) },
+          projects: {
+            create: projectIds.map((contractorTypeId) => ({ contractorTypeId })),
+          },
         },
         select: { id: true },
       });
@@ -677,7 +713,7 @@ export async function createContractor(
           action: "contractor.created.admin",
           targetType: "Contractor",
           targetId: created.id,
-          metadata: { email, name: data.name },
+          metadata: { email, name: data.name, projectIds },
         },
       });
       return created;
@@ -708,7 +744,11 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
     return { ok: false, message: "Another contractor already uses this email." };
   }
 
-  const svcIds = await validServiceIds(data.contractorTypeId, data.serviceIds);
+  const projectIds = await validProjectIds(data.projectIds);
+  if (projectIds.length === 0) {
+    return { ok: false, message: "Assign at least one valid project." };
+  }
+  const primaryProjectId = projectIds[0]!;
 
   await prisma.$transaction(async (tx) => {
     await tx.contractor.update({
@@ -717,16 +757,12 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
         email,
         name: data.name,
         phone,
-        contractorTypeId: data.contractorTypeId,
         aboutSection: data.aboutSection || null,
         businessHours: data.businessHours || null,
         isPro: data.isPro,
       },
     });
-    await tx.contractorService.deleteMany({ where: { contractorId: id } });
-    for (const serviceId of svcIds) {
-      await tx.contractorService.create({ data: { contractorId: id, serviceId } });
-    }
+    await syncContractorProjects(tx, id, projectIds, primaryProjectId);
     await tx.auditLog.create({
       data: {
         actorType: "admin",
@@ -734,7 +770,7 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
         action: "contractor.updated.admin",
         targetType: "Contractor",
         targetId: id,
-        metadata: { email, name: data.name },
+        metadata: { email, name: data.name, projectIds },
       },
     });
   });

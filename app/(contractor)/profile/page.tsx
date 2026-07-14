@@ -12,17 +12,27 @@ const cardClass =
 export default async function ProfilePage() {
   const session = await getSession();
 
-  const [contractorTypes, services] = await Promise.all([
-    prisma.contractorType.findMany({ orderBy: { name: "asc" } }),
-    prisma.service.findMany({ orderBy: { name: "asc" } }),
-  ]);
-
   const contractor = session.contractorId
     ? await prisma.contractor.findUnique({
         where: { id: session.contractorId },
-        include: { services: true, contractorType: true },
+        include: {
+          contractorType: true,
+          projects: {
+            include: { contractorType: { select: { id: true, name: true } } },
+            orderBy: { contractorType: { name: "asc" } },
+          },
+        },
       })
     : null;
+
+  const assignedProjects =
+    contractor?.projects.map((p) => ({
+      id: p.contractorType.id,
+      name: p.contractorType.name,
+    })) ??
+    (contractor
+      ? [{ id: contractor.contractorType.id, name: contractor.contractorType.name }]
+      : []);
 
   if (!contractor) {
     return (
@@ -32,21 +42,20 @@ export default async function ProfilePage() {
             Set up your profile
           </h1>
           <p className="mt-[5px] text-[14px] text-[#8A7E68]">
-            Tell us about your business so we can start sending you matching leads.
+            If Landy’s already created your contractor account, sign in with that email to claim it.
+            Otherwise contact Landy’s to get set up.
           </p>
         </header>
         <div className="flex-1 px-5 py-6 md:px-[34px]">
           <div className={`mx-auto max-w-2xl ${cardClass}`}>
             <OnboardingForm
-              contractorTypes={contractorTypes}
-              services={services}
+              mode="claim"
+              assignedProjects={[]}
               initial={{
                 name: "",
                 phone: "",
-                contractorTypeId: contractorTypes[0]?.id ?? "",
                 aboutSection: "",
                 businessHours: "",
-                serviceIds: [],
               }}
             />
           </div>
@@ -56,6 +65,12 @@ export default async function ProfilePage() {
   }
 
   const initial = (contractor.name.trim()[0] ?? "?").toUpperCase();
+  const projectLabel =
+    assignedProjects.length === 0
+      ? "No projects assigned"
+      : assignedProjects.length === 1
+        ? assignedProjects[0]!.name
+        : `${assignedProjects.length} projects`;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -64,7 +79,7 @@ export default async function ProfilePage() {
           Profile
         </h1>
         <p className="mt-[5px] text-[14px] text-[#8A7E68]">
-          Keep your trade and services current so we match you to the right jobs.
+          Update your contact details. Project assignment is managed by Landy’s.
         </p>
       </header>
 
@@ -74,7 +89,7 @@ export default async function ProfilePage() {
             <ProfileLogoUpload logoUrl={contractor.logoUrl} initials={initial} />
             <div>
               <p className="font-fraunces text-[20px] font-semibold text-[#3A352D]">{contractor.name}</p>
-              <p className="mt-0.5 text-sm text-[#8A7E68]">{contractor.contractorType.name}</p>
+              <p className="mt-0.5 text-sm text-[#8A7E68]">{projectLabel}</p>
             </div>
             {contractor.isTopPro ? (
               <Badge variant="success">Top Pro</Badge>
@@ -90,15 +105,12 @@ export default async function ProfilePage() {
 
           <div className={cardClass}>
             <OnboardingForm
-              contractorTypes={contractorTypes}
-              services={services}
+              assignedProjects={assignedProjects}
               initial={{
                 name: contractor.name,
                 phone: contractor.phone,
-                contractorTypeId: contractor.contractorTypeId,
                 aboutSection: contractor.aboutSection ?? "",
                 businessHours: contractor.businessHours ?? "",
-                serviceIds: contractor.services.map((s) => s.serviceId),
               }}
             />
           </div>

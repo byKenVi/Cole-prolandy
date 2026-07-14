@@ -30,9 +30,13 @@ export type DistributeLeadResult = {
  * PENDING LeadMatch rows. Leads are SHARED (business rule 1): all recipients may
  * accept independently; no exclusivity/lock.
  *
- * Eligibility: contractors whose contractorType matches the lead's project-type
- * contractor type. isTopPro is RESERVED and does NOT affect ordering yet
+ * Eligibility: contractors assigned to the lead's project (ContractorProject),
+ * not deactivated. isTopPro is RESERVED and does NOT affect ordering yet
  * (phase-two — CONFIRM with client before it does).
+ *
+ * PENDING CLIENT: whether contractors serve one or many projects, and whether
+ * they get any self-service over assignment — default is multi-project,
+ * admin-controlled only.
  *
  * Notifications are fired by the caller using the returned matches (keeps the
  * domain free of integration side effects).
@@ -48,15 +52,15 @@ export async function distributeLead(
   if (!lead) throw new NotFoundError("Lead");
 
   const maxRecipients = await getMaxLeadRecipients(db);
-  const contractorTypeId = lead.projectType.contractorTypeId;
+  const projectId = lead.projectType.contractorTypeId;
 
   const alreadyMatchedIds = new Set(lead.matches.map((m) => m.contractorId));
 
   const candidates = await db.contractor.findMany({
     where: {
-      contractorTypeId,
       deactivatedAt: null,
       id: { notIn: Array.from(alreadyMatchedIds) },
+      projects: { some: { contractorTypeId: projectId } },
     },
     // TODO(phase-two): if client confirms Top Pro affects priority, order by
     // isTopPro desc first, then by fair-rotation logic. For now, stable order.

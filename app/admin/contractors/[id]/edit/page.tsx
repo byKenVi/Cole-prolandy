@@ -14,12 +14,24 @@ export default async function EditContractorPage({
 }) {
   const { id } = await params;
 
-  const [contractor, contractorTypes, services] = await Promise.all([
-    prisma.contractor.findUnique({ where: { id }, include: { services: true } }),
+  const [contractor, contractorTypes] = await Promise.all([
+    prisma.contractor.findUnique({
+      where: { id },
+      include: { projects: { select: { contractorTypeId: true } } },
+    }),
     prisma.contractorType.findMany({ orderBy: { name: "asc" } }),
-    prisma.service.findMany({ orderBy: { name: "asc" } }),
   ]);
   if (!contractor) notFound();
+
+  const projectIds =
+    contractor.projects.length > 0
+      ? [
+          contractor.contractorTypeId,
+          ...contractor.projects
+            .map((p) => p.contractorTypeId)
+            .filter((pid) => pid !== contractor.contractorTypeId),
+        ]
+      : [contractor.contractorTypeId];
 
   return (
     <div className="admin-fade-up flex max-w-2xl flex-col gap-6">
@@ -47,15 +59,13 @@ export default async function EditContractorPage({
           mode="edit"
           contractorId={contractor.id}
           contractorTypes={contractorTypes}
-          services={services}
           initial={{
             name: contractor.name,
             email: contractor.email,
             phone: contractor.phone,
-            contractorTypeId: contractor.contractorTypeId,
+            projectIds,
             aboutSection: contractor.aboutSection ?? "",
             businessHours: contractor.businessHours ?? "",
-            serviceIds: contractor.services.map((s) => s.serviceId),
             isPro: contractor.isPro,
           }}
         />
