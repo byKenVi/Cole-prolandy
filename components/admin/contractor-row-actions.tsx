@@ -53,18 +53,18 @@ export function ContractorRowActions({
         disabled={pendingView || deactivated}
         onClick={() => startView(() => viewAsContractor(contractorId))}
         style={{
-          height: 38,
-          padding: "0 15px",
+          height: 34,
+          padding: "0 12px",
           background: "var(--field)",
           border: "1px solid var(--fieldLine)",
-          borderRadius: 10,
-          font: "600 13px/1 'Inter'",
+          borderRadius: 9,
+          font: "600 12px/1 'Inter'",
           color: "var(--ink)",
           cursor: deactivated ? "not-allowed" : "pointer",
           opacity: deactivated ? 0.5 : 1,
         }}
       >
-        {pendingView ? "Opening…" : "View as"}
+        {pendingView ? "…" : "View as"}
       </button>
 
       {armed ? (

@@ -12,7 +12,9 @@ describe("pagination helpers", () => {
 
   it("parsePageSize only allows listed sizes", () => {
     expect(parsePageSize(undefined)).toBe(10);
-    expect(parsePageSize("25")).toBe(25);
+    expect(parsePageSize("20")).toBe(20);
+    expect(parsePageSize("50")).toBe(50);
+    expect(parsePageSize("25")).toBe(10);
     expect(parsePageSize("99")).toBe(10);
   });
 

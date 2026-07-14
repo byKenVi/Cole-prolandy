@@ -9,6 +9,7 @@ import type { AdminTheme } from "@/lib/admin-theme";
 import { ADMIN_SIDEBAR_COOKIE } from "@/lib/admin-theme";
 import { AdminThemeProvider } from "@/components/admin/theme-context";
 import { SignOutLink } from "@/components/auth/sign-out-link";
+import { AdminGlobalSearch } from "@/components/admin/global-search";
 
 /**
  * The admin application shell: a fixed dark/green sidebar, a sticky glass
@@ -285,7 +286,11 @@ function Sidebar({
             Landy&apos;s Pro HQ
           </p>
         </div>
-        {showSignOut && <SignOutLink variant="adminIcon" label="Sign out" />}
+        {showSignOut && (
+          <span className="admin-sidebar-signout">
+            <SignOutLink variant="adminIcon" label="Sign out" />
+          </span>
+        )}
       </div>
     </aside>
   );
@@ -324,47 +329,7 @@ function Topbar({
         </svg>
       </button>
 
-      <form
-        action="/admin/contractors"
-        method="get"
-        className="a-field admin-search"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          height: 46,
-          padding: "0 18px",
-          background: "var(--field)",
-          border: "1px solid var(--line)",
-          borderRadius: 999,
-          minWidth: 340,
-          boxShadow: "var(--shadowSm)",
-        }}
-      >
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M20 20l-3-3" />
-        </svg>
-        <input
-          name="q"
-          placeholder="Search leads, contractors, trades…"
-          className="a-input"
-          style={{ font: "400 14px/1 'Inter'", width: "100%" }}
-        />
-        <span
-          className="admin-search-kbd"
-          style={{
-            font: "600 10px/1 var(--mono)",
-            color: "var(--ink3)",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            padding: "4px 6px",
-            flex: "none",
-          }}
-        >
-          ⌘K
-        </span>
-      </form>
+      <AdminGlobalSearch />
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {showSignOut && <SignOutLink variant="icon" label="Sign out" />}
         {userMenu ?? (

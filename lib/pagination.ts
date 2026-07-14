@@ -11,7 +11,7 @@ export function parsePage(raw: string | string[] | undefined, fallback = 1): num
 export function parsePageSize(
   raw: string | string[] | undefined,
   fallback: number = DEFAULT_PAGE_SIZE,
-  allowed: number[] = [10, 20, 25, 50],
+  allowed: number[] = [10, 20, 50],
 ): number {
   const value = Array.isArray(raw) ? raw[0] : raw;
   const n = Number.parseInt(value ?? "", 10);

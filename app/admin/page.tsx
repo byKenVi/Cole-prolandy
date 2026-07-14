@@ -10,6 +10,7 @@ import { iconSrcFor } from "@/lib/project-icons";
 import { leadStatusChip } from "@/lib/admin-display";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function greeting(): string {
   const h = new Date().getHours();

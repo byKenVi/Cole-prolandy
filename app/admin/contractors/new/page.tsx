@@ -13,7 +13,7 @@ export default async function NewContractorPage() {
   ]);
 
   return (
-    <div className="admin-fade-up flex max-w-4xl flex-col gap-6">
+    <div className="admin-fade-up flex w-full flex-col gap-6">
       <Link
         href="/admin/contractors"
         className="flex items-center gap-1 text-sm"

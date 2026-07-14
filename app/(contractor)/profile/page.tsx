@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingForm } from "@/components/onboarding-form";
+import { ProfileLogoUpload } from "@/components/profile-logo-upload";
 
 export const dynamic = "force-dynamic";
 
@@ -70,9 +71,7 @@ export default async function ProfilePage() {
       <div className="flex-1 px-5 py-6 md:px-[34px]">
         <div className="grid items-start gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
           <div className={`flex flex-col items-center gap-3 text-center lg:sticky lg:top-6 ${cardClass}`}>
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#3B372F] text-3xl font-semibold text-[#F6EEDF]">
-              {initial}
-            </div>
+            <ProfileLogoUpload logoUrl={contractor.logoUrl} initials={initial} />
             <div>
               <p className="font-fraunces text-[20px] font-semibold text-[#3A352D]">{contractor.name}</p>
               <p className="mt-0.5 text-sm text-[#8A7E68]">{contractor.contractorType.name}</p>

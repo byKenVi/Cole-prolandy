@@ -84,6 +84,16 @@
 
   html {
     -webkit-text-size-adjust: 100%;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge legacy */
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none; /* Chromium / Safari — keep scrolling, hide bars */
+    width: 0;
+    height: 0;
   }
 
   body {
@@ -93,6 +103,8 @@
     font-size: var(--text-base);
     line-height: var(--leading-normal);
     -webkit-font-smoothing: antialiased;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
   /* Prevent iOS input zoom: never below 16px on inputs. */
@@ -384,9 +396,11 @@ textarea:focus-visible,
   flex-direction: column;
 }
 .admin-main {
+  /* Full-bleed content: equal left/right padding, no artificial max-width. */
   padding: 32px 40px 56px;
   width: 100%;
-  max-width: 1300px;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .admin-sidebar {
@@ -588,6 +602,26 @@ textarea:focus-visible,
     justify-content: center;
     padding-left: 0;
     padding-right: 0;
+  }
+  /* Hide standalone logout when rail is collapsed — account row (topbar) retains it. */
+  .admin-shell-root[data-collapsed="true"] .admin-sidebar-signout {
+    display: none;
+  }
+}
+
+/* ── Mobile / tablet: tables → stacked cards ─────────────────────────────── */
+@media (max-width: 768px) {
+  .admin-table-desktop {
+    display: none !important;
+  }
+  .admin-table-mobile {
+    display: flex !important;
+    flex-direction: column;
+  }
+}
+@media (min-width: 769px) {
+  .admin-table-mobile {
+    display: none !important;
   }
 }
 

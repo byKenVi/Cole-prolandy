@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -117,7 +116,7 @@ export function ManualLeadForm({
 
   if (done) {
     return (
-      <Card className="flex w-full max-w-3xl flex-col items-center gap-3 p-10 text-center">
+      <div className="flex w-full flex-col items-center gap-3 py-4 text-center">
         <CheckCircle2 className="h-12 w-12 text-success" />
         <p className="font-display text-2xl font-semibold text-text">Lead created</p>
         <p className="text-base text-text-muted">
@@ -141,7 +140,7 @@ export function ManualLeadForm({
             Create another
           </Button>
         </div>
-      </Card>
+      </div>
     );
   }
 

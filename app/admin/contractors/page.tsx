@@ -30,7 +30,7 @@ export default async function AdminContractors({
 }) {
   const { q, filter, page: pageRaw, pageSize: pageSizeRaw } = await searchParams;
   const requestedPage = parsePage(pageRaw);
-  const pageSize = parsePageSize(pageSizeRaw, DEFAULT_PAGE_SIZE);
+  const pageSize = parsePageSize(pageSizeRaw, DEFAULT_PAGE_SIZE, [10, 20, 50]);
 
   const where: Prisma.ContractorWhereInput = {};
   if (q) {
@@ -39,11 +39,8 @@ export default async function AdminContractors({
       { email: { contains: q, mode: "insensitive" } },
     ];
   }
-  if (filter === "pro") where.isPro = true;
-  if (filter === "free") where.isPro = false;
-  if (filter === "toppro") where.isTopPro = true;
   if (filter === "deactivated") where.deactivatedAt = { not: null };
-  else if (filter !== "all") where.deactivatedAt = null;
+  else where.deactivatedAt = null;
 
   const [filteredCount, totalCount, proCount, walletAgg] = await Promise.all([
     prisma.contractor.count({ where }),
@@ -115,10 +112,11 @@ export default async function AdminContractors({
                 gap: 16,
                 padding: "15px 24px",
                 borderBottom: "1px solid var(--line2)",
+                flexWrap: "wrap",
               }}
             >
               <RowLink href={`/admin/contractors/${c.id}`} label={`Open ${c.name}`} />
-              <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0, flex: "1 1 220px" }}>
                 <span
                   style={{
                     width: 44,
@@ -160,7 +158,7 @@ export default async function AdminContractors({
                     )}
                     {c.deactivatedAt && (
                       <Chip bg="var(--dangerBg)" fg="var(--danger)">
-                        Deactivated
+                        Archived
                       </Chip>
                     )}
                   </div>
@@ -199,6 +197,7 @@ export default async function AdminContractors({
           totalPages={totalPages}
           totalCount={filteredCount}
           pageSize={pageSize}
+          pageSizeOptions={[10, 20, 50]}
           pathname="/admin/contractors"
           params={{ q: q || undefined, filter: filter || undefined }}
         />

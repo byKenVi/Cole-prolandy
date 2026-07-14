@@ -47,7 +47,7 @@ export function LeadRestitutionList({ leads }: { leads: RestitutionLead[] }) {
               <span className="tabular-nums text-sm font-semibold text-text">
                 {formatMoney(l.priceCents)}
               </span>
-              <RefundButton leadMatchId={l.matchId} label="Restore to wallet" />
+              <RefundButton leadMatchId={l.matchId} label="Refund" />
             </div>
           </li>
         ))}

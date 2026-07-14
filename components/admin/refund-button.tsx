@@ -7,7 +7,7 @@ import { refundLead } from "@/app/actions/admin";
 
 export function RefundButton({
   leadMatchId,
-  label = "Restore to wallet",
+  label = "Refund",
 }: {
   leadMatchId: string;
   label?: string;
@@ -17,11 +17,11 @@ export function RefundButton({
   const [msg, setMsg] = useState<string | null>(null);
 
   function onClick() {
-    const reason = window.prompt("Reason for restoring this lead charge to the wallet?");
+    const reason = window.prompt("Reason for refunding this lead charge to the wallet?");
     if (!reason) return;
     startTransition(async () => {
       const res = await refundLead(leadMatchId, reason);
-      setMsg(res.message ?? (res.ok ? "Restored" : "Failed"));
+      setMsg(res.message ?? (res.ok ? "Refunded" : "Failed"));
       if (res.ok) router.refresh();
     });
   }

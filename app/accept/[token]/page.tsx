@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 function Wordmark() {
   return (
     <div className="inline-flex items-baseline gap-2.5">
-      <span className="font-vibes text-[38px] leading-none text-[#5C5142]">Landys</span>
+      <span className="font-vibes text-[32px] leading-none text-[#5C5142]">Landys</span>
       <span className="rounded-full border border-[#C0803C] px-[7px] py-[3px] text-[10px] font-bold uppercase leading-none tracking-[0.2em] text-[#C0803C]">
         Pro
       </span>
@@ -59,10 +59,10 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
 
   return (
     <main className="min-h-screen bg-[#FEFBF6] font-inter">
-      <header className="pb-1.5 pt-8 text-center">
+      <header className="px-4 pb-1 pt-5 text-center">
         <Wordmark />
         {pending && (
-          <p className="mt-3.5 text-[17px] text-[#6B6459]">You&apos;ve got a new lead near you.</p>
+          <p className="mt-2 text-[15px] text-[#6B6459]">You&apos;ve got a new lead near you.</p>
         )}
       </header>
 
@@ -98,85 +98,59 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
           <Notice text="This lead has expired and can no longer be accepted." />
         </div>
       ) : (
-        <div className="mx-auto grid max-w-[960px] items-start gap-7 px-5 pb-20 pt-6 lg:grid-cols-[1fr_340px] lg:px-10">
-          {/* LEFT — lead card */}
-          <div className="overflow-hidden rounded-[22px] border border-[#EBE3D4] bg-[#FFFDF9] shadow-[0_12px_32px_rgba(58,53,45,0.08)]">
-            <div
-              className="flex h-[200px] items-center justify-center"
-              style={{
-                background:
-                  "repeating-linear-gradient(135deg,#E9E1D2,#E9E1D2 11px,#E2D9C7 11px,#E2D9C7 22px)",
-              }}
-            >
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E6DFD1] bg-[#FDFBF7] px-3 py-1.5 text-[13px] font-medium text-[#5A4E3E]">
-                <MapPin className="h-4 w-4 text-[#C0803C]" /> {match.lead.propertyLocation}
+        /* Above-the-fold Accept: price + CTA first on mobile; details below. */
+        <div className="mx-auto w-full max-w-lg px-4 pb-16 pt-4">
+          <div className="rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-5 shadow-[0_12px_32px_rgba(58,53,45,0.10)]">
+            <div className="mb-3 flex items-start gap-3">
+              <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#F5EEDF]">
+                {iconSrc ? (
+                  <Image src={iconSrc} alt="" aria-hidden width={40} height={40} className="h-7 w-7 object-contain" />
+                ) : (
+                  <Hammer className="h-6 w-6 text-[#9A6E2E]" aria-hidden />
+                )}
+              </span>
+              <div className="min-w-0">
+                <h1 className="font-fraunces text-[20px] font-medium leading-tight tracking-[-0.01em] text-[#3A352D]">
+                  {match.lead.projectType.name}
+                </h1>
+                <p className="mt-1 flex items-center gap-1 text-[13px] text-[#6B6459]">
+                  <MapPin className="h-3.5 w-3.5 flex-none" strokeWidth={1.7} />
+                  <span className="truncate">{match.lead.propertyLocation}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-3 flex flex-wrap gap-2">
+              <span
+                className="rounded-full px-2.5 py-1 text-[12px] font-medium"
+                style={pill ? { color: pill.color, background: pill.background } : undefined}
+              >
+                {pill?.label}
+              </span>
+              {match.lead.landType && (
+                <span className="rounded-full bg-[#F0EADD] px-2.5 py-1 text-[12px] font-medium text-[#6B6459]">
+                  {match.lead.landType.name}
+                </span>
+              )}
+              <span className="rounded-full bg-[#F0EADD] px-2.5 py-1 text-[12px] font-medium text-[#6B6459]">
+                {timeUntil(match.lead.expiresAt)}
               </span>
             </div>
 
-            <div className="px-8 pb-8 pt-7">
-              <div className="mb-2 flex items-center gap-[15px]">
-                <span className="flex h-14 w-14 flex-none items-center justify-center rounded-[15px] bg-[#F5EEDF]">
-                  {iconSrc ? (
-                    <Image src={iconSrc} alt="" aria-hidden width={72} height={72} className="h-9 w-9 object-contain" />
-                  ) : (
-                    <Hammer className="h-8 w-8 text-[#9A6E2E]" aria-hidden />
-                  )}
-                </span>
-                <div>
-                  <h1 className="font-fraunces text-[28px] font-medium tracking-[-0.01em] text-[#3A352D]">
-                    {match.lead.projectType.name}
-                  </h1>
-                  <p className="mt-1 flex items-center gap-1.5 text-[15px] text-[#6B6459]">
-                    <MapPin className="h-4 w-4" strokeWidth={1.7} /> {match.lead.propertyLocation}
-                  </p>
-                </div>
-              </div>
-
-              <div className="my-6 flex flex-wrap gap-2.5">
-                <span
-                  className="rounded-full px-[13px] py-2 text-[13px] font-medium"
-                  style={pill ? { color: pill.color, background: pill.background } : undefined}
-                >
-                  {pill?.label}
-                </span>
-                {match.lead.landType && (
-                  <span className="rounded-full bg-[#F0EADD] px-[13px] py-2 text-[13px] font-medium text-[#6B6459]">
-                    {match.lead.landType.name}
-                  </span>
-                )}
-                <span className="rounded-full bg-[#F0EADD] px-[13px] py-2 text-[13px] font-medium text-[#6B6459]">
-                  {timeUntil(match.lead.expiresAt)}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-[14px] rounded-[16px] border border-dashed border-[#D8CEBB] bg-[#F3ECDD] px-5 py-[18px]">
-                <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-[#E6DECD] text-[#7A6E58]">
-                  <Lock className="h-5 w-5" strokeWidth={1.7} />
-                </span>
-                <div>
-                  <p className="text-[15px] font-semibold text-[#3A352D]">Landowner contact is hidden</p>
-                  <p className="mt-0.5 text-[14px] text-[#6B6459]">
-                    Name and phone unlock the moment you accept.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT — price + actions */}
-          <div className="rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-6 shadow-[0_12px_32px_rgba(58,53,45,0.10)] lg:sticky lg:top-6">
-            <p className="text-[13px] font-medium uppercase tracking-[0.05em] text-[#6B6459]">Lead price</p>
-            <p className="mb-5 mt-0.5 text-[42px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#3A352D]">
+            <p className="text-[12px] font-medium uppercase tracking-[0.05em] text-[#6B6459]">Lead price</p>
+            <p className="mt-0.5 text-[34px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#3A352D]">
               {formatMoney(match.lead.priceCents)}
             </p>
-            <div className="mb-5 flex items-center justify-between border-y border-[#EBE3D4] py-[14px]">
-              <span className="text-[15px] text-[#6B6459]">Your balance</span>
-              <span className="text-[17px] font-semibold tabular-nums text-[#3A352D]">
+            <div className="mb-4 mt-3 flex items-center justify-between border-y border-[#EBE3D4] py-3">
+              <span className="text-[14px] text-[#6B6459]">Your balance</span>
+              <span className="text-[16px] font-semibold tabular-nums text-[#3A352D]">
                 {formatMoney(match.contractor.walletBalanceCents)}
               </span>
             </div>
+
             <AcceptTokenActions token={token} priceCents={match.lead.priceCents} />
-            <p className="mt-3.5 flex items-center justify-center gap-1.5 text-[13px] text-[#A79E8D]">
+
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-[12px] text-[#A79E8D]">
               <Lock className="h-3.5 w-3.5" /> Contact unlocks after you accept
             </p>
           </div>

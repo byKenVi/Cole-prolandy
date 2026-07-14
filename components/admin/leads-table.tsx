@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ChipStyle } from "@/lib/admin-display";
 
 export type LeadRow = {
@@ -12,9 +13,13 @@ export type LeadRow = {
   place: string;
   recipients: number;
   sent: string;
+  /** ISO date for sorting (server already sorted; kept for client display). */
+  sentAtIso: string;
   price: string;
+  priceCents: number;
   iconSrc: string | null;
   tier: ChipStyle;
+  tierNum: number;
   status: ChipStyle;
   filter: "distributed" | "expired" | "other";
 };
@@ -27,9 +32,13 @@ const HEAD_CELL: React.CSSProperties = {
   color: "var(--ink3)",
 };
 
+type SortKey = "date" | "value";
+type SortDir = "desc" | "asc";
+
 /**
- * Leads table with All / Distributed / Expired tabs. Rows are server-paginated;
- * search + tabs filter the current page client-side. Each row links to detail.
+ * Leads table with All / Distributed / Expired tabs, tier filter, and sortable
+ * value/date columns. Rows are server-paginated; search + status tabs filter
+ * the current page client-side. Tier/sort use URL params for server refetch.
  */
 export function LeadsTable({
   leads,
@@ -37,6 +46,9 @@ export function LeadsTable({
   pageCount,
   initialQuery = "",
   pagination,
+  initialTier = "",
+  initialSort = "date",
+  initialDir = "desc",
 }: {
   leads: LeadRow[];
   total: number;
@@ -44,7 +56,13 @@ export function LeadsTable({
   pageCount?: number;
   initialQuery?: string;
   pagination?: React.ReactNode;
+  initialTier?: string;
+  initialSort?: SortKey;
+  initialDir?: SortDir;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<"all" | "distributed" | "expired">("all");
   const [query, setQuery] = useState(initialQuery);
 
@@ -63,6 +81,30 @@ export function LeadsTable({
   };
   const shown = tab === "all" ? searched : searched.filter((l) => l.filter === tab);
 
+  function pushParams(patch: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === "") params.delete(k);
+      else params.set(k, v);
+    }
+    params.delete("page"); // reset page on sort/filter change
+    const qs = params.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  function toggleSort(key: SortKey) {
+    if (initialSort === key) {
+      pushParams({ sort: key, dir: initialDir === "desc" ? "asc" : "desc" });
+    } else {
+      pushParams({ sort: key, dir: "desc" });
+    }
+  }
+
+  const sortHint = useMemo(() => {
+    const arrow = initialDir === "desc" ? "↓" : "↑";
+    return { date: initialSort === "date" ? arrow : "", value: initialSort === "value" ? arrow : "" };
+  }, [initialSort, initialDir]);
+
   const segStyle = (active: boolean): React.CSSProperties => ({
     cursor: "pointer",
     border: "none",
@@ -74,6 +116,120 @@ export function LeadsTable({
     boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
   });
 
+  const tierBtn = (value: string, label: string): React.CSSProperties => ({
+    cursor: "pointer",
+    border: "1px solid var(--line)",
+    font: "600 12px/1 'Inter'",
+    padding: "8px 12px",
+    borderRadius: 999,
+    background: initialTier === value ? "var(--goldSoft)" : "var(--field)",
+    color: initialTier === value ? "var(--goldSoftFg)" : "var(--ink2)",
+  });
+
+  function SortButton({ label, sortKey, align }: { label: string; sortKey: SortKey; align?: "right" }) {
+    const active = initialSort === sortKey;
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSort(sortKey)}
+        style={{
+          ...HEAD_CELL,
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          textAlign: align ?? "left",
+          color: active ? "var(--ink)" : "var(--ink3)",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          justifyContent: align === "right" ? "flex-end" : "flex-start",
+          width: "100%",
+        }}
+      >
+        {label}
+        <span aria-hidden style={{ opacity: active ? 1 : 0.35 }}>
+          {sortHint[sortKey] || "↕"}
+        </span>
+      </button>
+    );
+  }
+
+  function RowBody({ row }: { row: LeadRow }) {
+    return (
+      <>
+        <span
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 12,
+            background: "var(--card2)",
+            border: "1px solid var(--line)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: "none",
+          }}
+        >
+          {row.iconSrc ? (
+            <Image src={row.iconSrc} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="4" />
+              <path d="M8 12h8M12 8v8" />
+            </svg>
+          )}
+        </span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>
+          <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
+            {row.recipients} recipient{row.recipients === 1 ? "" : "s"} · {row.category} · {row.place}
+          </p>
+        </div>
+        <span
+          style={{
+            font: "600 11px/1 'Inter'",
+            padding: "6px 10px",
+            borderRadius: 999,
+            color: row.tier.fg,
+            background: row.tier.bg,
+            whiteSpace: "nowrap",
+            flex: "none",
+          }}
+        >
+          {row.tier.label}
+        </span>
+        <span
+          style={{
+            font: "500 11px/1 'Inter'",
+            color: row.status.fg,
+            background: row.status.bg,
+            padding: "6px 11px",
+            borderRadius: 999,
+            flex: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: 999, background: row.status.fg }} />
+          {row.status.label}
+        </span>
+        <span style={{ font: "400 13px/1.3 'Inter'", color: "var(--ink2)", flex: "none" }}>{row.sent}</span>
+        <span
+          style={{
+            font: "600 17px/1 var(--display)",
+            color: "var(--ink)",
+            fontVariantNumeric: "tabular-nums",
+            flex: "none",
+          }}
+        >
+          {row.price}
+        </span>
+      </>
+    );
+  }
+
   return (
     <>
       <div
@@ -82,7 +238,8 @@ export function LeadsTable({
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
-          marginBottom: 16,
+          marginBottom: 12,
+          flexWrap: "wrap",
         }}
       >
         <div
@@ -98,18 +255,10 @@ export function LeadsTable({
           <button type="button" style={segStyle(tab === "all")} onClick={() => setTab("all")}>
             All <span style={{ opacity: 0.55 }}>{counts.all}</span>
           </button>
-          <button
-            type="button"
-            style={segStyle(tab === "distributed")}
-            onClick={() => setTab("distributed")}
-          >
+          <button type="button" style={segStyle(tab === "distributed")} onClick={() => setTab("distributed")}>
             Distributed <span style={{ opacity: 0.55 }}>{counts.distributed}</span>
           </button>
-          <button
-            type="button"
-            style={segStyle(tab === "expired")}
-            onClick={() => setTab("expired")}
-          >
+          <button type="button" style={segStyle(tab === "expired")} onClick={() => setTab("expired")}>
             Expired <span style={{ opacity: 0.55 }}>{counts.expired}</span>
           </button>
         </div>
@@ -126,6 +275,7 @@ export function LeadsTable({
             border: "1px solid var(--line)",
             borderRadius: 11,
             minWidth: 240,
+            marginLeft: "auto",
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -143,6 +293,21 @@ export function LeadsTable({
         </div>
       </div>
 
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }} role="group" aria-label="Filter by tier">
+        <button type="button" style={tierBtn("", "All tiers")} onClick={() => pushParams({ tier: null })}>
+          All tiers
+        </button>
+        <button type="button" style={tierBtn("1", "Tier 1")} onClick={() => pushParams({ tier: "1" })}>
+          Tier 1
+        </button>
+        <button type="button" style={tierBtn("2", "Tier 2")} onClick={() => pushParams({ tier: "2" })}>
+          Tier 2
+        </button>
+        <button type="button" style={tierBtn("3", "Tier 3")} onClick={() => pushParams({ tier: "3" })}>
+          Tier 3
+        </button>
+      </div>
+
       <div
         style={{
           background: "var(--card)",
@@ -152,120 +317,139 @@ export function LeadsTable({
           overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: GRID,
-            alignItems: "center",
-            gap: 14,
-            padding: "13px 24px",
-            background: "var(--card2)",
-            borderBottom: "1px solid var(--line)",
-          }}
-        >
-          <span />
-          <span style={HEAD_CELL}>Job</span>
-          <span style={HEAD_CELL}>Trade &amp; location</span>
-          <span style={HEAD_CELL}>Tier</span>
-          <span style={HEAD_CELL}>Status</span>
-          <span style={HEAD_CELL}>Sent</span>
-          <span style={{ ...HEAD_CELL, textAlign: "right" }}>Price</span>
-        </div>
-
-        {shown.map((row) => (
-          <Link
-            key={row.id}
-            href={`/admin/leads/${row.id}`}
-            className="a-row admin-fade-up"
+        {/* Desktop header + rows */}
+        <div className="admin-table-desktop">
+          <div
             style={{
               display: "grid",
               gridTemplateColumns: GRID,
               alignItems: "center",
               gap: 14,
-              padding: "15px 24px",
-              borderBottom: "1px solid var(--line2)",
-              textDecoration: "none",
+              padding: "13px 24px",
+              background: "var(--card2)",
+              borderBottom: "1px solid var(--line)",
             }}
           >
-            <span
+            <span />
+            <span style={HEAD_CELL}>Job</span>
+            <span style={HEAD_CELL}>Trade &amp; location</span>
+            <span style={HEAD_CELL}>Tier</span>
+            <span style={HEAD_CELL}>Status</span>
+            <SortButton label="Sent" sortKey="date" />
+            <SortButton label="Price" sortKey="value" align="right" />
+          </div>
+
+          {shown.map((row) => (
+            <Link
+              key={row.id}
+              href={`/admin/leads/${row.id}`}
+              className="a-row admin-fade-up"
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                background: "var(--card2)",
-                border: "1px solid var(--line)",
+                display: "grid",
+                gridTemplateColumns: GRID,
+                alignItems: "center",
+                gap: 14,
+                padding: "15px 24px",
+                borderBottom: "1px solid var(--line2)",
+                textDecoration: "none",
+              }}
+            >
+              <span
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
+                  background: "var(--card2)",
+                  border: "1px solid var(--line)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {row.iconSrc ? (
+                  <Image src={row.iconSrc} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="4" />
+                    <path d="M8 12h8M12 8v8" />
+                  </svg>
+                )}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>
+                <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
+                  {row.recipients} recipient{row.recipients === 1 ? "" : "s"}
+                </p>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, font: "500 13px/1.3 'Inter'", color: "var(--ink2)" }}>{row.category}</p>
+                <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>{row.place}</p>
+              </div>
+              <span
+                style={{
+                  font: "600 11px/1 'Inter'",
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  color: row.tier.fg,
+                  background: row.tier.bg,
+                  whiteSpace: "nowrap",
+                  justifySelf: "start",
+                }}
+              >
+                {row.tier.label}
+              </span>
+              <span
+                style={{
+                  font: "500 11px/1 'Inter'",
+                  color: row.status.fg,
+                  background: row.status.bg,
+                  padding: "6px 11px",
+                  borderRadius: 999,
+                  justifySelf: "start",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: row.status.fg }} />
+                {row.status.label}
+              </span>
+              <span style={{ font: "400 13px/1.3 'Inter'", color: "var(--ink2)" }}>{row.sent}</span>
+              <span
+                style={{
+                  font: "600 17px/1 var(--display)",
+                  color: "var(--ink)",
+                  fontVariantNumeric: "tabular-nums",
+                  textAlign: "right",
+                }}
+              >
+                {row.price}
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Mobile stacked cards */}
+        <div className="admin-table-mobile" style={{ display: "none", flexDirection: "column" }}>
+          {shown.map((row) => (
+            <Link
+              key={row.id}
+              href={`/admin/leads/${row.id}`}
+              className="a-row admin-fade-up"
+              style={{
                 display: "flex",
+                flexWrap: "wrap",
                 alignItems: "center",
-                justifyContent: "center",
+                gap: 10,
+                padding: "16px 18px",
+                borderBottom: "1px solid var(--line2)",
+                textDecoration: "none",
               }}
             >
-              {row.iconSrc ? (
-                <Image src={row.iconSrc} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="4" />
-                  <path d="M8 12h8M12 8v8" />
-                </svg>
-              )}
-            </span>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>
-                {row.title}
-              </p>
-              <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                {row.recipients} recipient{row.recipients === 1 ? "" : "s"}
-              </p>
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, font: "500 13px/1.3 'Inter'", color: "var(--ink2)" }}>
-                {row.category}
-              </p>
-              <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                {row.place}
-              </p>
-            </div>
-            <span
-              style={{
-                font: "600 11px/1 'Inter'",
-                padding: "6px 10px",
-                borderRadius: 999,
-                color: row.tier.fg,
-                background: row.tier.bg,
-                whiteSpace: "nowrap",
-                justifySelf: "start",
-              }}
-            >
-              {row.tier.label}
-            </span>
-            <span
-              style={{
-                font: "500 11px/1 'Inter'",
-                color: row.status.fg,
-                background: row.status.bg,
-                padding: "6px 11px",
-                borderRadius: 999,
-                justifySelf: "start",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span style={{ width: 6, height: 6, borderRadius: 999, background: row.status.fg }} />
-              {row.status.label}
-            </span>
-            <span style={{ font: "400 13px/1.3 'Inter'", color: "var(--ink2)" }}>{row.sent}</span>
-            <span
-              style={{
-                font: "600 17px/1 var(--display)",
-                color: "var(--ink)",
-                fontVariantNumeric: "tabular-nums",
-                textAlign: "right",
-              }}
-            >
-              {row.price}
-            </span>
-          </Link>
-        ))}
+              <RowBody row={row} />
+            </Link>
+          ))}
+        </div>
 
         {shown.length === 0 && (
           <p style={{ padding: "28px 24px", color: "var(--ink3)", fontSize: 14, textAlign: "center" }}>
@@ -292,9 +476,6 @@ export function LeadsTable({
               {pageCount != null ? ` of ${pageCount} on this page` : ""}
               {" · "}
               {total} lead{total === 1 ? "" : "s"} total
-            </span>
-            <span style={{ font: "500 13px/1 'Inter'", color: "var(--goldSoftFg)" }}>
-              Prices are snapshotted at send — matrix edits don&apos;t affect these.
             </span>
           </div>
         )}

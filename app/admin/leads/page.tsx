@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
 import { PageHeader, GoldButtonLink, StatCard } from "@/components/admin/ui";
@@ -11,29 +13,62 @@ import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage, parsePageSize } from "@/l
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZES = [10, 20, 50];
+
+function parseSort(raw: string | undefined): "date" | "value" {
+  return raw === "value" ? "value" : "date";
+}
+
+function parseDir(raw: string | undefined): "asc" | "desc" {
+  return raw === "asc" ? "asc" : "desc";
+}
+
+function parseTier(raw: string | undefined): number | null {
+  if (raw === "1" || raw === "2" || raw === "3") return Number(raw);
+  return null;
+}
+
 export default async function AdminLeads({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; pageSize?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    page?: string;
+    pageSize?: string;
+    sort?: string;
+    dir?: string;
+    tier?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const initialQuery = typeof sp.q === "string" ? sp.q : "";
   const requestedPage = parsePage(sp.page);
-  const pageSize = parsePageSize(sp.pageSize, DEFAULT_PAGE_SIZE);
+  const pageSize = parsePageSize(sp.pageSize, DEFAULT_PAGE_SIZE, PAGE_SIZES);
+  const sort = parseSort(sp.sort);
+  const dir = parseDir(sp.dir);
+  const tier = parseTier(sp.tier);
 
   await expireLeads(prisma).catch(() => undefined);
 
-  const [totalCount, distributed, expired, listedAgg] = await Promise.all([
+  const where: Prisma.LeadWhereInput = {};
+  if (tier != null) where.tier = tier;
+
+  const [totalCount, distributed, expired, listedAgg, filteredCount] = await Promise.all([
     prisma.lead.count(),
     prisma.lead.count({ where: { status: "DISTRIBUTED" } }),
     prisma.lead.count({ where: { status: "EXPIRED" } }),
     prisma.lead.aggregate({ _sum: { priceCents: true } }),
+    prisma.lead.count({ where }),
   ]);
 
-  const { page, skip, take, totalPages } = paginationMeta(totalCount, requestedPage, pageSize);
+  const { page, skip, take, totalPages } = paginationMeta(filteredCount, requestedPage, pageSize);
+
+  const orderBy: Prisma.LeadOrderByWithRelationInput =
+    sort === "value" ? { priceCents: dir } : { createdAt: dir };
 
   const leads = await prisma.lead.findMany({
-    orderBy: { createdAt: "desc" },
+    where,
+    orderBy,
     skip,
     take,
     select: {
@@ -59,13 +94,16 @@ export default async function AdminLeads({
     place: l.propertyLocation,
     recipients: l._count.matches,
     sent: formatDate(l.createdAt),
+    sentAtIso: l.createdAt.toISOString(),
     price: formatMoney(l.priceCents),
+    priceCents: l.priceCents,
     iconSrc: iconSrcFor({
       icon: l.projectType.contractorType.icon,
       category: l.projectType.contractorType.name,
       project: l.projectType.name,
     }),
     tier: tierChip(l.tier),
+    tierNum: l.tier,
     status: leadStatusChip(l.status),
     filter:
       l.status === "DISTRIBUTED" ? "distributed" : l.status === "EXPIRED" ? "expired" : "other",
@@ -95,23 +133,34 @@ export default async function AdminLeads({
         <StatCard label="Listed value" value={formatMoney(listedValue)} />
       </div>
 
-      <LeadsTable
-        leads={rows}
-        total={totalCount}
-        pageCount={leads.length}
-        initialQuery={initialQuery}
-        pagination={
-          <PaginationControls
-            variant="admin"
-            page={page}
-            totalPages={totalPages}
-            totalCount={totalCount}
-            pageSize={pageSize}
-            pathname="/admin/leads"
-            params={{ q: initialQuery || undefined }}
-          />
-        }
-      />
+      <Suspense fallback={null}>
+        <LeadsTable
+          leads={rows}
+          total={filteredCount}
+          pageCount={leads.length}
+          initialQuery={initialQuery}
+          initialTier={tier != null ? String(tier) : ""}
+          initialSort={sort}
+          initialDir={dir}
+          pagination={
+            <PaginationControls
+              variant="admin"
+              page={page}
+              totalPages={totalPages}
+              totalCount={filteredCount}
+              pageSize={pageSize}
+              pageSizeOptions={PAGE_SIZES}
+              pathname="/admin/leads"
+              params={{
+                q: initialQuery || undefined,
+                tier: tier != null ? String(tier) : undefined,
+                sort: sort !== "date" ? sort : undefined,
+                dir: dir !== "desc" ? dir : undefined,
+              }}
+            />
+          }
+        />
+      </Suspense>
     </div>
   );
 }

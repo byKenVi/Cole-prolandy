@@ -34,7 +34,7 @@ export function PaginationControls({
   pageParam = "page",
   pageSize,
   pageSizeParam = "pageSize",
-  pageSizeOptions = [10, 20, 25, 50],
+  pageSizeOptions = [10, 20, 50],
   className,
   variant = "contractor",
 }: PaginationControlsProps) {

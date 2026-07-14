@@ -4,45 +4,97 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 /**
- * Search + plan filter for the contractors list. Drives the existing
- * server-side query via URL params (?q= &filter=), so filtering stays real and
- * bookmarkable. Submitting the search or changing the plan navigates.
+ * Active / Archived tabs + search (right-aligned) for contractors — matches leads
+ * page layout. Archived = deactivated. Filter drives URL (?filter=).
  */
 export function ContractorFilters({ q, filter }: { q: string; filter: string }) {
   const router = useRouter();
   const [query, setQuery] = useState(q);
-  const [plan, setPlan] = useState(filter);
 
-  function go(nextQ: string, nextPlan: string) {
+  const tab = filter === "deactivated" ? "archived" : "active";
+
+  function go(nextQ: string, nextFilter: string) {
     const params = new URLSearchParams();
     if (nextQ.trim()) params.set("q", nextQ.trim());
-    if (nextPlan) params.set("filter", nextPlan);
-    // Reset to page 1 whenever search/filter changes.
+    if (nextFilter) params.set("filter", nextFilter);
     const qs = params.toString();
     router.push(qs ? `/admin/contractors?${qs}` : "/admin/contractors");
   }
 
+  const segStyle = (active: boolean): React.CSSProperties => ({
+    cursor: "pointer",
+    border: "none",
+    font: "600 13px/1 'Inter'",
+    padding: "9px 15px",
+    borderRadius: 9,
+    background: active ? "var(--card)" : "transparent",
+    color: active ? "var(--ink)" : "var(--ink2)",
+    boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
+  });
+
   return (
-    <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 16,
+        marginBottom: 16,
+        flexWrap: "wrap",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: 3,
+          background: "var(--card2)",
+          border: "1px solid var(--line)",
+          padding: 4,
+          borderRadius: 12,
+        }}
+        role="tablist"
+        aria-label="Contractor status"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "active"}
+          style={segStyle(tab === "active")}
+          onClick={() => go(query, "")}
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "archived"}
+          style={segStyle(tab === "archived")}
+          onClick={() => go(query, "deactivated")}
+        >
+          Archived
+        </button>
+      </div>
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          go(query, plan);
+          go(query, filter === "deactivated" ? "deactivated" : "");
         }}
+        className="a-field"
         style={{
-          flex: 1,
           display: "flex",
           alignItems: "center",
           gap: 10,
-          height: 46,
-          padding: "0 15px",
+          height: 40,
+          padding: "0 14px",
           background: "var(--field)",
-          border: "1px solid var(--fieldLine)",
-          borderRadius: 12,
+          border: "1px solid var(--line)",
+          borderRadius: 11,
+          minWidth: 240,
+          marginLeft: "auto",
         }}
-        className="a-field"
       >
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <circle cx="11" cy="11" r="7" />
           <path d="M20 20l-3-3" />
         </svg>
@@ -50,33 +102,11 @@ export function ContractorFilters({ q, filter }: { q: string; filter: string }) 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search name or email"
+          aria-label="Search contractors"
           className="a-input"
           style={{ width: "100%", font: "400 14px/1 'Inter'" }}
         />
       </form>
-      <select
-        value={plan}
-        onChange={(e) => {
-          setPlan(e.target.value);
-          go(query, e.target.value);
-        }}
-        style={{
-          height: 46,
-          padding: "0 14px",
-          border: "1px solid var(--fieldLine)",
-          borderRadius: 12,
-          background: "var(--field)",
-          color: "var(--ink)",
-          fontFamily: "Inter",
-          cursor: "pointer",
-        }}
-      >
-        <option value="">Active</option>
-        <option value="pro">Pro</option>
-        <option value="toppro">Top Pro</option>
-        <option value="free">Free</option>
-        <option value="deactivated">Deactivated</option>
-      </select>
     </div>
   );
 }

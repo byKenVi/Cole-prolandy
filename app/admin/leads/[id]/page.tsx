@@ -33,14 +33,18 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
       landType: true,
       matches: {
         orderBy: { createdAt: "asc" },
-        include: { contractor: { select: { id: true, name: true } } },
+        include: {
+          contractor: {
+            select: { id: true, name: true, email: true, phone: true },
+          },
+        },
       },
     },
   });
   if (!lead) notFound();
 
   return (
-    <div className="admin-fade-up flex max-w-3xl flex-col gap-8">
+    <div className="admin-fade-up flex w-full flex-col gap-8">
       <Link
         href="/admin/leads"
         className="flex items-center gap-1 text-sm"
@@ -51,9 +55,23 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
+          <p
+            style={{
+              margin: "0 0 8px",
+              font: "600 11px/1 var(--mono)",
+              letterSpacing: ".08em",
+              textTransform: "uppercase",
+              color: "var(--ink3)",
+            }}
+          >
+            Client
+          </p>
           <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
-            {lead.projectType.name}
+            {lead.landownerName}
           </h1>
+          <p className="mt-1 text-base font-medium" style={{ color: "var(--ink)" }}>
+            {lead.projectType.name}
+          </p>
           <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
             {lead.projectType.contractorType.name} · {lead.propertyLocation}
           </p>
@@ -105,12 +123,15 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <ul className="flex flex-col divide-y divide-border">
             {lead.matches.map((m) => (
               <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <Link
-                  href={`/admin/contractors/${m.contractor.id}`}
-                  className="text-sm font-medium text-text hover:underline"
-                >
-                  {m.contractor.name}
-                </Link>
+                <div className="min-w-0">
+                  <Link
+                    href={`/admin/contractors/${m.contractor.id}`}
+                    className="text-sm font-semibold text-text hover:underline"
+                  >
+                    {m.contractor.name}
+                  </Link>
+                  <p className="mt-0.5 text-sm text-text-muted">{m.contractor.email}</p>
+                </div>
                 <span className="flex items-center gap-3">
                   <LeadMatchStatusBadge status={m.status} />
                   {m.status === "ACCEPTED" && <RefundButton leadMatchId={m.id} />}

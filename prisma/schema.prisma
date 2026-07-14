@@ -89,6 +89,8 @@ model Contractor {
   cardBrand           String?
   cardLast4           String?
   clerkUserId        String?  @unique
+  /** Optional profile / company logo path (e.g. /uploads/contractors/…). */
+  logoUrl            String?
   // Soft-deactivate: blocks login + lead distribution while preserving money/lead history.
   deactivatedAt      DateTime?
   createdAt          DateTime @default(now())

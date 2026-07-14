@@ -175,7 +175,7 @@ export default async function AdminFinance() {
       )}
       {uncoveredLiabilityCents === 0 && <div style={{ marginBottom: 26 }} />}
 
-      <SectionLabel title="Prepaid on cards (not revenue)" />
+      <SectionLabel title="Held in contractor wallets" />
       <p
         style={{
           margin: "8px 0 12px",
@@ -184,8 +184,9 @@ export default async function AdminFinance() {
           maxWidth: 640,
         }}
       >
-        Contractors pay Stripe to fund their wallet. That cash sits until they buy a lead. This
-        section tracks card money in/out — not lead sales.
+        Informational sum of contractor wallet balances (cash-like float). This is{" "}
+        <strong style={{ color: "var(--ink2)", fontWeight: 600 }}>not</strong> withdrawable
+        Stripe balance — it is prepaid credit still owed on wallets until leads are bought.
       </p>
       <div
         className="admin-grid-tight"
@@ -209,9 +210,9 @@ export default async function AdminFinance() {
       </div>
       <div style={{ margin: "-12px 0 26px" }}>
         <StatCard
-          label="Prepaid on cards (net)"
+          label="Held in contractor wallets (net)"
           value={formatMoney(prepaidOnCards)}
-          caption="Top-ups minus card refunds. Wallet credit bought — not lead CA."
+          caption="Top-ups minus card refunds — sum of wallet credit bought. Informational only; not Stripe payouts."
         />
       </div>
 
@@ -254,29 +255,59 @@ export default async function AdminFinance() {
                 No payouts yet.
               </p>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "var(--card2)", borderBottom: "1px solid var(--line)" }}>
-                    <th style={thStyle}>Amount</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Arrival</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <>
+                <table className="admin-table-desktop" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "var(--card2)", borderBottom: "1px solid var(--line)" }}>
+                      <th style={thStyle}>Amount</th>
+                      <th style={thStyle}>Status</th>
+                      <th style={thStyle}>Arrival</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payouts.payouts.map((p) => (
+                      <tr key={p.id} style={{ borderBottom: "1px solid var(--line2)" }}>
+                        <td
+                          style={{
+                            ...tdStyle,
+                            fontWeight: 600,
+                            color: "var(--ink)",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {formatMoney(p.amountCents)}
+                        </td>
+                        <td style={{ ...tdStyle, color: "var(--sageFg)" }}>{p.status}</td>
+                        <td style={{ ...tdStyle, color: "var(--ink2)" }}>
+                          {p.arrivalDate
+                            ? new Date(p.arrivalDate).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="admin-table-mobile" style={{ display: "none", flexDirection: "column" }}>
                   {payouts.payouts.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: "1px solid var(--line2)" }}>
-                      <td
-                        style={{
-                          ...tdStyle,
-                          fontWeight: 600,
-                          color: "var(--ink)",
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
+                    <div
+                      key={p.id}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                        padding: "14px 18px",
+                        borderBottom: "1px solid var(--line2)",
+                      }}
+                    >
+                      <span style={{ font: "600 16px/1 var(--display)", color: "var(--ink)" }}>
                         {formatMoney(p.amountCents)}
-                      </td>
-                      <td style={{ ...tdStyle, color: "var(--sageFg)" }}>{p.status}</td>
-                      <td style={{ ...tdStyle, color: "var(--ink2)" }}>
+                      </span>
+                      <span style={{ font: "500 13px/1 'Inter'", color: "var(--sageFg)" }}>{p.status}</span>
+                      <span style={{ font: "400 13px/1 'Inter'", color: "var(--ink2)" }}>
                         {p.arrivalDate
                           ? new Date(p.arrivalDate).toLocaleDateString(undefined, {
                               year: "numeric",
@@ -284,11 +315,11 @@ export default async function AdminFinance() {
                               day: "numeric",
                             })
                           : "—"}
-                      </td>
-                    </tr>
+                      </span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
           </div>
         </div>

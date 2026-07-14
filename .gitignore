@@ -41,3 +41,7 @@ next-env.d.ts
 
 # prisma
 /prisma/*.db
+
+# contractor logo uploads (keep folder)
+/public/uploads/contractors/*
+!/public/uploads/contractors/.gitkeep
