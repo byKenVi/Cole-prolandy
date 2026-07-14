@@ -8,10 +8,11 @@ import { CreditCard, Plus, ChevronRight, Loader2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { SignOutLink } from "@/components/auth/sign-out-link";
+import { ExitViewAsButton } from "@/components/auth/exit-view-as";
 
-const NAV: { href: string; label: string; icon: string }[] = [
+const NAV: { href: string; label: string; icon: string; badgeKey?: "pendingLeads" }[] = [
   { href: "/home", label: "Home", icon: "/nav-icons/nav-home.png" },
-  { href: "/leads", label: "My leads", icon: "/nav-icons/nav-leads.png" },
+  { href: "/leads", label: "My leads", icon: "/nav-icons/nav-leads.png", badgeKey: "pendingLeads" },
   { href: "/wallet", label: "Wallet", icon: "/nav-icons/nav-wallet.png" },
   { href: "/profile", label: "Profile", icon: "/nav-icons/nav-profile.png" },
 ];
@@ -23,6 +24,8 @@ export function ContractorSidebar({
   initials,
   userMenu,
   showSignOut = false,
+  viewingAs = false,
+  pendingLeadCount = 0,
 }: {
   walletCents?: number | null;
   name?: string | null;
@@ -30,6 +33,9 @@ export function ContractorSidebar({
   initials?: string | null;
   userMenu?: ReactNode;
   showSignOut?: boolean;
+  viewingAs?: boolean;
+  /** Open/pending lead matches — shown on My leads for attention. */
+  pendingLeadCount?: number;
 }) {
   const pathname = usePathname();
   return (
@@ -44,13 +50,17 @@ export function ContractorSidebar({
         </span>
       </div>
 
+      {viewingAs && <ExitViewAsButton variant="sidebar" />}
+
       {/* Nav */}
       <nav className="mt-[34px] flex flex-col gap-[3px]">
-        {NAV.map(({ href, label, icon }) => {
+        {NAV.map(({ href, label, icon, badgeKey }) => {
           const active =
             href === "/home"
               ? pathname === "/home"
               : pathname === href || pathname.startsWith(`${href}/`);
+          const badge =
+            badgeKey === "pendingLeads" && pendingLeadCount > 0 ? pendingLeadCount : undefined;
           return (
             <Link
               key={href}
@@ -63,7 +73,12 @@ export function ContractorSidebar({
               )}
             >
               <NavIcon icon={icon} active={active} />
-              <span>{label}</span>
+              <span className="min-w-0 flex-1">{label}</span>
+              {typeof badge === "number" && (
+                <span className="contractor-nav-badge" aria-label={`${badge} open leads`}>
+                  {badge}
+                </span>
+              )}
             </Link>
           );
         })}

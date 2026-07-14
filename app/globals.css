@@ -521,6 +521,32 @@ textarea:focus-visible,
   border-radius: 999px;
 }
 
+.contractor-nav-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  font: 600 11px/1 Inter, system-ui, sans-serif;
+  color: #e0a95c;
+  background: rgba(224, 169, 92, 0.18);
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.contractor-tab-badge {
+  position: absolute;
+  top: -4px;
+  right: -10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #c0803c;
+  color: #fff;
+  font: 700 9px/16px Inter, system-ui, sans-serif;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .admin-wallet-card {
   position: relative;
   background: rgba(255, 255, 255, 0.06);

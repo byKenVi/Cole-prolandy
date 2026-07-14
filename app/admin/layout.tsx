@@ -16,11 +16,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   const clerk = authMode() === "clerk";
 
-  // Sidebar: net lead revenue (CA) — same definition as Finance (charges − refunds).
-  const [theme, collapsed, openLeads, leadRevenueCents, acceptedLeads] = await Promise.all([
+  // Sidebar badge: total leads (matches Total leads card on /admin/leads).
+  // Net lead revenue (CA) — same definition as Finance (charges − refunds).
+  const [theme, collapsed, totalLeads, leadRevenueCents, acceptedLeads] = await Promise.all([
     getAdminTheme(),
     getAdminSidebarCollapsed(),
-    prisma.lead.count({ where: { status: { in: ["NEW", "DISTRIBUTED"] } } }),
+    prisma.lead.count(),
     queryNetLeadRevenueCents(prisma),
     prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
   ]);
@@ -29,7 +30,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <AdminShell
       initialTheme={theme}
       initialCollapsed={collapsed}
-      leadCount={openLeads}
+      leadCount={totalLeads}
       leadRevenue={formatMoney(leadRevenueCents)}
       acceptedLeads={acceptedLeads}
       userMenu={clerk ? <UserMenu /> : undefined}

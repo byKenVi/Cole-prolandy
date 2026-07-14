@@ -220,14 +220,19 @@ export function ContractorForm({
               placeholder="A short description landowners will see."
             />
           </div>
-          <label className="flex min-h-tap items-center gap-3 rounded-sm border border-border px-4 py-3">
+          <label className="flex min-h-tap items-start gap-3 rounded-sm border border-border px-4 py-3">
             <input
               type="checkbox"
-              className="h-5 w-5"
+              className="mt-1 h-5 w-5 shrink-0"
               checked={isPro}
               onChange={(e) => setIsPro(e.target.checked)}
             />
-            <span className="text-base text-text">Pro contractor</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-base text-text">Pro plan — flag only</span>
+              <span className="text-sm" style={{ color: "var(--ink2)" }}>
+                Does not yet affect lead distribution or billing.
+              </span>
+            </span>
           </label>
         </section>
       )}

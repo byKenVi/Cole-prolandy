@@ -12,33 +12,35 @@ import { cn } from "@/lib/utils";
  * (useLinkStatus) and the active tab is highlighted, so navigation never feels
  * frozen while the next page's data loads.
  */
-const TABS: { href: string; label: string; icon: string }[] = [
+const TABS: { href: string; label: string; icon: string; badgeKey?: "pendingLeads" }[] = [
   { href: "/home", label: "Home", icon: "/nav-icons/nav-home.png" },
-  { href: "/leads", label: "My leads", icon: "/nav-icons/nav-leads.png" },
+  { href: "/leads", label: "My leads", icon: "/nav-icons/nav-leads.png", badgeKey: "pendingLeads" },
   { href: "/wallet", label: "Wallet", icon: "/nav-icons/nav-wallet.png" },
   { href: "/profile", label: "Profile", icon: "/nav-icons/nav-profile.png" },
 ];
 
-export function ContractorTabs() {
+export function ContractorTabs({ pendingLeadCount = 0 }: { pendingLeadCount?: number }) {
   const pathname = usePathname();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-[#E3DAC9] bg-[#3B372F] md:hidden">
       <div className="grid grid-cols-4">
-        {TABS.map(({ href, label, icon }) => {
+        {TABS.map(({ href, label, icon, badgeKey }) => {
           const active =
             href === "/home"
               ? pathname === "/home"
               : pathname === href || pathname.startsWith(`${href}/`);
+          const badge =
+            badgeKey === "pendingLeads" && pendingLeadCount > 0 ? pendingLeadCount : undefined;
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                "group flex min-h-tap flex-col items-center justify-center gap-1 py-3 transition-colors",
+                "group relative flex min-h-tap flex-col items-center justify-center gap-1 py-3 transition-colors",
                 active ? "text-[#E0A95C]" : "text-[#B4AA98] hover:text-[#EFE7D8]",
               )}
             >
-              <TabInner icon={icon} label={label} active={active} />
+              <TabInner icon={icon} label={label} active={active} badge={badge} />
             </Link>
           );
         })}
@@ -51,10 +53,12 @@ function TabInner({
   icon,
   label,
   active,
+  badge,
 }: {
   icon: string;
   label: string;
   active: boolean;
+  badge?: number;
 }) {
   const { pending } = useLinkStatus();
   return (
@@ -74,6 +78,11 @@ function TabInner({
           )}
         />
         {pending && <Loader2 className="absolute h-6 w-6 animate-spin" aria-hidden />}
+        {typeof badge === "number" && !pending && (
+          <span className="contractor-tab-badge" aria-label={`${badge} open leads`}>
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
       </span>
       <span className={cn("text-xs", active ? "font-semibold" : "font-medium")}>{label}</span>
     </>

@@ -115,7 +115,8 @@ export async function chargeSavedCardTopUp(input: {
 
 // ── Contractor soft-deactivate / hard-delete ──
 
-/** Soft-deactivate: blocks login + lead distribution, keeps money/lead history. */
+/** Soft-archive (deactivate): blocks login + lead distribution. Preserves wallet
+ * balance, WalletTransactions, LeadMatches, and AuditLog — never hard-deletes. */
 export async function deactivateContractor(id: string): Promise<Result> {
   const admin = await requireAdmin();
   const contractor = await prisma.contractor.findUnique({
@@ -181,8 +182,10 @@ export async function reactivateContractor(id: string): Promise<Result> {
 }
 
 /**
- * Hard delete — only when there is no wallet balance, no lead associations, and
- * no wallet history. Prefer deactivateContractor for anything with history.
+ * Hard delete — only for empty contractors with zero financial, match, or audit
+ * history. Anything with history must use deactivateContractor (archive) so
+ * wallet balance, WalletTransactions, LeadMatches, and AuditLog stay intact.
+ * Prisma cascades would otherwise destroy lead matches + wallet rows.
  */
 export async function deleteContractor(id: string): Promise<Result> {
   const admin = await requireAdmin();
@@ -197,25 +200,36 @@ export async function deleteContractor(id: string): Promise<Result> {
   });
   if (!contractor) return { ok: false, message: "Contractor not found." };
 
-  if (contractor.walletBalanceCents > 0) {
+  if (contractor.walletBalanceCents !== 0) {
     return {
       ok: false,
       message:
-        "This contractor still has an active wallet balance. Deactivate instead, or clear the balance first.",
+        "This contractor still has a wallet balance. Archive (deactivate) instead to preserve history.",
     };
   }
   if (contractor._count.leadMatches > 0) {
     return {
       ok: false,
       message:
-        "This contractor has associated leads. Deactivate instead to preserve history.",
+        "This contractor has associated leads. Archive (deactivate) instead to preserve history.",
     };
   }
   if (contractor._count.walletTransactions > 0) {
     return {
       ok: false,
       message:
-        "This contractor has wallet history (top-ups, charges or refunds), so it can't be deleted. Deactivate instead.",
+        "This contractor has wallet history (top-ups, charges or refunds), so it can't be deleted. Archive (deactivate) instead.",
+    };
+  }
+
+  const auditCount = await prisma.auditLog.count({
+    where: { targetType: "Contractor", targetId: id },
+  });
+  if (auditCount > 0) {
+    return {
+      ok: false,
+      message:
+        "This contractor has audit history, so it can't be deleted. Archive (deactivate) instead.",
     };
   }
 
@@ -283,22 +297,38 @@ export async function deleteLead(id: string): Promise<Result> {
   const admin = await requireAdmin();
   const lead = await prisma.lead.findUnique({
     where: { id },
-    select: { id: true, matches: { select: { status: true } } },
+    select: {
+      id: true,
+      matches: { select: { id: true, status: true } },
+      _count: { select: { matches: true } },
+    },
   });
   if (!lead) return { ok: false, message: "Lead not found." };
 
-  // Preserve money + audit integrity: a lead with an accepted match has a wallet
-  // charge behind it. Block deletion so the charge/refund records stay intact.
-  if (lead.matches.some((m) => m.status === "ACCEPTED")) {
+  // Hard-delete cascades LeadMatches (and unlinks wallet rows). Never destroy
+  // distribution history once matches exist — including pending/expired/declined.
+  if (lead._count.matches > 0) {
+    const accepted = lead.matches.some((m) => m.status === "ACCEPTED");
+    return {
+      ok: false,
+      message: accepted
+        ? "This lead has match history and an accepted match with wallet charges, so it can't be deleted. Leave it in place to preserve the audit trail."
+        : "This lead has match history (pending, declined, or expired). Deleting would destroy those records — leave the lead in place to preserve the trail.",
+    };
+  }
+
+  const linkedWalletTx = await prisma.walletTransaction.count({
+    where: { leadMatch: { leadId: id } },
+  });
+  if (linkedWalletTx > 0) {
     return {
       ok: false,
       message:
-        "This lead has an accepted match with a wallet charge, so it can't be deleted. Refund the match first if it was a mistake.",
+        "This lead is linked to wallet transactions, so it can't be deleted. Leave it in place to preserve financial history.",
     };
   }
 
   await prisma.$transaction(async (tx) => {
-    // Cascades pending/declined/expired matches (no money attached).
     await tx.lead.delete({ where: { id } });
     await tx.auditLog.create({
       data: {

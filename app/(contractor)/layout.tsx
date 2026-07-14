@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authMode, getSession } from "@/lib/auth";
 import { UserMenu } from "@/components/auth/user-menu";
 import { SignOutLink } from "@/components/auth/sign-out-link";
-import { ExitViewAsBanner } from "@/components/auth/exit-view-as";
+import { ExitViewAsButton } from "@/components/auth/exit-view-as";
 import { ContractorTabs } from "@/components/contractor-tabs";
 import { ContractorSidebar } from "@/components/contractor-sidebar";
 
@@ -41,6 +41,9 @@ export default async function ContractorLayout({ children }: { children: React.R
           name: true,
           deactivatedAt: true,
           contractorType: { select: { name: true } },
+          _count: {
+            select: { leadMatches: { where: { status: "PENDING" } } },
+          },
         },
       })
     : null;
@@ -49,18 +52,20 @@ export default async function ContractorLayout({ children }: { children: React.R
     redirect("/deactivated");
   }
 
+  const pendingLeadCount = contractor?._count.leadMatches ?? 0;
+
   return (
     <div className="flex min-h-screen bg-[#FEFBF6]">
-      {session.viewingAs && <ExitViewAsBanner />}
-
-        <ContractorSidebar
-          walletCents={contractor?.walletBalanceCents ?? null}
-          name={contractor?.name}
-          subtitle={contractor?.contractorType?.name}
-          initials={initialsFrom(contractor?.name)}
-          userMenu={clerk ? <UserMenu /> : undefined}
-          showSignOut={clerk}
-        />
+      <ContractorSidebar
+        walletCents={contractor?.walletBalanceCents ?? null}
+        name={contractor?.name}
+        subtitle={contractor?.contractorType?.name}
+        initials={initialsFrom(contractor?.name)}
+        userMenu={clerk ? <UserMenu /> : undefined}
+        showSignOut={clerk}
+        viewingAs={session.viewingAs}
+        pendingLeadCount={pendingLeadCount}
+      />
 
       <main className="flex min-w-0 flex-1 flex-col bg-[#FEFBF6]">
         {/* Mobile header (sidebar is hidden below md) */}
@@ -72,6 +77,7 @@ export default async function ContractorLayout({ children }: { children: React.R
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            {session.viewingAs && <ExitViewAsButton variant="mobile" />}
             {clerk && <SignOutLink variant="icon" />}
             {clerk && <UserMenu />}
           </div>
@@ -80,7 +86,7 @@ export default async function ContractorLayout({ children }: { children: React.R
         <div className="flex-1 pb-24 md:pb-0">{children}</div>
       </main>
 
-      <ContractorTabs />
+      <ContractorTabs pendingLeadCount={pendingLeadCount} />
     </div>
   );
 }
