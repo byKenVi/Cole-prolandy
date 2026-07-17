@@ -31,17 +31,9 @@ export default async function PricingPage() {
       : 0;
 
   return (
-    <div className="admin-fade-up">
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 24,
-          marginBottom: 22,
-        }}
-      >
-        <div style={{ maxWidth: 560 }}>
+    <div className="admin-fade-up pricing-page">
+      <div className="pricing-page-header">
+        <div className="pricing-page-intro">
           <p
             style={{
               margin: "0 0 8px",
@@ -53,28 +45,15 @@ export default async function PricingPage() {
           >
             Lead pricing
           </p>
-          <h1
-            className="font-fraunces"
-            style={{ fontWeight: 600, fontSize: 34, lineHeight: 1, letterSpacing: "-.015em", margin: 0, color: "var(--ink)" }}
-          >
-            Pricing matrix
-          </h1>
-          <p style={{ margin: "9px 0 0", color: "var(--ink2)", fontSize: 15, lineHeight: 1.6 }}>
+          <h1 className="pricing-page-title font-fraunces">Pricing matrix</h1>
+          <p className="pricing-page-sub">
             What a contractor pays for a lead, set per{" "}
             <b style={{ color: "var(--ink)" }}>project × tier</b>. Each project has exactly three
             tiers (small / medium / large). Edits apply to new leads only — existing leads keep their
             snapshotted price.
           </p>
         </div>
-        <div
-          style={{
-            flex: "none",
-            background: "var(--sage)",
-            borderRadius: 16,
-            padding: "16px 20px",
-            minWidth: 200,
-          }}
-        >
+        <div className="pricing-avg-card">
           <p
             style={{
               margin: "0 0 6px",
@@ -100,23 +79,9 @@ export default async function PricingPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 22 }}>
+      <div className="pricing-tier-legend">
         {TIER_LEGEND.map((t) => (
-          <div
-            key={t.title}
-            style={{
-              flex: 1,
-              minWidth: 210,
-              background: "var(--card)",
-              border: "1px solid var(--line)",
-              borderRadius: 14,
-              padding: "15px 18px",
-              boxShadow: "var(--shadow)",
-              display: "flex",
-              alignItems: "center",
-              gap: 13,
-            }}
-          >
+          <div key={t.title} className="pricing-tier-legend-card">
             <span style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 26 }}>
               {[11, 19, 26].slice(0, t.bars).map((h, i) => (
                 <span

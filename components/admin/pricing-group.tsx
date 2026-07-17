@@ -70,10 +70,11 @@ export function PricingGroup({
     });
   }
 
-  const GRID = "minmax(160px,1.6fr) 1fr 1fr 1fr";
+  const TIER_NAMES = ["Tier 1 · Small", "Tier 2 · Standard", "Tier 3 · Large"] as const;
 
   return (
     <div
+      className="pricing-group"
       style={{
         background: "var(--card)",
         border: "1px solid var(--line)",
@@ -82,17 +83,8 @@ export function PricingGroup({
         overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-          padding: "18px 24px",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+      <div className="pricing-group-head">
+        <div style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0, flex: 1 }}>
           <span
             style={{
               width: 46,
@@ -115,14 +107,23 @@ export function PricingGroup({
               </svg>
             )}
           </span>
-          <div>
-            <p style={{ margin: 0, font: "600 17px/1 'Inter'", color: "var(--ink)" }}>{name}</p>
+          <div style={{ minWidth: 0 }}>
+            <p
+              style={{
+                margin: 0,
+                font: "600 17px/1.2 'Inter'",
+                color: "var(--ink)",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {name}
+            </p>
             <p style={{ margin: "4px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
               {sub}
             </p>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="pricing-group-actions">
           {message && (
             <span
               style={{
@@ -137,6 +138,7 @@ export function PricingGroup({
             type="button"
             onClick={save}
             disabled={pending}
+            className="pricing-save-btn"
             style={{
               height: 38,
               padding: "0 18px",
@@ -149,6 +151,7 @@ export function PricingGroup({
               opacity: pending ? 0.8 : 1,
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               gap: 7,
             }}
           >
@@ -157,91 +160,125 @@ export function PricingGroup({
         </div>
       </div>
 
-      <div style={{ padding: "8px 24px 20px" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: GRID,
-            gap: "16px 20px",
-            alignItems: "end",
-            padding: "14px 0 6px",
-          }}
-        >
-          <span style={colLabel}>Project type</span>
-          <span style={colLabel}>Tier 1</span>
-          <span style={colLabel}>Tier 2</span>
-          <span style={colLabel}>Tier 3</span>
+      <div className="pricing-group-body">
+        {/* Desktop: 4-col matrix */}
+        <div className="pricing-matrix-desktop">
+          <div className="pricing-matrix-head">
+            <span style={colLabel}>Project type</span>
+            <span style={colLabel}>Tier 1</span>
+            <span style={colLabel}>Tier 2</span>
+            <span style={colLabel}>Tier 3</span>
+          </div>
+
+          {rows.map((r) => (
+            <div key={r.projectTypeId} className="pricing-matrix-row">
+              <span style={{ font: "500 14px/1.3 'Inter'", color: "var(--ink)" }}>{r.name}</span>
+              {[1, 2, 3].map((tierNum) => {
+                const tier = r.tiers.find((t) => t.tier === tierNum);
+                if (!tier) return <span key={tierNum} style={{ color: "var(--ink3)" }}>—</span>;
+                return (
+                  <TierField
+                    key={tierNum}
+                    value={values[tier.id] ?? ""}
+                    max={max}
+                    onChange={(v) => setCell(tier.id, v)}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </div>
 
-        {rows.map((r) => (
-          <div
-            key={r.projectTypeId}
-            style={{
-              display: "grid",
-              gridTemplateColumns: GRID,
-              gap: "16px 20px",
-              alignItems: "center",
-              padding: "11px 0",
-              borderTop: "1px solid var(--line2)",
-            }}
-          >
-            <span style={{ font: "500 14px/1.3 'Inter'", color: "var(--ink)" }}>{r.name}</span>
-            {[1, 2, 3].map((tierNum) => {
-              const tier = r.tiers.find((t) => t.tier === tierNum);
-              if (!tier) return <span key={tierNum} style={{ color: "var(--ink3)" }}>—</span>;
-              const val = values[tier.id] ?? "";
-              const pct = Math.round(((parseFloat(val) || 0) / max) * 100);
-              return (
-                <div key={tierNum} style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                  <div
-                    className="a-field"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      height: 42,
-                      padding: "0 12px",
-                      background: "var(--field)",
-                      border: "1px solid var(--fieldLine)",
-                      borderRadius: 11,
-                    }}
-                  >
-                    <span style={{ color: "var(--gold)", fontWeight: 700 }}>$</span>
-                    <input
-                      value={val}
-                      onChange={(e) => setCell(tier.id, e.target.value)}
-                      inputMode="decimal"
-                      className="a-input"
-                      style={{
-                        width: "100%",
-                        font: "600 15px/1 'Inter'",
-                        fontVariantNumeric: "tabular-nums",
-                      }}
+        {/* Mobile: stacked labeled fields */}
+        <div className="pricing-matrix-mobile">
+          {rows.map((r) => (
+            <div key={r.projectTypeId} className="pricing-mobile-block">
+              <p className="pricing-mobile-project">{r.name}</p>
+              {[1, 2, 3].map((tierNum) => {
+                const tier = r.tiers.find((t) => t.tier === tierNum);
+                if (!tier) {
+                  return (
+                    <div key={tierNum} className="pricing-mobile-tier">
+                      <span style={colLabel}>{TIER_NAMES[tierNum - 1]}</span>
+                      <span style={{ color: "var(--ink3)" }}>—</span>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={tierNum} className="pricing-mobile-tier">
+                    <span style={colLabel}>{TIER_NAMES[tierNum - 1]}</span>
+                    <TierField
+                      value={values[tier.id] ?? ""}
+                      max={max}
+                      onChange={(v) => setCell(tier.id, v)}
                     />
                   </div>
-                  <div
-                    style={{
-                      height: 4,
-                      borderRadius: 999,
-                      background: "var(--track)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${pct}%`,
-                        background: "var(--gold)",
-                        borderRadius: 999,
-                        transition: "width .3s ease",
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ))}
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TierField({
+  value,
+  max,
+  onChange,
+}: {
+  value: string;
+  max: number;
+  onChange: (v: string) => void;
+}) {
+  const pct = Math.round(((parseFloat(value) || 0) / max) * 100);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 7, minWidth: 0 }}>
+      <div
+        className="a-field"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          height: 42,
+          padding: "0 12px",
+          background: "var(--field)",
+          border: "1px solid var(--fieldLine)",
+          borderRadius: 11,
+        }}
+      >
+        <span style={{ color: "var(--gold)", fontWeight: 700 }}>$</span>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          inputMode="decimal"
+          className="a-input"
+          style={{
+            width: "100%",
+            minWidth: 0,
+            font: "600 15px/1 'Inter'",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        />
+      </div>
+      <div
+        style={{
+          height: 4,
+          borderRadius: 999,
+          background: "var(--track)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${pct}%`,
+            background: "var(--gold)",
+            borderRadius: 999,
+            transition: "width .3s ease",
+          }}
+        />
       </div>
     </div>
   );

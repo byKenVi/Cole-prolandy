@@ -706,6 +706,177 @@ textarea:focus-visible,
   }
 }
 
+/* ── Pricing page: mobile-friendly matrix ───────────────────────────────── */
+.pricing-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+.pricing-page-intro {
+  max-width: 560px;
+  min-width: 0;
+}
+.pricing-page-title {
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--ink);
+}
+.pricing-page-sub {
+  margin: 9px 0 0;
+  color: var(--ink2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.pricing-avg-card {
+  flex: none;
+  background: var(--sage);
+  border-radius: 16px;
+  padding: 16px 20px;
+  min-width: 200px;
+}
+.pricing-tier-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.pricing-tier-legend-card {
+  flex: 1 1 210px;
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.pricing-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.pricing-group-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+.pricing-group-body {
+  padding: 8px 24px 20px;
+}
+.pricing-matrix-desktop {
+  display: block;
+}
+.pricing-matrix-mobile {
+  display: none;
+}
+.pricing-matrix-head,
+.pricing-matrix-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.6fr) 1fr 1fr 1fr;
+  gap: 16px 20px;
+  align-items: center;
+}
+.pricing-matrix-head {
+  align-items: end;
+  padding: 14px 0 6px;
+}
+.pricing-matrix-row {
+  padding: 11px 0;
+  border-top: 1px solid var(--line2);
+}
+.pricing-mobile-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 0 4px;
+}
+.pricing-mobile-block + .pricing-mobile-block {
+  border-top: 1px solid var(--line2);
+  margin-top: 8px;
+  padding-top: 18px;
+}
+.pricing-mobile-project {
+  margin: 0;
+  font: 600 14px/1.3 "Inter";
+  color: var(--ink);
+}
+.pricing-mobile-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .pricing-page-header {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .pricing-page-intro {
+    max-width: none;
+  }
+  .pricing-page-title {
+    font-size: 28px;
+  }
+  .pricing-avg-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .pricing-tier-legend-card {
+    flex: 1 1 100%;
+  }
+  .pricing-search {
+    flex: 1 1 100% !important;
+    max-width: none !important;
+  }
+  .pricing-group-head {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    gap: 14px;
+  }
+  .pricing-group-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .pricing-save-btn {
+    flex: 1;
+    min-height: 44px;
+  }
+  .pricing-group-body {
+    padding: 4px 16px 18px;
+  }
+  .pricing-matrix-desktop {
+    display: none;
+  }
+  .pricing-matrix-mobile {
+    display: block;
+  }
+}
+
+@media (max-width: 460px) {
+  .pricing-page-title {
+    font-size: 24px;
+  }
+  .pricing-group-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+}
+
 /* ── Responsive grids (stat cards & tuned grids stack down) ─────────────── */
 @media (max-width: 720px) {
   .admin-stat-grid {

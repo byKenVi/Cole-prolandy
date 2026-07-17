@@ -57,6 +57,7 @@ export function PricingBrowser({ groups }: { groups: PricingGroupData[] }) {
         }}
       >
         <label
+          className="pricing-search"
           style={{
             display: "flex",
             alignItems: "center",
