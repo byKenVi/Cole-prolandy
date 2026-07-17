@@ -72,27 +72,64 @@ export default async function AdminFinance() {
       stripePendingCents,
     });
 
+  const stripeAvailLabel =
+    stripeUnavailable || stripeAvailableCents === null
+      ? "—"
+      : formatMoney(stripeAvailableCents);
+  const stripePendLabel =
+    stripeUnavailable || stripePendingCents === null
+      ? "—"
+      : formatMoney(stripePendingCents);
+  const safeNowLabel =
+    safeToWithdrawCents === null ? "—" : formatMoney(safeToWithdrawCents);
+  const equationParts =
+    stripeAvailableCents !== null
+      ? `${formatMoney(stripeAvailableCents)} in Stripe − ${formatMoney(heldForContractors)} wallet reserve`
+      : null;
+
   return (
     <div className="admin-fade-up">
       <PageHeader
         kicker="Revenue & cash"
         title="Finance"
-        subtitle="You earn when contractors buy leads. Top-ups are prepaid. Only lead-sales cash (Stripe minus wallets) is safe to withdraw."
+        subtitle="You earn when contractors buy leads. Card top-ups are prepaid credit — leave that amount in Stripe. Only Safe to withdraw is yours to pay out."
       />
 
-      <div style={{ marginBottom: 26 }}>
+      <div
+        className="admin-grid-tight"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2,1fr)",
+          gap: 14,
+          marginBottom: 26,
+        }}
+      >
         <StatCard
-          label="Lead revenue"
+          label="Lead revenue (earned)"
           value={formatMoney(leadRevenue)}
-          caption={`Your business CA: ${paidAccepts} paid accept${paidAccepts === 1 ? "" : "s"}${
+          caption={`From ${paidAccepts} paid accept${paidAccepts === 1 ? "" : "s"}${
             refundCount > 0 ? `, ${refundCount} refunded` : ""
-          }.`}
+          }. What your business made — not always all still in Stripe.`}
+          large
+        />
+        <StatCard
+          label="Safe to withdraw (now)"
+          value={safeNowLabel}
+          caption={
+            safeAfterPendingCents !== null &&
+            safeToWithdrawCents !== null &&
+            safeAfterPendingCents > safeToWithdrawCents
+              ? `Pay yourself at most this amount in Stripe. After pending settles: ~${formatMoney(safeAfterPendingCents)}.`
+              : equationParts
+                ? `Pay yourself at most this amount. ${equationParts} (capped by lead revenue).`
+                : "Pay yourself at most this amount in Stripe. Leave wallet reserve covered."
+          }
           highlight
           large
         />
       </div>
 
-      <SectionLabel title="Safe to withdraw" />
+      <SectionLabel title="How that number is built" />
       <p
         style={{
           margin: "8px 0 12px",
@@ -101,62 +138,40 @@ export default async function AdminFinance() {
           maxWidth: 640,
         }}
       >
-        Example: contractor tops up $200 then buys an $80 lead — $120 stays held on their wallet;
-        only the $80 is withdrawable as revenue (Stripe fees and pending settlement may reduce it).
+        Stripe mixes prepaid wallets and your revenue in one balance. A payout of the full
+        Stripe available would also remove money still owed on contractor wallets.
       </p>
       <div
         className="admin-grid-tight"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(2,1fr)",
+          gridTemplateColumns: "repeat(3,1fr)",
           gap: 14,
           margin: "0 0 14px",
         }}
       >
         <StatCard
-          label="Held for contractors"
-          value={formatMoney(heldForContractors)}
-          caption={
-            promoGranted > 0
-              ? `Cash-like wallet float (promo granted ${formatMoney(promoGranted)} excluded).`
-              : "Prepaid still on wallets — not yours to withdraw."
-          }
-        />
-        <StatCard
-          label="Stripe available"
-          value={
-            stripeUnavailable || stripeAvailableCents === null
-              ? "—"
-              : formatMoney(stripeAvailableCents)
-          }
+          label="In Stripe (available)"
+          value={stripeAvailLabel}
           caption={
             stripeUnavailable
               ? "Live Stripe balance unavailable in mock mode."
-              : "Withdrawable now (includes prepaid + earned)."
+              : "Cash Stripe shows as ready — prepaid + earned mixed. Not “all yours.”"
           }
         />
         <StatCard
-          label="Stripe pending"
-          value={
-            stripeUnavailable || stripePendingCents === null
-              ? "—"
-              : formatMoney(stripePendingCents)
-          }
-          caption="Settling into available — not withdrawable yet."
-        />
-        <StatCard
-          label="Safe to withdraw"
-          value={
-            safeToWithdrawCents === null ? "—" : formatMoney(safeToWithdrawCents)
-          }
+          label="Wallet reserve"
+          value={formatMoney(heldForContractors)}
           caption={
-            safeAfterPendingCents !== null &&
-            safeToWithdrawCents !== null &&
-            safeAfterPendingCents > safeToWithdrawCents
-              ? `Now. After pending settles: ~${formatMoney(safeAfterPendingCents)}.`
-              : "Lead-sales cash still in Stripe after reserving wallets."
+            promoGranted > 0
+              ? `Must stay in Stripe for contractor wallets (promo ${formatMoney(promoGranted)} excluded).`
+              : "Must stay in Stripe — prepaid still on contractor wallets."
           }
-          highlight
+        />
+        <StatCard
+          label="In Stripe (pending)"
+          value={stripePendLabel}
+          caption="Settling into available — not payout-ready yet."
         />
       </div>
       {uncoveredLiabilityCents > 0 && (
@@ -175,7 +190,7 @@ export default async function AdminFinance() {
       )}
       {uncoveredLiabilityCents === 0 && <div style={{ marginBottom: 26 }} />}
 
-      <SectionLabel title="Held in contractor wallets" />
+      <SectionLabel title="Card activity (lifetime)" />
       <p
         style={{
           margin: "8px 0 12px",
@@ -184,9 +199,9 @@ export default async function AdminFinance() {
           maxWidth: 640,
         }}
       >
-        Informational sum of contractor wallet balances (cash-like float). This is{" "}
-        <strong style={{ color: "var(--ink2)", fontWeight: 600 }}>not</strong> withdrawable
-        Stripe balance — it is prepaid credit still owed on wallets until leads are bought.
+        Historical charges — not the current wallet reserve above. Net prepaid credit bought
+        equals top-ups minus card refunds
+        {cardRefundsOut === 0 ? " (same as top-ups while refunds are $0)" : ""}.
       </p>
       <div
         className="admin-grid-tight"
@@ -195,24 +210,17 @@ export default async function AdminFinance() {
         <StatCard
           label="Card top-ups"
           value={formatMoney(topup)}
-          caption="Total charged to contractor cards via Stripe."
+          caption="Lifetime charged to contractor cards."
         />
         <StatCard
           label="Card refunds"
           value={formatMoney(cardRefundsOut)}
-          caption="Money returned to contractor cards."
+          caption="Lifetime returned to contractor cards."
         />
         <StatCard
-          label="Est. Stripe fees"
-          value={formatMoney(estFees)}
-          caption={`≈2.9% + $0.30 × ${topupCount} top-up${topupCount === 1 ? "" : "s"} (estimate).`}
-        />
-      </div>
-      <div style={{ margin: "-12px 0 26px" }}>
-        <StatCard
-          label="Held in contractor wallets (net)"
+          label="Net prepaid bought"
           value={formatMoney(prepaidOnCards)}
-          caption="Top-ups minus card refunds — sum of wallet credit bought. Informational only; not Stripe payouts."
+          caption={`Top-ups − refunds. Est. fees ~${formatMoney(estFees)} (≈2.9% + $0.30 × ${topupCount}). Not a payout amount.`}
         />
       </div>
 
@@ -347,8 +355,8 @@ export default async function AdminFinance() {
               Withdrawals & banking
             </h2>
             <p style={{ margin: "10px 0 0", font: "400 14px/1.6 'Inter'", color: "rgba(241,231,214,.85)" }}>
-              Withdraw up to <strong>Safe to withdraw</strong> in Stripe — leave prepaid wallets
-              covered. Pending funds appear when they settle. Bank details stay in Stripe.
+              In Stripe, pay out at most <strong>Safe to withdraw</strong> — not the full available
+              balance. Leave the wallet reserve covered. Bank details stay in Stripe.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
               <a
