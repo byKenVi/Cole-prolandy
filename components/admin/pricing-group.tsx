@@ -189,32 +189,34 @@ export function PricingGroup({
           ))}
         </div>
 
-        {/* Mobile: stacked labeled fields */}
+        {/* Tablet / phone: labeled fields (3-col on tablet, stacked on phone) */}
         <div className="pricing-matrix-mobile">
           {rows.map((r) => (
             <div key={r.projectTypeId} className="pricing-mobile-block">
               <p className="pricing-mobile-project">{r.name}</p>
-              {[1, 2, 3].map((tierNum) => {
-                const tier = r.tiers.find((t) => t.tier === tierNum);
-                if (!tier) {
+              <div className="pricing-mobile-tiers">
+                {[1, 2, 3].map((tierNum) => {
+                  const tier = r.tiers.find((t) => t.tier === tierNum);
+                  if (!tier) {
+                    return (
+                      <div key={tierNum} className="pricing-mobile-tier">
+                        <span style={colLabel}>{TIER_NAMES[tierNum - 1]}</span>
+                        <span style={{ color: "var(--ink3)" }}>—</span>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={tierNum} className="pricing-mobile-tier">
                       <span style={colLabel}>{TIER_NAMES[tierNum - 1]}</span>
-                      <span style={{ color: "var(--ink3)" }}>—</span>
+                      <TierField
+                        value={values[tier.id] ?? ""}
+                        max={max}
+                        onChange={(v) => setCell(tier.id, v)}
+                      />
                     </div>
                   );
-                }
-                return (
-                  <div key={tierNum} className="pricing-mobile-tier">
-                    <span style={colLabel}>{TIER_NAMES[tierNum - 1]}</span>
-                    <TierField
-                      value={values[tier.id] ?? ""}
-                      max={max}
-                      onChange={(v) => setCell(tier.id, v)}
-                    />
-                  </div>
-                );
-              })}
+                })}
+              </div>
             </div>
           ))}
         </div>
