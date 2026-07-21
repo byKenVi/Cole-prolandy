@@ -1,46 +1,45 @@
-# Landy's Pro — Replit project context
+# [Project name]
 
-## Architecture (do not replace)
+_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
 
-This repository is the production application. It is a full-stack **Next.js 15
-App Router** project with React 19 and strict TypeScript. It is not a Vite app,
-not a client-only React SPA, and not a separate frontend/backend pair.
+## Run & Operate
 
-- Server UI and routes: `app/`
-- Server Actions: `app/actions/`
-- API and webhook routes: `app/api/`
-- Database: external Supabase PostgreSQL through Prisma
-- Authentication: Clerk in production
-- Payments: Stripe
-- Notifications: Twilio and Resend
-- Persistent media: Supabase Storage
-- Package manager: npm with the committed `package-lock.json`
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm run typecheck` — full typecheck across all packages
+- `pnpm run build` — typecheck + build all packages
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- Required env: `DATABASE_URL` — Postgres connection string
 
-## Non-negotiable rules for Replit Agent
+## Stack
 
-1. Never convert, scaffold, or migrate this app to Vite, Create React App,
-   Express, Replit Database, or another framework.
-2. Never delete or replace `app/`, `prisma/`, `next.config.ts`, `middleware.ts`,
-   `instrumentation.ts`, `.replit`, `replit.nix`, or `package-lock.json`.
-3. Preserve Next.js Server Components, Server Actions, middleware, API routes,
-   Stripe webhooks, Clerk auth, Prisma migrations, cron endpoint, and all
-   existing functionality.
-4. Use `npm ci` to install the locked dependency tree. Use npm only.
-5. Do not create a second app in a subfolder and do not move source files.
-6. Do not commit secrets or create a tracked `.env`; use Replit Secrets.
-7. Database schema changes require a committed Prisma migration. Never replace
-   Supabase/PostgreSQL with Replit Database.
-8. Before completing a change, run `npm test` and `npm run build` when the
-   required secrets are available.
-9. GitHub `main` is the source of truth. Keep changes as normal Git commits so a
-   local push can be pulled/synced into this same Replit App.
+- pnpm workspaces, Node.js 24, TypeScript 5.9
+- API: Express 5
+- DB: PostgreSQL + Drizzle ORM
+- Validation: Zod (`zod/v4`), `drizzle-zod`
+- API codegen: Orval (from OpenAPI spec)
+- Build: esbuild (CJS bundle)
 
-## Replit commands
+## Where things live
 
-- Run button (development): `npm run replit:dev`
-- Production build: `npm run replit:build`
-- Production start: `npm run replit:start`
-- Deployment type: Autoscale or Reserved VM, never Static
+_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
 
-The `.replit` file already defines these commands and port 3000. Do not let
-Agent regenerate runtime configuration from a generic React template.
+## Architecture decisions
+
+_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+
+## Product
+
+_Describe the high-level user-facing capabilities of this app once they exist._
+
+## User preferences
+
+_Populate as you build — explicit user instructions worth remembering across sessions._
+
+## Gotchas
+
+_Populate as you build — sharp edges, "always run X before Y" rules._
+
+## Pointers
+
+- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
