@@ -12,6 +12,7 @@ import { DomainError } from "@/lib/domain/errors";
 import { normalizePhoneForStorage } from "@/lib/phone";
 import { ICON_KEYS, ICON_AUTO, ICON_NONE } from "@/lib/project-icons";
 import { revalidateAdminShell, revalidateContractorShell } from "@/lib/revalidate";
+import { sendContractorAccountInvitation } from "@/lib/contractor-invitations";
 
 type Result = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -718,8 +719,59 @@ export async function createContractor(
       });
       return created;
     });
+
+    const invitation = await sendContractorAccountInvitation({
+      name: data.name,
+      email,
+    });
+    if (!invitation.ok) {
+      console.error("[contractor.create] Account invitation failed", {
+        contractorId: contractor.id,
+        error: invitation.error,
+      });
+      try {
+        await prisma.$transaction([
+          prisma.auditLog.deleteMany({
+            where: {
+              targetId: contractor.id,
+              action: "contractor.created.admin",
+            },
+          }),
+          prisma.contractor.delete({ where: { id: contractor.id } }),
+        ]);
+      } catch (rollbackError) {
+        console.error("[contractor.create] Invitation rollback failed", rollbackError);
+        return {
+          ok: false,
+          message:
+            "Contractor was created, but the invitation failed. Do not retry; check the contractor list.",
+        };
+      }
+      return {
+        ok: false,
+        message: "Invitation email failed, so no contractor was created. Check email settings and retry.",
+      };
+    }
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          actorType: "system",
+          action: "contractor.invitation.sent",
+          targetType: "Contractor",
+          targetId: contractor.id,
+          metadata: { email, provider: invitation.provider },
+        },
+      });
+    } catch (auditError) {
+      console.error("[contractor.create] Invitation audit failed", auditError);
+    }
     revalidatePath("/admin/contractors");
-    return { ok: true, message: "Contractor created", contractorId: contractor.id };
+    return {
+      ok: true,
+      message: "Contractor created and invitation sent",
+      contractorId: contractor.id,
+    };
   } catch {
     return { ok: false, message: "Could not create contractor. The email may already be in use." };
   }

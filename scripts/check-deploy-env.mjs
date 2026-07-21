@@ -49,6 +49,9 @@ if (production) {
 
 for (const flag of ["STRIPE_MOCK", "TWILIO_MOCK", "RESEND_MOCK"]) {
   requireBoolean(flag);
+  if (production && value(flag) === "true") {
+    errors.push(`${flag}: client-test deployment must use the live provider ("false")`);
+  }
 }
 
 if (value("STRIPE_MOCK") === "false") {
@@ -71,7 +74,9 @@ if (value("TWILIO_MOCK") === "false") {
 
 if (value("RESEND_MOCK") === "false") {
   requireEnv("RESEND_API_KEY", "required when Resend mock mode is disabled");
-  requireEnv("RESEND_FROM", "verified sender required when Resend mock mode is disabled");
+  if (!value("RESEND_FROM") && !value("RESEND_FROM_EMAIL")) {
+    errors.push("RESEND_FROM: verified sender required when Resend mock mode is disabled");
+  }
 }
 
 if (errors.length > 0) {

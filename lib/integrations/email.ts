@@ -31,9 +31,15 @@ export interface EmailProvider {
 
 const isMock = () => process.env.RESEND_MOCK !== "false"; // default ON
 
-/** Live mode requires the API key to be present. */
+function resendFrom(): string | undefined {
+  // RESEND_FROM_EMAIL was used by the original env template; keep it as a
+  // compatibility alias while standardizing new deployments on RESEND_FROM.
+  return process.env.RESEND_FROM?.trim() || process.env.RESEND_FROM_EMAIL?.trim();
+}
+
+/** Live mode requires both the API key and a verified sender. */
 function hasResendCreds(): boolean {
-  return Boolean(process.env.RESEND_API_KEY);
+  return Boolean(process.env.RESEND_API_KEY && resendFrom());
 }
 
 export class MockEmailProvider implements EmailProvider {
@@ -52,7 +58,7 @@ export class ResendEmailProvider implements EmailProvider {
       const { Resend } = await import("resend");
       const resend = new Resend(process.env.RESEND_API_KEY);
 
-      const from = process.env.RESEND_FROM;
+      const from = resendFrom();
       if (!from) {
         return {
           ok: false,

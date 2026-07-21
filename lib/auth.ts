@@ -136,7 +136,7 @@ async function getClerkSession(): Promise<Session> {
   const user = await resolveClerkUser(userId);
   const emails = collectAllEmails(user);
   const email = emails[0] ?? null;
-  const isAdmin = userIsAdmin(user, emails);
+  const isAdmin = userIsAdmin(user);
 
   if (isAdmin) {
     const jar = await cookies();
@@ -226,7 +226,7 @@ async function resolveClerkUser(userId: string): Promise<ClerkUserLike> {
   const fromSession = await currentUser();
   // Right after sign-in, currentUser() can return a user shell with no usable
   // emails yet. Fall back to the Backend API so /post-auth still sees ADMIN_EMAILS.
-  const sessionEmails = collectAllEmails(fromSession);
+  const sessionEmails = collectVerifiedEmails(fromSession);
   if (sessionEmails.length > 0 || fromSession?.publicMetadata?.role === "admin") {
     return fromSession;
   }
@@ -255,10 +255,11 @@ export function collectAllEmails(user: ClerkUserLike): string[] {
   return out;
 }
 
-/** True when publicMetadata.role is admin or any user email is in ADMIN_EMAILS. */
-export function userIsAdmin(user: ClerkUserLike, emails = collectAllEmails(user)): boolean {
+/** True when trusted metadata says admin or a VERIFIED email is allowlisted. */
+export function userIsAdmin(user: ClerkUserLike): boolean {
   const metaRole = user?.publicMetadata?.role;
   if (metaRole === "admin") return true;
+  const emails = collectVerifiedEmails(user);
   const allowed = adminEmails();
   if (allowed.length === 0 || emails.length === 0) return false;
   return emails.some((e) => allowed.includes(e));

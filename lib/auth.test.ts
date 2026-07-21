@@ -69,12 +69,24 @@ describe("userIsAdmin / collectAllEmails", () => {
     const user = {
       primaryEmailAddress: { emailAddress: "other@example.com" },
       emailAddresses: [
-        { emailAddress: "other@example.com" },
-        { emailAddress: "Masdouk@techma.ca" },
+        { emailAddress: "other@example.com", verification: { status: "verified" } },
+        { emailAddress: "Masdouk@techma.ca", verification: { status: "verified" } },
       ],
     };
     expect(collectAllEmails(user)).toEqual(["other@example.com", "masdouk@techma.ca"]);
     expect(userIsAdmin(user)).toBe(true);
+  });
+
+  it("never grants admin from an unverified allowlisted email", () => {
+    vi.stubEnv("ADMIN_EMAILS", "admin@landys.pro");
+    expect(
+      userIsAdmin({
+        primaryEmailAddress: { emailAddress: "admin@landys.pro" },
+        emailAddresses: [
+          { emailAddress: "admin@landys.pro", verification: { status: "unverified" } },
+        ],
+      }),
+    ).toBe(false);
   });
 
   it("honors publicMetadata.role=admin even without ADMIN_EMAILS match", () => {
