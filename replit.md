@@ -1,0 +1,46 @@
+# Landy's Pro — Replit project context
+
+## Architecture (do not replace)
+
+This repository is the production application. It is a full-stack **Next.js 15
+App Router** project with React 19 and strict TypeScript. It is not a Vite app,
+not a client-only React SPA, and not a separate frontend/backend pair.
+
+- Server UI and routes: `app/`
+- Server Actions: `app/actions/`
+- API and webhook routes: `app/api/`
+- Database: external Supabase PostgreSQL through Prisma
+- Authentication: Clerk in production
+- Payments: Stripe
+- Notifications: Twilio and Resend
+- Persistent media: Supabase Storage
+- Package manager: npm with the committed `package-lock.json`
+
+## Non-negotiable rules for Replit Agent
+
+1. Never convert, scaffold, or migrate this app to Vite, Create React App,
+   Express, Replit Database, or another framework.
+2. Never delete or replace `app/`, `prisma/`, `next.config.ts`, `middleware.ts`,
+   `instrumentation.ts`, `.replit`, `replit.nix`, or `package-lock.json`.
+3. Preserve Next.js Server Components, Server Actions, middleware, API routes,
+   Stripe webhooks, Clerk auth, Prisma migrations, cron endpoint, and all
+   existing functionality.
+4. Use `npm ci` to install the locked dependency tree. Use npm only.
+5. Do not create a second app in a subfolder and do not move source files.
+6. Do not commit secrets or create a tracked `.env`; use Replit Secrets.
+7. Database schema changes require a committed Prisma migration. Never replace
+   Supabase/PostgreSQL with Replit Database.
+8. Before completing a change, run `npm test` and `npm run build` when the
+   required secrets are available.
+9. GitHub `main` is the source of truth. Keep changes as normal Git commits so a
+   local push can be pulled/synced into this same Replit App.
+
+## Replit commands
+
+- Run button (development): `npm run replit:dev`
+- Production build: `npm run replit:build`
+- Production start: `npm run replit:start`
+- Deployment type: Autoscale or Reserved VM, never Static
+
+The `.replit` file already defines these commands and port 3000. Do not let
+Agent regenerate runtime configuration from a generic React template.

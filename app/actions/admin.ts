@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { refundLeadMatch } from "@/lib/domain/leads";
@@ -643,8 +644,7 @@ async function validProjectIds(projectIds: string[]): Promise<string[]> {
 }
 
 async function syncContractorProjects(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tx: any,
+  tx: Prisma.TransactionClient,
   contractorId: string,
   projectIds: string[],
   primaryProjectId: string,

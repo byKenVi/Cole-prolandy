@@ -1,0 +1,26 @@
+language = "javascript"
+entrypoint = "package.json"
+modules = ["nodejs-22"]
+run = "npm run replit:dev"
+onBoot = "npm ci"
+hidden = [".next", "node_modules"]
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix", "replit.md", "package.json", "package-lock.json", "next.config.ts"]
+
+[packager]
+language = "nodejs"
+ignoredPaths = ["node_modules", ".next"]
+
+[packager.features]
+guessImports = false
+packageSearch = true
+enabledForHosting = false
+
+[deployment]
+build = "npm ci && npm run replit:build"
+run = "npm run replit:start"
+
+[[ports]]
+localPort = 3000
+externalPort = 80

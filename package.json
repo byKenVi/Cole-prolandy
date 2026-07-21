@@ -6,6 +6,10 @@
     "dev": "next dev",
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
+    "replit:dev": "next dev -H 0.0.0.0 -p 3000",
+    "replit:build": "node --env-file-if-exists=.env scripts/check-deploy-env.mjs --production && npm run build",
+    "replit:start": "next start -H 0.0.0.0 -p 3000",
+    "deploy:check": "node --env-file-if-exists=.env scripts/check-deploy-env.mjs --production",
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -16,6 +20,10 @@
     "db:reconcile-wallets": "node scripts/reconcile-seed-wallets.mjs",
     "db:sync-catalog": "node scripts/sync-catalog.mjs",
     "postinstall": "prisma generate"
+  },
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -28,6 +36,7 @@
     "@radix-ui/react-label": "^2.1.1",
     "@radix-ui/react-select": "^2.1.4",
     "@radix-ui/react-slot": "^1.1.1",
+    "@supabase/supabase-js": "^2.110.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "libphonenumber-js": "^1.13.8",

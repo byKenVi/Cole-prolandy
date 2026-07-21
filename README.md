@@ -178,10 +178,10 @@ The flow: contractor picks a preset ($50/$100/$250) or custom amount (min $10, m
 
 ### Enabling Clerk auth
 
-1. `AUTH_MODE=clerk` and set the Clerk keys in `.env`.
-2. Wire `getClerkSession()` in `lib/auth.ts` (there's a documented TODO) to map the Clerk user → `Contractor.clerkUserId` and admin role via `publicMetadata.role`.
-3. Add `ClerkProvider` in `app/layout.tsx` and a `middleware.ts` with `clerkMiddleware`, plus `/sign-in` and `/sign-up` routes.
-   The tokenized SMS accept flow stays **unauthenticated** by design.
+1. Set `AUTH_MODE=clerk`, the Clerk keys, and `ADMIN_EMAILS`.
+2. Configure Clerk's allowed/callback domains for the deployed hostname.
+3. Restart/rebuild after changing auth variables because middleware reads them
+   at build time. The tokenized SMS accept flow stays unauthenticated by design.
 
 ---
 
@@ -191,6 +191,62 @@ The flow: contractor picks a preset ($50/$100/$250) or custom amount (min $10, m
 2. Set env vars (`DATABASE_URL`, `DIRECT_URL`, app URL, and any real keys). Keep `*_MOCK=true` until services are wired.
 3. Build command is `npm run build` (runs `prisma generate` first). Migrations run via `npx prisma migrate deploy` — run it against your Supabase DB from CI or locally.
 4. Lead expiry: a Vercel Cron hits `/api/cron/expire-leads` (see `vercel.json`). Leads are also swept lazily whenever feeds load, so expiry is correct even without cron.
+
+---
+
+## Run and deploy on Replit (without framework conversion)
+
+This repository contains a committed `.replit`, `replit.nix`, `replit.md`, and
+authoritative Agent instructions. They pin the app to **Next.js + Node 22** and
+prevent Replit Agent from replacing it with a generic React/Vite project.
+
+### One-time import
+
+1. In Replit, choose **Import → GitHub** and select this repository. Do not
+   create a React template and do not ask Agent to rebuild the project.
+2. Keep the repository root unchanged. Replit must detect `.replit` and run
+   `npm ci`; if it generates `src/main.jsx`, `vite.config.*`, or another app,
+   cancel the change and re-import from GitHub.
+3. Add all production values from `env.example` in **Replit Secrets**. Never
+   upload or commit `.env`. Do not define `NODE_ENV`; Next.js sets it.
+4. Set `NEXT_PUBLIC_APP_URL` to the final HTTPS Replit/custom-domain URL.
+5. Run `npm run deploy:check` in the Replit shell. It fails early and lists
+   missing variable names without printing secret values.
+6. Use the **Run** button for development. It runs the existing Next.js app on
+   `0.0.0.0:3000`.
+
+### Publish
+
+- Choose **Autoscale** (recommended) or **Reserved VM**, never Static
+  Deployment: the app requires Server Actions, API routes, auth, webhooks, and
+  database access.
+- Build: `npm ci && npm run replit:build`
+- Run: `npm run replit:start`
+- The build applies committed Prisma migrations to the external Supabase
+  database and then runs `next build`.
+- Contractor logos use Supabase Storage, not Replit's temporary filesystem.
+  Add `SUPABASE_URL` and the server-only `SUPABASE_SERVICE_ROLE_KEY`.
+- Update Clerk allowed domains and Stripe's webhook endpoint to
+  `https://YOUR_DOMAIN/api/stripe/webhook`, then use the resulting production
+  webhook secret in Replit Secrets.
+- For lead expiry outside Vercel, add `APP_URL` and `CRON_SECRET` to GitHub
+  Actions repository secrets. `.github/workflows/expire-leads.yml` calls the
+  protected endpoint daily.
+
+### Keep local, GitHub, and Replit synchronized
+
+GitHub `main` is the source of truth:
+
+1. Make and test changes locally.
+2. Commit and `git push origin main`.
+3. In the existing Replit App, open Git and **Pull/Sync**. Do not re-import and
+   do not create a second Replit project.
+4. Re-run/redeploy only when dependencies, server code, or public build-time
+   variables changed. Normal pulled source changes appear in the development
+   preview after Next.js reloads.
+
+If changes are also made in Replit, commit and push them before editing the same
+files locally; otherwise normal Git merge conflicts can occur.
 
 ---
 

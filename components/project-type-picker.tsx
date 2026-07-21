@@ -103,7 +103,6 @@ export function ProjectTypePicker({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  aria-pressed={isSelected}
                   onClick={() => {
                     onChange(p.id);
                     setQuery("");

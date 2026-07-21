@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -108,7 +109,7 @@ export function EstimateForm({
         </p>
         <div className="mt-2 flex flex-col items-center gap-2 sm:flex-row">
           <Button asChild variant="accent">
-            <a href="/">Back to home</a>
+            <Link href="/">Back to home</Link>
           </Button>
           <Button
             type="button"

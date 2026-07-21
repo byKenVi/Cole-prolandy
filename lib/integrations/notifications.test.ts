@@ -81,10 +81,11 @@ describe("SMS — live mode", () => {
   });
 
   it("prefers a Messaging Service SID over a from-number", async () => {
+    const messagingServiceSid = `MG${"a".repeat(32)}`;
     process.env.TWILIO_ACCOUNT_SID = "AC_test";
     process.env.TWILIO_AUTH_TOKEN = "tok_test";
     process.env.TWILIO_FROM = "+15005550006";
-    process.env.TWILIO_MESSAGING_SERVICE_SID = "MG_test";
+    process.env.TWILIO_MESSAGING_SERVICE_SID = messagingServiceSid;
     twilioCreate.mockResolvedValue({ sid: "SM999" });
 
     await new TwilioSmsProvider().send({ to: "+14155550100", body: "x" });
@@ -92,7 +93,7 @@ describe("SMS — live mode", () => {
     expect(twilioCreate).toHaveBeenCalledWith({
       to: "+14155550100",
       body: "x",
-      messagingServiceSid: "MG_test",
+      messagingServiceSid,
     });
   });
 

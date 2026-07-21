@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
 import type { RevenuePoint } from "@/components/admin/revenue-chart";
@@ -315,7 +316,7 @@ export default async function AdminDashboard({
             }}
           >
             <p style={{ margin: 0, font: "600 15px/1 'Inter'", color: "var(--ink)" }}>Recent leads</p>
-            <a
+            <Link
               href="/admin/leads"
               className="a-linkgold"
               style={{
@@ -331,7 +332,7 @@ export default async function AdminDashboard({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
-            </a>
+            </Link>
           </div>
           {recentLeads.length === 0 ? (
             <p style={{ padding: "24px", color: "var(--ink3)", fontSize: 14 }}>No leads yet.</p>
