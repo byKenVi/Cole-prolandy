@@ -16,7 +16,6 @@ export default async function ProfilePage() {
     ? await prisma.contractor.findUnique({
         where: { id: session.contractorId },
         include: {
-          contractorType: true,
           projects: {
             include: { contractorType: { select: { id: true, name: true } } },
             orderBy: { contractorType: { name: "asc" } },
@@ -29,10 +28,7 @@ export default async function ProfilePage() {
     contractor?.projects.map((p) => ({
       id: p.contractorType.id,
       name: p.contractorType.name,
-    })) ??
-    (contractor
-      ? [{ id: contractor.contractorType.id, name: contractor.contractorType.name }]
-      : []);
+    })) ?? [];
 
   if (!contractor) {
     return (

@@ -44,7 +44,6 @@ export default async function ContractorDetail({
   const contractor = await prisma.contractor.findUnique({
     where: { id },
     include: {
-      contractorType: true,
       projects: {
         include: { contractorType: { select: { id: true, name: true } } },
         orderBy: { contractorType: { name: "asc" } },
@@ -53,14 +52,11 @@ export default async function ContractorDetail({
   });
   if (!contractor) notFound();
 
-  const assignedProjects =
-    contractor.projects.length > 0
-      ? contractor.projects.map((p) => p.contractorType)
-      : [{ id: contractor.contractorType.id, name: contractor.contractorType.name }];
+  const assignedProjects = contractor.projects.map((p) => p.contractorType);
   const matchesWhere = { contractorId: id };
   const txWhere = { contractorId: id };
 
-  const [matchCount, txCount, topupAgg, acceptedMatches] = await Promise.all([
+  const [matchCount, txCount, topupAgg, acceptedMatches, minimumLeadPrice] = await Promise.all([
     prisma.leadMatch.count({ where: matchesWhere }),
     prisma.walletTransaction.count({ where: txWhere }),
     prisma.walletTransaction.aggregate({
@@ -74,6 +70,10 @@ export default async function ContractorDetail({
         lead: { include: { projectType: true } },
         walletTransactions: { select: { type: true } },
       },
+    }),
+    prisma.priceTier.aggregate({
+      _min: { priceCents: true },
+      where: { contractorTypeId: { in: assignedProjects.map((project) => project.id) } },
     }),
   ]);
 
@@ -168,7 +168,11 @@ export default async function ContractorDetail({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="flex flex-col gap-2">
-          <WalletBalance cents={contractor.walletBalanceCents} label="Wallet balance" />
+          <WalletBalance
+            cents={contractor.walletBalanceCents}
+            lowThresholdCents={minimumLeadPrice._min.priceCents ?? 0}
+            label="Wallet balance"
+          />
           <div className="mt-1 flex flex-col gap-1 text-xs text-text-muted">
             <span>Lifetime card top-ups: {formatMoney(topupTotalCents)}</span>
             <span>

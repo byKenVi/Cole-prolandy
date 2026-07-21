@@ -111,6 +111,17 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
               )}
             </div>
 
+            {lead.description && (
+              <div className="mb-6 rounded-[16px] border border-[#EBE3D4] bg-[#FFFDF9] p-4">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[#8A7E68]">
+                  Project details
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-[15px] leading-6 text-[#3A352D]">
+                  {lead.description}
+                </p>
+              </div>
+            )}
+
             {accepted ? (
               <div className="rounded-[16px] bg-[#F3ECDD] p-5">
                 <p className="flex items-center gap-2 text-[14px] font-semibold text-[#8A6B2E]">

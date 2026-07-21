@@ -31,6 +31,20 @@ if (production) {
   requireEnv("SUPABASE_URL", "required for persistent contractor logo storage");
   requireEnv("SUPABASE_SERVICE_ROLE_KEY", "server-only key required for persistent logo storage");
 
+  if (value("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY") && !value("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY").startsWith("pk_")) {
+    errors.push("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: invalid Clerk publishable key");
+  }
+  if (value("CLERK_SECRET_KEY") && !value("CLERK_SECRET_KEY").startsWith("sk_")) {
+    errors.push("CLERK_SECRET_KEY: invalid Clerk secret key");
+  }
+  const admins = (value("ADMIN_EMAILS") ?? "")
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
+  if (admins.some((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+    errors.push("ADMIN_EMAILS: every entry must be a valid email address");
+  }
+
   const appUrl = value("NEXT_PUBLIC_APP_URL");
   if (appUrl) {
     try {
@@ -56,7 +70,6 @@ for (const flag of ["STRIPE_MOCK", "TWILIO_MOCK", "RESEND_MOCK"]) {
 
 if (value("STRIPE_MOCK") === "false") {
   requireEnv("STRIPE_SECRET_KEY", "required when Stripe mock mode is disabled");
-  requireEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", "required when Stripe mock mode is disabled");
   requireEnv("STRIPE_WEBHOOK_SECRET", "required to verify Stripe webhooks");
 }
 

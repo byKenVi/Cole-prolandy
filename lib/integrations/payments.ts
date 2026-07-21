@@ -108,7 +108,7 @@ export type CreateCardSetupParams = {
   cancelUrl: string;
 };
 
-const isMock = () => process.env.STRIPE_MOCK !== "false"; // default ON
+const isMock = () => process.env.STRIPE_MOCK !== "false";
 
 /**
  * MOCK provider: logs to console and returns a local URL that simulates a
@@ -375,9 +375,20 @@ export async function getStripe(): Promise<Stripe> {
   return stripeSingleton;
 }
 
-export const payments: PaymentsProvider = isMock()
-  ? new MockPaymentsProvider()
-  : new StripePaymentsProvider();
+function createPaymentsProvider(): PaymentsProvider {
+  if (isMock()) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error('STRIPE_MOCK must be explicitly set to "false" in production.');
+    }
+    return new MockPaymentsProvider();
+  }
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("STRIPE_SECRET_KEY is required when STRIPE_MOCK=false.");
+  }
+  return new StripePaymentsProvider();
+}
+
+export const payments: PaymentsProvider = createPaymentsProvider();
 
 // ─────────────────────────────────────────────────────────────
 // Read-only reporting helpers (admin "Cash & revenue" view).
@@ -391,6 +402,7 @@ export type StripeBalanceAmount = { amountCents: number; currency: string };
 
 export type StripeBalanceResult = {
   mocked: boolean;
+  error?: string;
   /** Available (withdrawable) balance, one entry per currency. */
   available: StripeBalanceAmount[];
   /** Pending (not yet settled) balance, one entry per currency. */
@@ -409,6 +421,7 @@ export type StripePayout = {
 
 export type StripePayoutsResult = {
   mocked: boolean;
+  error?: string;
   /** Up to 10 most recent payouts for the table. */
   payouts: StripePayout[];
   /**
@@ -435,8 +448,13 @@ export async function getStripeBalance(): Promise<StripeBalanceResult> {
       available: balance.available.map((b) => ({ amountCents: b.amount, currency: b.currency })),
       pending: balance.pending.map((b) => ({ amountCents: b.amount, currency: b.currency })),
     };
-  } catch {
-    return { mocked: true, available: [], pending: [] };
+  } catch (error) {
+    return {
+      mocked: false,
+      error: error instanceof Error ? error.message : String(error),
+      available: [],
+      pending: [],
+    };
   }
 }
 
@@ -468,7 +486,12 @@ export async function listRecentPayouts(): Promise<StripePayoutsResult> {
       payouts: mapped.slice(0, 10),
       totalPaidOutCents,
     };
-  } catch {
-    return { mocked: true, payouts: [], totalPaidOutCents: 0 };
+  } catch (error) {
+    return {
+      mocked: false,
+      error: error instanceof Error ? error.message : String(error),
+      payouts: [],
+      totalPaidOutCents: 0,
+    };
   }
 }

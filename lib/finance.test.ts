@@ -30,12 +30,12 @@ describe("estimateStripeFeesCents", () => {
 });
 
 describe("cashHeldForContractorsCents", () => {
-  it("excludes promo grants from held", () => {
-    expect(cashHeldForContractorsCents(15_000, 5_000)).toBe(10_000);
+  it("reserves the full current wallet balance", () => {
+    expect(cashHeldForContractorsCents(15_000)).toBe(15_000);
   });
 
   it("floors at zero", () => {
-    expect(cashHeldForContractorsCents(1_000, 5_000)).toBe(0);
+    expect(cashHeldForContractorsCents(-1_000)).toBe(0);
   });
 });
 
@@ -126,12 +126,12 @@ describe("stripeUsdCents", () => {
     ).toBe(500);
   });
 
-  it("sums when no usd", () => {
+  it("does not combine unlike currencies when usd is absent", () => {
     expect(
       stripeUsdCents([
         { amountCents: 100, currency: "eur" },
         { amountCents: 50, currency: "cad" },
       ]),
-    ).toBe(150);
+    ).toBeNull();
   });
 });

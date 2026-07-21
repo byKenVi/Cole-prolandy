@@ -7,6 +7,7 @@ import { requireContractorId } from "@/lib/auth";
 import { validateTopUpAmountCents } from "@/lib/domain/topup";
 import { chargeContractorSavedCard, type RechargeResult } from "@/lib/services/recharge";
 import { revalidateContractorShell } from "@/lib/revalidate";
+import { appUrl } from "@/lib/app-url";
 
 /**
  * Start a wallet top-up. In mock mode this returns a local URL that simulates a
@@ -27,7 +28,7 @@ export async function startTopUp(amountCents: number) {
     select: { stripeCustomerId: true, email: true, name: true },
   });
 
-  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+  const base = appUrl();
   const { checkoutUrl, customerId } = await payments.createTopUpCheckout({
     contractorId,
     amountCents: check.amountCents,
@@ -79,7 +80,7 @@ export async function startCardUpdate() {
     select: { stripeCustomerId: true, email: true, name: true },
   });
 
-  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+  const base = appUrl();
   const { checkoutUrl, customerId } = await payments.createCardSetupCheckout({
     contractorId,
     stripeCustomerId: contractor?.stripeCustomerId ?? null,

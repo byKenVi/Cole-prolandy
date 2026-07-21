@@ -189,7 +189,8 @@ The flow: contractor picks a preset ($50/$100/$250) or custom amount (min $10, m
 
 1. Push to GitHub and import the repo in Vercel.
 2. Set every production variable from `.env.example`; all `*_MOCK` values must be `false`.
-3. Build command is `npm run build` (runs `prisma generate` first). Migrations run via `npx prisma migrate deploy` — run it against your Supabase DB from CI or locally.
+3. Build command is `npm run deploy:build`. It validates the production
+   environment, applies committed Prisma migrations, and then builds Next.js.
 4. Lead expiry: a Vercel Cron hits `/api/cron/expire-leads` (see `vercel.json`). Leads are also swept lazily whenever feeds load, so expiry is correct even without cron.
 
 ---

@@ -5,7 +5,7 @@
  * never care which provider (or mock) is active. Toggle with RESEND_MOCK.
  *
  * ── Modes ────────────────────────────────────────────────────────────────────
- *   MOCK (default): logs to console, returns success. No SDK / key needed.
+ *   MOCK (development only): logs to console, returns success.
  *   LIVE:           RESEND_MOCK=false AND RESEND_API_KEY present. Sends via SDK.
  *
  * ── Testing today ────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ export interface EmailProvider {
   send(params: SendEmailParams): Promise<SendEmailResult>;
 }
 
-const isMock = () => process.env.RESEND_MOCK !== "false"; // default ON
+const isMock = () => process.env.RESEND_MOCK !== "false";
 
 function resendFrom(): string | undefined {
   return process.env.RESEND_FROM?.trim();
@@ -87,12 +87,17 @@ export class ResendEmailProvider implements EmailProvider {
   }
 }
 
-/**
- * Choose the provider once at module load. Live mode only kicks in when the
- * mock flag is explicitly off AND the API key exists — a misconfigured env
- * safely falls back to the mock instead of crashing lead distribution.
- */
-export const email: EmailProvider =
-  isMock() || !hasResendCreds()
-    ? new MockEmailProvider()
-    : new ResendEmailProvider();
+function createEmailProvider(): EmailProvider {
+  if (isMock()) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error('RESEND_MOCK must be explicitly set to "false" in production.');
+    }
+    return new MockEmailProvider();
+  }
+  if (!hasResendCreds()) {
+    throw new Error("Resend credentials and RESEND_FROM are required when RESEND_MOCK=false.");
+  }
+  return new ResendEmailProvider();
+}
+
+export const email: EmailProvider = createEmailProvider();

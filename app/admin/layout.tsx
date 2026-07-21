@@ -6,6 +6,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { getAdminTheme, getAdminSidebarCollapsed } from "@/lib/admin-theme.server";
 import { formatMoney } from "@/lib/money";
 import { queryNetLeadRevenueCents } from "@/lib/finance";
+import { currentUser } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +16,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect(authMode() === "clerk" ? "/home" : "/");
   }
   const clerk = authMode() === "clerk";
+  const clerkUser = clerk ? await currentUser() : null;
+  const adminName =
+    clerkUser?.fullName ||
+    [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") ||
+    session.email ||
+    "Administrator";
 
   // Net lead revenue (CA) — same definition as Finance (charges − refunds).
-  const [theme, collapsed, leadRevenueCents, acceptedLeads] = await Promise.all([
+  const [theme, collapsed, leadRevenueCents, chargedLeads] = await Promise.all([
     getAdminTheme(),
     getAdminSidebarCollapsed(),
     queryNetLeadRevenueCents(prisma),
-    prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
+    prisma.walletTransaction.count({ where: { type: "LEAD_CHARGE" } }),
   ]);
 
   return (
@@ -29,9 +36,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       initialTheme={theme}
       initialCollapsed={collapsed}
       leadRevenue={formatMoney(leadRevenueCents)}
-      acceptedLeads={acceptedLeads}
+      chargedLeads={chargedLeads}
       userMenu={clerk ? <UserMenu /> : undefined}
       showSignOut={clerk}
+      identity={{ name: adminName, email: session.email ?? undefined }}
     >
       {children}
     </AdminShell>

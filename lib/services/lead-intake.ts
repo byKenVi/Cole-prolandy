@@ -11,6 +11,7 @@ export type LeadIntakeInput = {
   landownerEmail: string;
   landownerPhone: string;
   propertyLocation: string;
+  description?: string | null;
   projectTypeId: string;
   tier: number;
   landTypeId?: string | null;
@@ -55,6 +56,7 @@ export async function createAndDistributeLead(
       landownerEmail: input.landownerEmail,
       landownerPhone: input.landownerPhone,
       propertyLocation: input.propertyLocation,
+      description: input.description?.trim() || null,
       projectTypeId: projectType.id,
       landTypeId: input.landTypeId ?? null,
       tier: input.tier,

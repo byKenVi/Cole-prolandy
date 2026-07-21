@@ -182,6 +182,7 @@ export default async function AdminContractors({
                 <ContractorRowActions
                   contractorId={c.id}
                   deactivated={Boolean(c.deactivatedAt)}
+                  signedIn={Boolean(c.clerkUserId)}
                 />
               </div>
             </div>

@@ -5,7 +5,7 @@
  * never care which provider (or mock) is active. Toggle with TWILIO_MOCK.
  *
  * ── Modes ────────────────────────────────────────────────────────────────────
- *   MOCK (default): logs to console, returns success. No SDK / creds needed.
+ *   MOCK (development only): logs to console, returns success.
  *   LIVE:           TWILIO_MOCK=false AND creds present. Sends via Twilio SDK.
  *
  * ── Trial-account testing (what we can do TODAY) ─────────────────────────────
@@ -38,7 +38,7 @@ export interface SmsProvider {
   send(params: SendSmsParams): Promise<SendSmsResult>;
 }
 
-const isMock = () => process.env.TWILIO_MOCK !== "false"; // default ON
+const isMock = () => process.env.TWILIO_MOCK !== "false";
 
 /** Live mode requires both the account SID and auth token to be present. */
 function hasTwilioCreds(): boolean {
@@ -76,8 +76,7 @@ export class TwilioSmsProvider implements SmsProvider {
       const messagingServiceSid = validMessagingServiceSid(
         process.env.TWILIO_MESSAGING_SERVICE_SID,
       );
-      const from =
-        process.env.TWILIO_FROM?.trim() || "";
+      const from = process.env.TWILIO_FROM?.trim() || "";
       if (!messagingServiceSid && !from) {
         return {
           ok: false,
@@ -105,10 +104,17 @@ export class TwilioSmsProvider implements SmsProvider {
   }
 }
 
-/**
- * Choose the provider once at module load. Live mode only kicks in when the
- * mock flag is explicitly off AND creds exist — a misconfigured env safely
- * falls back to the mock instead of crashing lead distribution.
- */
-export const sms: SmsProvider =
-  isMock() || !hasTwilioCreds() ? new MockSmsProvider() : new TwilioSmsProvider();
+function createSmsProvider(): SmsProvider {
+  if (isMock()) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error('TWILIO_MOCK must be explicitly set to "false" in production.');
+    }
+    return new MockSmsProvider();
+  }
+  if (!hasTwilioCreds()) {
+    throw new Error("Twilio credentials are required when TWILIO_MOCK=false.");
+  }
+  return new TwilioSmsProvider();
+}
+
+export const sms: SmsProvider = createSmsProvider();

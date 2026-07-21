@@ -24,6 +24,7 @@ import { AdminGlobalSearch } from "@/components/admin/global-search";
  */
 
 type NavItem = { href: string; label: string; icon: string };
+type AdminIdentity = { name: string; email?: string };
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: "/admin-icons/dashboard.png" },
@@ -117,20 +118,30 @@ function Chevron({ collapsed }: { collapsed: boolean }) {
 
 function Sidebar({
   leadRevenue,
-  acceptedLeads,
+  chargedLeads,
   collapsed,
   onToggleCollapse,
   onCloseMobile,
   showSignOut,
+  identity,
 }: {
   leadRevenue: string;
-  acceptedLeads: number;
+  chargedLeads: number;
   collapsed: boolean;
   onToggleCollapse: () => void;
   onCloseMobile: () => void;
   showSignOut?: boolean;
+  identity: AdminIdentity;
 }) {
   const pathname = usePathname();
+  const initials =
+    identity.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "A";
   return (
     <aside className="admin-sidebar">
       <RingTexture />
@@ -210,7 +221,7 @@ function Sidebar({
             {leadRevenue}
           </p>
           <p style={{ margin: 0, font: "500 12px/1 'Inter'", color: "#8FA592" }}>
-            from {acceptedLeads} accepted lead{acceptedLeads === 1 ? "" : "s"}
+            from {chargedLeads} charged lead{chargedLeads === 1 ? "" : "s"}
           </p>
         </div>
         <svg
@@ -243,7 +254,7 @@ function Sidebar({
             flex: "none",
           }}
         >
-          AD
+          {initials}
         </span>
         <div className="admin-foot-text" style={{ minWidth: 0, flex: 1 }}>
           <p
@@ -257,7 +268,7 @@ function Sidebar({
             }}
           >
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              Admin Desk
+              {identity.name}
             </span>
             <span
               style={{
@@ -275,7 +286,7 @@ function Sidebar({
             </span>
           </p>
           <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "#8FA592" }}>
-            Landy&apos;s Pro HQ
+            {identity.email ?? "Administrator"}
           </p>
         </div>
         {showSignOut && (
@@ -292,11 +303,21 @@ function Topbar({
   userMenu,
   onOpenMobile,
   showSignOut,
+  identity,
 }: {
   userMenu?: React.ReactNode;
   onOpenMobile: () => void;
   showSignOut?: boolean;
+  identity: AdminIdentity;
 }) {
+  const initials =
+    identity.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "A";
   return (
     <header
       className="admin-topbar"
@@ -338,7 +359,7 @@ function Topbar({
               font: "600 13px/1 'Inter'",
             }}
           >
-            AD
+            {initials}
           </span>
         )}
       </div>
@@ -350,17 +371,19 @@ export function AdminShell({
   initialTheme,
   initialCollapsed = false,
   leadRevenue,
-  acceptedLeads,
+  chargedLeads,
   userMenu,
   showSignOut = false,
+  identity,
   children,
 }: {
   initialTheme: AdminTheme;
   initialCollapsed?: boolean;
   leadRevenue: string;
-  acceptedLeads: number;
+  chargedLeads: number;
   userMenu?: React.ReactNode;
   showSignOut?: boolean;
+  identity: AdminIdentity;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
@@ -391,11 +414,12 @@ export function AdminShell({
         >
           <Sidebar
             leadRevenue={leadRevenue}
-            acceptedLeads={acceptedLeads}
+            chargedLeads={chargedLeads}
             collapsed={collapsed}
             onToggleCollapse={toggleCollapse}
             onCloseMobile={() => setMobileOpen(false)}
             showSignOut={showSignOut}
+            identity={identity}
           />
           <div className="admin-scrim" aria-hidden onClick={() => setMobileOpen(false)} />
           <div className="admin-content">
@@ -403,6 +427,7 @@ export function AdminShell({
               userMenu={userMenu}
               onOpenMobile={() => setMobileOpen(true)}
               showSignOut={showSignOut}
+              identity={identity}
             />
             <main className="admin-main">{children}</main>
           </div>

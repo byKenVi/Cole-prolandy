@@ -7,10 +7,10 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import type { RevenuePoint } from "@/components/admin/revenue-chart";
 import { formatMoney } from "@/lib/money";
 
 export type RevenueRange = "24h" | "7d" | "30d";
+export type RevenuePoint = { label: string; revenueCents: number };
 
 const RANGE_OPTIONS: { id: RevenueRange; label: string }[] = [
   { id: "24h", label: "24 hours" },

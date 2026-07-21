@@ -20,21 +20,6 @@ export function leadStatusChip(status: string): ChipStyle {
   }
 }
 
-export function matchStatusChip(status: string): ChipStyle {
-  switch (status) {
-    case "ACCEPTED":
-      return { label: "Accepted", bg: "var(--posBg)", fg: "var(--pos)" };
-    case "PENDING":
-      return { label: "Pending", bg: "var(--goldSoft)", fg: "var(--goldSoftFg)" };
-    case "DECLINED":
-      return { label: "Passed", bg: "var(--chipBg)", fg: "var(--ink3)" };
-    case "EXPIRED":
-      return { label: "Expired", bg: "var(--dangerBg)", fg: "var(--danger)" };
-    default:
-      return { label: status, bg: "var(--chipBg)", fg: "var(--chipFg)" };
-  }
-}
-
 /** Tier chip colours (hardcoded warm tones, as in the design model). */
 export function tierChip(tier: number): ChipStyle {
   switch (tier) {

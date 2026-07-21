@@ -23,15 +23,12 @@ export default async function EditContractorPage({
   ]);
   if (!contractor) notFound();
 
-  const projectIds =
-    contractor.projects.length > 0
-      ? [
-          contractor.contractorTypeId,
-          ...contractor.projects
-            .map((p) => p.contractorTypeId)
-            .filter((pid) => pid !== contractor.contractorTypeId),
-        ]
-      : [contractor.contractorTypeId];
+  const projectIds = [
+    contractor.contractorTypeId,
+    ...contractor.projects
+      .map((p) => p.contractorTypeId)
+      .filter((pid) => pid !== contractor.contractorTypeId),
+  ];
 
   return (
     <div className="admin-fade-up flex max-w-2xl flex-col gap-6">

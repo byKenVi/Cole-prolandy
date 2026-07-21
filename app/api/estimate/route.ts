@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       landownerEmail: data.email,
       landownerPhone: data.phone,
       propertyLocation: data.location,
+      description: data.description?.trim() || null,
       projectTypeId: data.projectTypeId,
       landTypeId: data.landTypeId || null,
       tier,

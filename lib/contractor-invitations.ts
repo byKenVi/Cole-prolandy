@@ -2,14 +2,11 @@ import "server-only";
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { authMode } from "@/lib/auth";
+import { appUrl } from "@/lib/app-url";
 
 type InvitationResult =
   | { ok: true; provider: "clerk" | "dev" }
   | { ok: false; error: string };
-
-function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
-}
 
 /**
  * Send account access immediately after an admin creates a contractor.

@@ -89,7 +89,7 @@ export default function LandingPage() {
               <div className="flex items-center justify-between">
                 <BrandLogo className="h-4" />
                 <span className="rounded-full border border-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
-                  New lead
+                  Example lead
                 </span>
               </div>
               <p className="mt-2 text-xs text-text-muted">

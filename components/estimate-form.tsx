@@ -210,7 +210,7 @@ export function EstimateForm({
         {step === 2 && (
           <Step
             title="What type of land?"
-            subtitle="Optional — this helps us match the right pro. You can skip it."
+            subtitle="Optional — this helps describe the property. You can skip it."
           >
             <fieldset>
               <legend className="sr-only">Choose a land type (optional)</legend>

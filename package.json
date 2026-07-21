@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && prisma migrate deploy && next build",
+    "deploy:build": "npm run deploy:check && npm run build",
     "start": "next start",
     "replit:dev": "next dev -H 0.0.0.0 -p 3000",
-    "replit:build": "node --env-file-if-exists=.env scripts/check-deploy-env.mjs --production && npm run build",
+    "replit:build": "npm run deploy:build",
     "replit:start": "next start -H 0.0.0.0 -p 3000",
     "deploy:check": "node --env-file-if-exists=.env scripts/check-deploy-env.mjs --production",
     "lint": "eslint . --ext .js,.mjs,.jsx,.ts,.tsx",

@@ -112,7 +112,7 @@ export function OnboardingForm({
           id="about"
           value={about}
           onChange={(e) => setAbout(e.target.value)}
-          placeholder="A short description landowners will see."
+          placeholder="A short description for your contractor profile."
         />
       </div>
 

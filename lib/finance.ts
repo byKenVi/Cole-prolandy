@@ -22,14 +22,12 @@ export function estimateStripeFeesCents(topupTotalCents: number, topupCount: num
 }
 
 /**
- * Wallet float that must stay in Stripe. Promo grants are not real card cash,
- * so we exclude lifetime PROMO_CREDIT from held (conservative floor at 0).
+ * Conservative wallet reserve. Until cash and promotional balances are tracked
+ * separately, reserve the full current wallet balance so payouts cannot
+ * underfund contractors.
  */
-export function cashHeldForContractorsCents(
-  walletBalanceSumCents: number,
-  promoCreditSumCents: number,
-): number {
-  return Math.max(0, Math.trunc(walletBalanceSumCents) - Math.max(0, Math.trunc(promoCreditSumCents)));
+export function cashHeldForContractorsCents(walletBalanceSumCents: number): number {
+  return Math.max(0, Math.trunc(walletBalanceSumCents));
 }
 
 export type SafeToWithdrawInput = {
@@ -92,12 +90,13 @@ export function computeSafeToWithdraw(input: SafeToWithdrawInput): SafeToWithdra
   };
 }
 
-/** Prefer USD from a multi-currency Stripe balance list; else sum all. */
-export function stripeUsdCents(entries: { amountCents: number; currency: string }[]): number {
+/** Return only USD; unlike currencies must never be added together. */
+export function stripeUsdCents(
+  entries: { amountCents: number; currency: string }[],
+): number | null {
   if (entries.length === 0) return 0;
   const usd = entries.find((e) => e.currency.toLowerCase() === "usd");
-  if (usd) return usd.amountCents;
-  return entries.reduce((sum, e) => sum + e.amountCents, 0);
+  return usd?.amountCents ?? null;
 }
 
 type SumClient = {

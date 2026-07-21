@@ -35,7 +35,6 @@ export default async function AdminFinance() {
     leadRefund,
     paidAccepts,
     refundCount,
-    promoCredit,
     walletAgg,
     balance,
     payouts,
@@ -48,7 +47,6 @@ export default async function AdminFinance() {
     // Paid accepts only (seed accepts with no charge are excluded).
     prisma.walletTransaction.count({ where: { type: "LEAD_CHARGE" } }),
     prisma.walletTransaction.count({ where: { type: "REFUND" } }),
-    sumByType("PROMO_CREDIT"),
     prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
     getStripeBalance(),
     listRecentPayouts(),
@@ -58,12 +56,17 @@ export default async function AdminFinance() {
   const cardRefundsOut = Math.abs(cardRefund);
   const prepaidOnCards = topup + cardRefund;
   const walletSum = Math.max(0, walletAgg._sum.walletBalanceCents ?? 0);
-  const promoGranted = Math.max(0, promoCredit);
-  const heldForContractors = cashHeldForContractorsCents(walletSum, promoGranted);
+  const heldForContractors = cashHeldForContractorsCents(walletSum);
   const estFees = estimateStripeFeesCents(topup, topupCount);
-  const stripeUnavailable = balance.mocked || payouts.mocked;
-  const stripeAvailableCents = stripeUnavailable ? null : stripeUsdCents(balance.available);
-  const stripePendingCents = stripeUnavailable ? null : stripeUsdCents(balance.pending);
+  const stripeMocked = balance.mocked || payouts.mocked;
+  const stripeProviderUnavailable = stripeMocked || Boolean(balance.error || payouts.error);
+  const stripeAvailableCents = stripeProviderUnavailable ? null : stripeUsdCents(balance.available);
+  const stripePendingCents = stripeProviderUnavailable ? null : stripeUsdCents(balance.pending);
+  const stripeCurrencyUnsupported =
+    !stripeProviderUnavailable &&
+    (stripeAvailableCents === null || stripePendingCents === null);
+  const stripeUnavailable =
+    stripeProviderUnavailable || stripeAvailableCents === null || stripePendingCents === null;
   const { safeToWithdrawCents, safeAfterPendingCents, uncoveredLiabilityCents } =
     computeSafeToWithdraw({
       netLeadRevenueCents: leadRevenue,
@@ -155,18 +158,18 @@ export default async function AdminFinance() {
           value={stripeAvailLabel}
           caption={
             stripeUnavailable
-              ? "Live Stripe balance unavailable in mock mode."
+              ? stripeMocked
+                ? "Live Stripe balance unavailable in mock mode."
+                : stripeCurrencyUnsupported
+                  ? "No USD balance was returned. Currencies are never combined."
+                  : "Stripe could not be reached. No payout amount is shown."
               : "Cash Stripe shows as ready — prepaid + earned mixed. Not “all yours.”"
           }
         />
         <StatCard
           label="Wallet reserve"
           value={formatMoney(heldForContractors)}
-          caption={
-            promoGranted > 0
-              ? `Must stay in Stripe for contractor wallets (promo ${formatMoney(promoGranted)} excluded).`
-              : "Must stay in Stripe — prepaid still on contractor wallets."
-          }
+          caption="Conservative reserve for every dollar currently shown in contractor wallets."
         />
         <StatCard
           label="In Stripe (pending)"
@@ -256,7 +259,11 @@ export default async function AdminFinance() {
           >
             {stripeUnavailable ? (
               <p style={{ padding: 20, font: "400 14px/1.5 'Inter'", color: "var(--ink3)" }}>
-                Stripe live data unavailable in mock mode.
+                {stripeMocked
+                  ? "Stripe live data unavailable in mock mode."
+                  : stripeCurrencyUnsupported
+                    ? "No USD balance was returned. Currencies are never combined."
+                    : "Stripe could not be reached. Try again before making a payout."}
               </p>
             ) : payouts.payouts.length === 0 ? (
               <p style={{ padding: 20, font: "400 14px/1 'Inter'", color: "var(--ink3)" }}>

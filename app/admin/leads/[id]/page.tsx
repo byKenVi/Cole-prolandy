@@ -105,6 +105,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <Field label="Landowner phone" value={lead.landownerPhone} />
           <Field label="Landowner email" value={lead.landownerEmail} />
           <Field label="Property location" value={lead.propertyLocation} />
+          <Field label="Project details" value={lead.description ?? "—"} />
           <Field label="Project type" value={lead.projectType.name} />
           <Field label="Land type" value={lead.landType?.name ?? "—"} />
           <Field label="Source" value={lead.source} />

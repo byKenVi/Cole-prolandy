@@ -89,14 +89,14 @@ describe("userIsAdmin / collectAllEmails", () => {
     ).toBe(false);
   });
 
-  it("honors publicMetadata.role=admin even without ADMIN_EMAILS match", () => {
+  it("does not let public metadata bypass ADMIN_EMAILS", () => {
     vi.stubEnv("ADMIN_EMAILS", "");
     expect(
       userIsAdmin({
         primaryEmailAddress: { emailAddress: "x@y.com" },
         publicMetadata: { role: "admin" },
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("returns false for contractors", () => {

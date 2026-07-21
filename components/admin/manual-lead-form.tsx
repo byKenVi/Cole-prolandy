@@ -23,7 +23,7 @@ const EMPTY = {
   landownerEmail: "",
   landownerPhone: "",
   propertyLocation: "",
-  tier: "1",
+  tier: "",
   landTypeId: "",
   projectTypeId: "",
 };
@@ -243,6 +243,9 @@ export function ManualLeadForm({
               value={form.tier}
               onChange={(e) => set("tier", e.target.value)}
             >
+              <option value="" disabled>
+                Select a tier
+              </option>
               <option value="1">Tier 1</option>
               <option value="2">Tier 2</option>
               <option value="3">Tier 3</option>

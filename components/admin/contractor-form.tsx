@@ -223,7 +223,7 @@ export function ContractorForm({
 
       {(!isCreate || step === 2) && (
         <section className="flex flex-col gap-6">
-          {isCreate && <StepTitle title="Profile" subtitle="Optional details landowners may see." />}
+          {isCreate && <StepTitle title="Profile" subtitle="Optional contractor profile details." />}
           <div>
             <Label>Business hours</Label>
             <div className="mt-2">
@@ -237,7 +237,7 @@ export function ContractorForm({
               className="min-h-[120px] text-lg"
               value={about}
               onChange={(e) => setAbout(e.target.value)}
-              placeholder="A short description landowners will see."
+              placeholder="A short description for the contractor profile."
             />
           </div>
           <label className="flex min-h-tap items-start gap-3 rounded-sm border border-border px-4 py-3">

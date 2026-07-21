@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { normalizePhone } from "@/lib/phone";
 
 /**
  * Auth abstraction.
@@ -180,13 +179,12 @@ async function getClerkSession(): Promise<Session> {
     };
   }
 
-  // Not linked yet — try to claim an ADMIN-CREATED contractor row (clerkUserId
-  // null) by matching a Clerk-VERIFIED email (primary) or phone (secondary).
+  // Not linked yet — claim only an admin-created row whose email is verified by
+  // Clerk. Phone numbers are not an account-ownership credential.
   // This is the primary onboarding path: the client's team enters contractors,
   // and the contractor simply signs in to adopt their existing profile.
   const verifiedEmails = collectVerifiedEmails(user);
-  const verifiedPhones = collectVerifiedPhones(user);
-  const claimed = await claimContractorForClerkUser(userId, verifiedEmails, verifiedPhones);
+  const claimed = await claimContractorForClerkUser(userId, verifiedEmails);
 
   if (claimed?.deactivated) {
     return {
@@ -223,18 +221,11 @@ type ClerkUserLike =
   | undefined;
 
 async function resolveClerkUser(userId: string): Promise<ClerkUserLike> {
-  const fromSession = await currentUser();
-  // Right after sign-in, currentUser() can return a user shell with no usable
-  // emails yet. Fall back to the Backend API so /post-auth still sees ADMIN_EMAILS.
-  const sessionEmails = collectVerifiedEmails(fromSession);
-  if (sessionEmails.length > 0 || fromSession?.publicMetadata?.role === "admin") {
-    return fromSession;
-  }
   try {
     const client = await clerkClient();
     return await client.users.getUser(userId);
   } catch {
-    return fromSession;
+    return currentUser();
   }
 }
 
@@ -255,10 +246,8 @@ export function collectAllEmails(user: ClerkUserLike): string[] {
   return out;
 }
 
-/** True when trusted metadata says admin or a VERIFIED email is allowlisted. */
+/** Admin authorization has one source: a verified email in ADMIN_EMAILS. */
 export function userIsAdmin(user: ClerkUserLike): boolean {
-  const metaRole = user?.publicMetadata?.role;
-  if (metaRole === "admin") return true;
   const emails = collectVerifiedEmails(user);
   const allowed = adminEmails();
   if (allowed.length === 0 || emails.length === 0) return false;
@@ -272,30 +261,18 @@ function collectVerifiedEmails(user: ClerkUserLike): string[] {
     .filter(Boolean);
 }
 
-function collectVerifiedPhones(user: ClerkUserLike): string[] {
-  // Normalize to E.164 so matching lines up with the canonical form we store on
-  // contractors. Clerk phones are already E.164, but normalizing both sides
-  // makes the comparison robust regardless of source formatting.
-  const normalized = (user?.phoneNumbers ?? [])
-    .filter((p) => p.verification?.status === "verified")
-    .map((p) => normalizePhone(p.phoneNumber))
-    .filter((p): p is string => Boolean(p));
-  return Array.from(new Set(normalized));
-}
-
 /**
  * Link a signed-in Clerk user to a pre-existing (admin-created) Contractor.
- * Matches on a Clerk-VERIFIED email first, then a uniquely-matching verified
- * phone. Runs in a transaction and guards (clerkUserId still null) so one
+ * Matches on a Clerk-verified email. Runs in a transaction and guards
+ * (clerkUserId still null) so one
  * Contractor can never be linked to two Clerk users. Returns the linked id or
  * null when nothing matched.
  */
 async function claimContractorForClerkUser(
   userId: string,
   verifiedEmails: string[],
-  verifiedPhones: string[],
 ): Promise<{ id: string; deactivated: boolean } | null> {
-  if (verifiedEmails.length === 0 && verifiedPhones.length === 0) return null;
+  if (verifiedEmails.length === 0) return null;
 
   return prisma.$transaction(async (tx) => {
     // 1) Email (primary) — Contractor.email is unique, so at most one match.
@@ -319,29 +296,6 @@ async function claimContractorForClerkUser(
       }
     }
 
-    // 2) Phone (secondary) — only if exactly one unclaimed row matches, to avoid
-    // ambiguous links (phone is not unique).
-    for (const phone of verifiedPhones) {
-      const matches = await tx.contractor.findMany({
-        where: { phone, clerkUserId: null },
-        select: { id: true, deactivatedAt: true },
-      });
-      if (matches.length === 1) {
-        const match = matches[0];
-        if (match.deactivatedAt) {
-          return { id: match.id, deactivated: true };
-        }
-        const res = await tx.contractor.updateMany({
-          where: { id: match.id, clerkUserId: null },
-          data: { clerkUserId: userId },
-        });
-        if (res.count === 1) {
-          await auditLink(tx, match.id, userId, "phone");
-          return { id: match.id, deactivated: false };
-        }
-      }
-    }
-
     return null;
   });
 }
@@ -350,7 +304,7 @@ async function auditLink(
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   contractorId: string,
   clerkUserId: string,
-  via: "email" | "phone",
+  via: "email",
 ) {
   await tx.auditLog.create({
     data: {

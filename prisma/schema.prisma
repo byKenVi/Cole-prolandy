@@ -148,7 +148,8 @@ model Lead {
   landownerEmail   String
   landownerPhone   String
   propertyLocation String
-  landTypeId       String? // RESERVED (nullable)
+  description      String?
+  landTypeId       String?
   projectTypeId    String
   tier             Int // 1 / 2 / 3
   priceCents       Int // snapshotted from PriceTier at creation

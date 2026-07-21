@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
-import type { RevenuePoint } from "@/components/admin/revenue-chart";
-import { RevenueHero, type RevenueRange } from "@/components/admin/revenue-hero";
+import {
+  RevenueHero,
+  type RevenuePoint,
+  type RevenueRange,
+} from "@/components/admin/revenue-hero";
 import { PageHeader, GoldButtonLink, Panel, IconTile, Chip } from "@/components/admin/ui";
 import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
@@ -46,18 +49,22 @@ export default async function AdminDashboard({
     openLeads,
     pendingMatches,
     acceptedMatches,
+    declinedMatches,
     expiredMatches,
+    chargedLeadCount,
     leadRevenueAllTime,
     charges,
     refunds,
     recentLeads,
   ] = await Promise.all([
-    prisma.contractor.count(),
-    prisma.contractor.count({ where: { isPro: true } }),
+    prisma.contractor.count({ where: { deactivatedAt: null } }),
+    prisma.contractor.count({ where: { isPro: true, deactivatedAt: null } }),
     prisma.lead.count({ where: { status: { in: ["NEW", "DISTRIBUTED"] } } }),
     prisma.leadMatch.count({ where: { status: "PENDING" } }),
     prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
+    prisma.leadMatch.count({ where: { status: "DECLINED" } }),
     prisma.leadMatch.count({ where: { status: "EXPIRED" } }),
+    prisma.walletTransaction.count({ where: { type: "LEAD_CHARGE" } }),
     queryNetLeadRevenueCents(prisma),
     prisma.walletTransaction.findMany({
       where: { type: "LEAD_CHARGE", createdAt: { gte: start365 } },
@@ -96,10 +103,6 @@ export default async function AdminDashboard({
     const day = dailyKey(r.createdAt);
     byDay.set(day, (byDay.get(day) ?? 0) - Math.max(0, r.amountCents));
   }
-  for (const [day, cents] of byDay) {
-    if (cents < 0) byDay.set(day, 0);
-  }
-
   const dailySeries = (days: number): RevenuePoint[] => {
     const base = new Date();
     base.setHours(0, 0, 0, 0);
@@ -131,9 +134,6 @@ export default async function AdminDashboard({
     const key = hourKey(r.createdAt);
     byHour.set(key, (byHour.get(key) ?? 0) - Math.max(0, r.amountCents));
   }
-  for (const [key, cents] of byHour) {
-    if (cents < 0) byHour.set(key, 0);
-  }
   const hourlySeries24h = (): RevenuePoint[] => {
     const start = new Date(now);
     start.setMinutes(0, 0, 0);
@@ -158,7 +158,7 @@ export default async function AdminDashboard({
   const trendPct =
     firstHalf > 0 ? Math.round(((secondHalf - firstHalf) / firstHalf) * 100) : null;
 
-  const pipelineTotal = acceptedMatches + pendingMatches + expiredMatches;
+  const pipelineTotal = acceptedMatches + declinedMatches + pendingMatches + expiredMatches;
   const pct = (n: number) => (pipelineTotal > 0 ? (n / pipelineTotal) * 100 : 0);
   const acceptanceRate = pipelineTotal > 0 ? Math.round((acceptedMatches / pipelineTotal) * 100) : 0;
 
@@ -226,7 +226,7 @@ export default async function AdminDashboard({
               {formatMoney(leadRevenueAllTime)}
             </p>
             <p style={{ margin: "6px 0 0", font: "500 12px/1 'Inter'", color: "var(--sageFg)", opacity: 0.8 }}>
-              Charged on {acceptedMatches} accepted lead{acceptedMatches === 1 ? "" : "s"}
+              Charged on {chargedLeadCount} accepted lead{chargedLeadCount === 1 ? "" : "s"}
             </p>
           </div>
           <div className="admin-grid-tight" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -262,7 +262,7 @@ export default async function AdminDashboard({
             Match pipeline
           </p>
           <p style={{ margin: "0 0 18px", color: "var(--ink3)", fontSize: 13 }}>
-            {pipelineTotal} match{pipelineTotal === 1 ? "" : "es"} this period
+            {pipelineTotal} match{pipelineTotal === 1 ? "" : "es"} all time
           </p>
           <div
             style={{
@@ -276,9 +276,11 @@ export default async function AdminDashboard({
           >
             <div style={{ width: `${pct(acceptedMatches)}%`, background: "var(--gold)" }} />
             <div style={{ width: `${pct(pendingMatches)}%`, background: "#D8B577" }} />
+            <div style={{ width: `${pct(declinedMatches)}%`, background: "var(--chipFg)" }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <PipelineRow color="var(--gold)" label="Accepted" value={acceptedMatches} />
+            <PipelineRow color="var(--chipFg)" label="Passed" value={declinedMatches} />
             <PipelineRow color="#D8B577" label="Pending" value={pendingMatches} />
             <PipelineRow color="var(--track)" border label="Expired" value={expiredMatches} muted />
           </div>

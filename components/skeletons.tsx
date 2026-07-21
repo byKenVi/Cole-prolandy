@@ -7,26 +7,6 @@ import { Card } from "@/components/ui/card";
  * real data arrives). Shared by the route-level loading.tsx files.
  */
 
-/** Mirrors LeadFeedCard: icon tile, title/location, time badge, tier+price, CTA. */
-export function SkeletonLeadCard() {
-  return (
-    <Card className="flex flex-col gap-4">
-      <div className="flex items-start gap-3">
-        <Skeleton className="h-12 w-12 rounded-xl" />
-        <div className="flex flex-1 flex-col gap-2">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-28" />
-        </div>
-        <Skeleton className="h-6 w-14 rounded-full" />
-      </div>
-      <div className="flex items-center justify-between border-t border-border pt-4">
-        <Skeleton className="h-7 w-28" />
-        <Skeleton className="h-9 w-24 rounded-md" />
-      </div>
-    </Card>
-  );
-}
-
 /** Mirrors the divided list Cards (transactions, contractor rows, etc.). */
 export function SkeletonListCard({ rows = 4 }: { rows?: number }) {
   return (

@@ -3,7 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { viewAsContractor } from "@/app/actions/dev";
-import { deactivateContractor, reactivateContractor } from "@/app/actions/admin";
+import {
+  deactivateContractor,
+  reactivateContractor,
+  resendContractorInvitation,
+} from "@/app/actions/admin";
 import { TrashIcon } from "@/components/admin/trash-icon";
 
 /**
@@ -12,13 +16,17 @@ import { TrashIcon } from "@/components/admin/trash-icon";
 export function ContractorRowActions({
   contractorId,
   deactivated,
+  signedIn,
 }: {
   contractorId: string;
   deactivated?: boolean;
+  signedIn?: boolean;
 }) {
   const router = useRouter();
   const [pendingView, startView] = useTransition();
   const [pendingAct, startAct] = useTransition();
+  const [pendingInvite, startInvite] = useTransition();
+  const [inviteSent, setInviteSent] = useState(false);
   const [armed, setArmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +54,34 @@ export function ContractorRowActions({
         <span style={{ maxWidth: 220, font: "500 11px/1.3 'Inter'", color: "var(--danger)" }}>
           {error}
         </span>
+      )}
+      {!signedIn && (
+        <button
+          type="button"
+          className="a-ghostbtn"
+          disabled={pendingInvite || deactivated}
+          onClick={() =>
+            startInvite(async () => {
+              setError(null);
+              setInviteSent(false);
+              const res = await resendContractorInvitation(contractorId);
+              if (res.ok) setInviteSent(true);
+              else setError(res.message);
+            })
+          }
+          style={{
+            height: 34,
+            padding: "0 12px",
+            background: "var(--field)",
+            border: "1px solid var(--fieldLine)",
+            borderRadius: 9,
+            font: "600 12px/1 'Inter'",
+            color: "var(--ink)",
+            cursor: deactivated ? "not-allowed" : "pointer",
+          }}
+        >
+          {pendingInvite ? "Sending…" : inviteSent ? "Invite sent" : "Send invite"}
+        </button>
       )}
       <button
         type="button"

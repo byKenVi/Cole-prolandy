@@ -9,12 +9,12 @@ import { cn } from "@/lib/utils";
  */
 export function WalletBalance({
   cents,
-  lowThresholdCents = 5000,
+  lowThresholdCents,
   size = "lg",
   label,
 }: {
   cents: number;
-  lowThresholdCents?: number;
+  lowThresholdCents: number;
   size?: "hero" | "lg" | "md";
   /** Small muted label rendered above the number (e.g. "Current balance"). */
   label?: string;

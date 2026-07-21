@@ -730,27 +730,10 @@ export async function createContractor(
         contractorId: contractor.id,
         error: invitation.error,
       });
-      try {
-        await prisma.$transaction([
-          prisma.auditLog.deleteMany({
-            where: {
-              targetId: contractor.id,
-              action: "contractor.created.admin",
-            },
-          }),
-          prisma.contractor.delete({ where: { id: contractor.id } }),
-        ]);
-      } catch (rollbackError) {
-        console.error("[contractor.create] Invitation rollback failed", rollbackError);
-        return {
-          ok: false,
-          message:
-            "Contractor was created, but the invitation failed. Do not retry; check the contractor list.",
-        };
-      }
       return {
-        ok: false,
-        message: "Invitation email failed, so no contractor was created. Check email settings and retry.",
+        ok: true,
+        message: "Contractor created, but the invitation failed. Retry it from the contractor list.",
+        contractorId: contractor.id,
       };
     }
 
@@ -776,6 +759,32 @@ export async function createContractor(
   } catch {
     return { ok: false, message: "Could not create contractor. The email may already be in use." };
   }
+}
+
+export async function resendContractorInvitation(contractorId: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const contractor = await prisma.contractor.findUnique({
+    where: { id: contractorId },
+    select: { id: true, name: true, email: true, clerkUserId: true, deactivatedAt: true },
+  });
+  if (!contractor) return { ok: false, message: "Contractor not found." };
+  if (contractor.deactivatedAt) return { ok: false, message: "Reactivate this contractor first." };
+  if (contractor.clerkUserId) return { ok: false, message: "This contractor has already signed in." };
+
+  const invitation = await sendContractorAccountInvitation(contractor);
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      actorId: admin.email,
+      action: invitation.ok ? "contractor.invitation.resent" : "contractor.invitation.failed",
+      targetType: "Contractor",
+      targetId: contractor.id,
+      metadata: invitation.ok ? { email: contractor.email } : { error: invitation.error },
+    },
+  });
+  if (!invitation.ok) return { ok: false, message: "Invitation failed. Check Clerk configuration." };
+  revalidatePath("/admin/contractors");
+  return { ok: true, message: "Invitation sent." };
 }
 
 export async function updateContractor(id: string, input: ContractorInput): Promise<Result> {

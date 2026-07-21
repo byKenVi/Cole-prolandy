@@ -2,6 +2,7 @@ import { sms, type SendSmsResult } from "@/lib/integrations/sms";
 import { email, type SendEmailResult } from "@/lib/integrations/email";
 import { formatMoney } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
+import { appUrl } from "@/lib/app-url";
 
 export type LeadNotification = {
   contractor: { name: string; email: string; phone: string };
@@ -15,10 +16,6 @@ export type LeadNotification = {
   leadId?: string;
   contractorId?: string;
 };
-
-function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
-}
 
 export function acceptLink(acceptToken: string): string {
   return `${appUrl()}/accept/${acceptToken}`;
@@ -64,7 +61,7 @@ async function recordFailure(n: LeadNotification, failed: FailedChannel): Promis
 
 /**
  * Fire the new-lead notifications (SMS + email) for a single matched contractor.
- * Both are mocked by default (log to console).
+ * Development may use explicit mocks; production providers fail closed.
  *
  * Distribution stays resilient: each channel is sent independently and a failure
  * in one (or an unexpected throw) never breaks the other. Failures are surfaced
