@@ -3,6 +3,8 @@ import { z } from "zod";
 import { createAndDistributeLead } from "@/lib/services/lead-intake";
 import { rateLimit } from "@/lib/rate-limit";
 import { DomainError } from "@/lib/domain/errors";
+import { getDefaultLeadTier } from "@/lib/domain/settings";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Public estimate intake — the Wix boundary. A Wix form/automation POSTs a
@@ -24,10 +26,6 @@ const EstimateSchema = z.object({
   // Honeypot: must be empty. Bots tend to fill every field.
   company: z.string().optional(),
 });
-
-// Landowners don't choose a tier; default to mid until ops triage.
-// TODO(client): confirm tier logic (keyword/scope-based inference or ops review).
-const DEFAULT_TIER = 2;
 
 export async function POST(req: NextRequest) {
   // Spam protection is configurable in development via FORM_SPAM_PROTECTION, but
@@ -73,6 +71,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const tier = await getDefaultLeadTier(prisma);
     const res = await createAndDistributeLead({
       landownerName: data.name,
       landownerEmail: data.email,
@@ -80,7 +79,7 @@ export async function POST(req: NextRequest) {
       propertyLocation: data.location,
       projectTypeId: data.projectTypeId,
       landTypeId: data.landTypeId || null,
-      tier: DEFAULT_TIER,
+      tier,
       source: "wix_form",
     });
     return NextResponse.json({ ok: true, leadId: res.leadId, recipients: res.recipients });
@@ -88,7 +87,7 @@ export async function POST(req: NextRequest) {
     if (e instanceof DomainError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
     }
-    // eslint-disable-next-line no-console
+
     console.error("[estimate] failed:", e);
     return NextResponse.json({ ok: false, error: "Could not submit your request." }, { status: 500 });
   }

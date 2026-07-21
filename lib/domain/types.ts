@@ -12,4 +12,5 @@ export type DbClient = PrismaClient | Prisma.TransactionClient;
 export const APP_SETTING_KEYS = {
   maxLeadRecipients: "maxLeadRecipients",
   leadExpiryHours: "leadExpiryHours",
+  defaultLeadTier: "defaultLeadTier",
 } as const;

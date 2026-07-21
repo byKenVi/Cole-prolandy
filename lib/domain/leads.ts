@@ -31,12 +31,7 @@ export type DistributeLeadResult = {
  * accept independently; no exclusivity/lock.
  *
  * Eligibility: contractors assigned to the lead's project (ContractorProject),
- * not deactivated. isTopPro is RESERVED and does NOT affect ordering yet
- * (phase-two — CONFIRM with client before it does).
- *
- * PENDING CLIENT: whether contractors serve one or many projects, and whether
- * they get any self-service over assignment — default is multi-project,
- * admin-controlled only.
+ * not deactivated. Project assignment is multi-project and admin-controlled.
  *
  * Notifications are fired by the caller using the returned matches (keeps the
  * domain free of integration side effects).
@@ -62,8 +57,7 @@ export async function distributeLead(
       id: { notIn: Array.from(alreadyMatchedIds) },
       projects: { some: { contractorTypeId: projectId } },
     },
-    // TODO(phase-two): if client confirms Top Pro affects priority, order by
-    // isTopPro desc first, then by fair-rotation logic. For now, stable order.
+    // Stable creation order keeps distribution deterministic.
     orderBy: { createdAt: "asc" },
     take: Math.max(0, maxRecipients - alreadyMatchedIds.size),
     select: { id: true, name: true, email: true, phone: true },

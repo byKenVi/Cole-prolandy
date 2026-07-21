@@ -12,19 +12,17 @@ const TIER_LEGEND = [
 ];
 
 export default async function PricingPage() {
-  // One group per project (1:1 CT ↔ PT). Each group has a single pricing row = 3 tiers.
+  // One group per project, with exactly three database-backed tier prices.
   const types = await prisma.contractorType.findMany({
     orderBy: { name: "asc" },
     include: {
-      projectTypes: {
-        orderBy: { name: "asc" },
+      projectType: {
         include: { priceTiers: true },
-        take: 1,
       },
     },
   });
 
-  const allTiers = types.flatMap((t) => t.projectTypes.flatMap((p) => p.priceTiers));
+  const allTiers = types.flatMap((t) => t.projectType?.priceTiers ?? []);
   const avgCents =
     allTiers.length > 0
       ? Math.round(allTiers.reduce((s, t) => s + t.priceCents, 0) / allTiers.length)
@@ -117,13 +115,13 @@ export default async function PricingPage() {
             color: "var(--ink3)",
           }}
         >
-          No pricing configured. Seed the database to populate the matrix.
+          No pricing configured. Create a project and enter its three prices in Admin Settings.
         </div>
       ) : (
         <PricingBrowser
           groups={types
             .map((ct) => {
-              const pt = ct.projectTypes[0];
+              const pt = ct.projectType;
               if (!pt) return null;
               return {
                 id: ct.id,

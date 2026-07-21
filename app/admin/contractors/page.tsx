@@ -138,11 +138,7 @@ export default async function AdminContractors({
                     <span style={{ font: "600 15px/1.2 'Inter'", color: "var(--ink)" }}>
                       {c.name}
                     </span>
-                    {c.isTopPro ? (
-                      <Chip bg="var(--goldSoft)" fg="var(--goldSoftFg)">
-                        TOP PRO
-                      </Chip>
-                    ) : c.isPro ? (
+                    {c.isPro ? (
                       <Chip bg="var(--goldSoft)" fg="var(--goldSoftFg)">
                         PRO
                       </Chip>

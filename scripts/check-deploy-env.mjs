@@ -65,16 +65,15 @@ if (value("TWILIO_MOCK") === "false") {
   requireEnv("TWILIO_AUTH_TOKEN", "required when Twilio mock mode is disabled");
   if (
     !value("TWILIO_MESSAGING_SERVICE_SID") &&
-    !value("TWILIO_FROM") &&
-    !value("TWILIO_FROM_NUMBER")
+    !value("TWILIO_FROM")
   ) {
-    errors.push("TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM_NUMBER: one sender is required");
+    errors.push("TWILIO_MESSAGING_SERVICE_SID or TWILIO_FROM: one sender is required");
   }
 }
 
 if (value("RESEND_MOCK") === "false") {
   requireEnv("RESEND_API_KEY", "required when Resend mock mode is disabled");
-  if (!value("RESEND_FROM") && !value("RESEND_FROM_EMAIL")) {
+  if (!value("RESEND_FROM")) {
     errors.push("RESEND_FROM: verified sender required when Resend mock mode is disabled");
   }
 }

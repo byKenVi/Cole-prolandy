@@ -29,7 +29,7 @@ export type LeadIntakeResult = {
  *   1) snapshot price from the PriceTier matrix (business rule 4)
  *   2) create the Lead with an expiry
  *   3) distributeLead() → LeadMatches up to maxLeadRecipients (shared leads)
- *   4) fire SMS + email notifications (mocked) to each matched contractor
+ *   4) fire SMS + email notifications to each matched contractor
  */
 export async function createAndDistributeLead(
   input: LeadIntakeInput,
@@ -76,6 +76,8 @@ export async function createAndDistributeLead(
         propertyLocation: lead.propertyLocation,
         tier: lead.tier,
         priceCents: lead.priceCents,
+        leadId: lead.id,
+        contractorId: m.contractorId,
       }),
     ),
   );

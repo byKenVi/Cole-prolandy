@@ -117,7 +117,7 @@ const isMock = () => process.env.STRIPE_MOCK !== "false"; // default ON
 class MockPaymentsProvider implements PaymentsProvider {
   async createTopUpCheckout(params: CreateTopUpParams): Promise<CreateTopUpResult> {
     const paymentIntentId = `pi_mock_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    // eslint-disable-next-line no-console
+
     console.log(
       `[payments:mock] top-up of ${params.amountCents}c for contractor ${params.contractorId} -> ${paymentIntentId}`,
     );
@@ -131,7 +131,7 @@ class MockPaymentsProvider implements PaymentsProvider {
 
   async createCardSetupCheckout(params: CreateCardSetupParams): Promise<CreateTopUpResult> {
     const setupId = `seti_mock_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    // eslint-disable-next-line no-console
+
     console.log(`[payments:mock] card setup for contractor ${params.contractorId} -> ${setupId}`);
     const url = new URL(params.successUrl);
     url.searchParams.set("mock", "1");
@@ -147,7 +147,7 @@ class MockPaymentsProvider implements PaymentsProvider {
 
   async chargeSavedCard(params: ChargeSavedCardParams): Promise<ChargeSavedCardResult> {
     const paymentIntentId = `pi_mock_recharge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    // eslint-disable-next-line no-console
+
     console.log(
       `[payments:mock] off-session charge of ${params.amountCents}c for contractor ${params.contractorId} on ${params.paymentMethodId} -> ${paymentIntentId}`,
     );
@@ -164,7 +164,7 @@ class MockPaymentsProvider implements PaymentsProvider {
 
   async refundToCard(params: RefundToCardParams): Promise<RefundToCardResult> {
     const refundId = `re_mock_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    // eslint-disable-next-line no-console
+
     console.log(
       `[payments:mock] refund of ${params.amountCents}c against ${params.paymentIntentId} -> ${refundId}`,
     );

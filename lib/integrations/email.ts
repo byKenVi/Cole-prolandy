@@ -32,9 +32,7 @@ export interface EmailProvider {
 const isMock = () => process.env.RESEND_MOCK !== "false"; // default ON
 
 function resendFrom(): string | undefined {
-  // RESEND_FROM_EMAIL was used by the original env template; keep it as a
-  // compatibility alias while standardizing new deployments on RESEND_FROM.
-  return process.env.RESEND_FROM?.trim() || process.env.RESEND_FROM_EMAIL?.trim();
+  return process.env.RESEND_FROM?.trim();
 }
 
 /** Live mode requires both the API key and a verified sender. */
@@ -45,7 +43,7 @@ function hasResendCreds(): boolean {
 export class MockEmailProvider implements EmailProvider {
   async send({ to, subject }: SendEmailParams): Promise<SendEmailResult> {
     const id = `email_mock_${Date.now()}`;
-    // eslint-disable-next-line no-console
+
     console.log(`[email:mock] -> ${to} | ${subject}`);
     return { ok: true, id, mocked: true };
   }

@@ -55,7 +55,7 @@ function validMessagingServiceSid(raw: string | undefined): string | undefined {
 export class MockSmsProvider implements SmsProvider {
   async send({ to, body }: SendSmsParams): Promise<SendSmsResult> {
     const id = `sms_mock_${Date.now()}`;
-    // eslint-disable-next-line no-console
+
     console.log(`[sms:mock] -> ${to}\n${body}\n`);
     return { ok: true, id, mocked: true };
   }
@@ -77,9 +77,7 @@ export class TwilioSmsProvider implements SmsProvider {
         process.env.TWILIO_MESSAGING_SERVICE_SID,
       );
       const from =
-        process.env.TWILIO_FROM?.trim() ||
-        process.env.TWILIO_FROM_NUMBER?.trim() ||
-        "";
+        process.env.TWILIO_FROM?.trim() || "";
       if (!messagingServiceSid && !from) {
         return {
           ok: false,

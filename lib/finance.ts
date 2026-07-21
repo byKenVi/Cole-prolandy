@@ -100,9 +100,6 @@ export function stripeUsdCents(entries: { amountCents: number; currency: string 
   return entries.reduce((sum, e) => sum + e.amountCents, 0);
 }
 
-/** @deprecated Use stripeUsdCents — kept for existing imports. */
-export const stripeAvailableUsdCents = stripeUsdCents;
-
 type SumClient = {
   walletTransaction: {
     aggregate: (args: {

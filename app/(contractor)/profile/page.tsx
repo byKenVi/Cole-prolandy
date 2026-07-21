@@ -91,9 +91,7 @@ export default async function ProfilePage() {
               <p className="font-fraunces text-[20px] font-semibold text-[#3A352D]">{contractor.name}</p>
               <p className="mt-0.5 text-sm text-[#8A7E68]">{projectLabel}</p>
             </div>
-            {contractor.isTopPro ? (
-              <Badge variant="success">Top Pro</Badge>
-            ) : contractor.isPro ? (
+            {contractor.isPro ? (
               <Badge>Pro</Badge>
             ) : (
               <Badge variant="neutral">Free</Badge>

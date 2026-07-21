@@ -28,15 +28,18 @@ const hintStyle: React.CSSProperties = {
 export function SettingsForm({
   maxLeadRecipients,
   leadExpiryHours,
+  defaultLeadTier,
 }: {
   maxLeadRecipients: number;
   leadExpiryHours: number;
+  defaultLeadTier: number;
 }) {
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [recipients, setRecipients] = useState(String(maxLeadRecipients));
   const [hours, setHours] = useState(String(leadExpiryHours));
+  const [tier, setTier] = useState(String(defaultLeadTier));
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +55,12 @@ export function SettingsForm({
       if (!r2.ok) {
         setStatus("error");
         setMessage(r2.message);
+        return;
+      }
+      const r3 = await updateSetting("defaultLeadTier", Number(tier));
+      if (!r3.ok) {
+        setStatus("error");
+        setMessage(r3.message);
         return;
       }
       setStatus("saved");
@@ -90,6 +99,23 @@ export function SettingsForm({
       />
       <p style={{ ...hintStyle, margin: "7px 0 22px" }}>
         A lead can no longer be accepted after this many hours.
+      </p>
+
+      <label style={labelStyle} htmlFor="default-tier">
+        Public estimate default tier
+      </label>
+      <select
+        id="default-tier"
+        value={tier}
+        onChange={(e) => setTier(e.target.value)}
+        style={inputStyle}
+      >
+        <option value="1">Tier 1 · Small</option>
+        <option value="2">Tier 2 · Standard</option>
+        <option value="3">Tier 3 · Large</option>
+      </select>
+      <p style={{ ...hintStyle, margin: "7px 0 22px" }}>
+        Applied to public estimate requests because landowners do not select pricing tiers.
       </p>
 
       {message && (

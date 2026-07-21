@@ -10,8 +10,7 @@ import { BusinessHoursPicker } from "@/components/business-hours-picker";
 
 /**
  * Contractor self-service profile editor.
- * Project assignment is read-only here — Landy's assigns projects (PENDING CLIENT:
- * whether contractors ever get self-service over assignment).
+ * Project assignment is read-only here — Landy's assigns projects.
  */
 export function OnboardingForm({
   initial,

@@ -14,7 +14,7 @@ const STEPS = ["Basics", "Projects", "Profile"] as const;
 
 /**
  * Admin contractor form. Project assignment is multi-select and admin-only
- * (PENDING CLIENT: confirm single vs multi + any contractor self-service).
+ * Project assignment supports multiple projects and remains admin-controlled.
  */
 export function ContractorForm({
   mode,

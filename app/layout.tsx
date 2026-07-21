@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-page-custom-font -- root App Router layout loads fonts globally */
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";

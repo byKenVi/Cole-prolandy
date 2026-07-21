@@ -209,7 +209,6 @@ let currentDb: FakeDb | null = null;
 
 export class FakeDb {
   contractor = new Table("contractor");
-  service = new Table("service");
   contractorType = new Table("contractortype");
   projectType = new Table("projecttype");
   lead = new Table("lead");
@@ -222,12 +221,16 @@ export class FakeDb {
 
   constructor() {
     currentDb = this;
+    this.appSetting.seed([
+      { key: "maxLeadRecipients", value: "3" },
+      { key: "leadExpiryHours", value: "48" },
+      { key: "defaultLeadTier", value: "2" },
+    ]);
   }
 
   private tables(): Table[] {
     return [
       this.contractor,
-      this.service,
       this.contractorType,
       this.projectType,
       this.lead,

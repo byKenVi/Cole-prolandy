@@ -40,10 +40,20 @@ export async function updatePriceTier(id: string, priceCents: number): Promise<R
 }
 
 // ── Settings ──
-const SettingSchema = z.object({
-  key: z.enum(["maxLeadRecipients", "leadExpiryHours"]),
-  value: z.coerce.number().int().min(1),
-});
+const SettingSchema = z.discriminatedUnion("key", [
+  z.object({
+    key: z.literal("maxLeadRecipients"),
+    value: z.coerce.number().int().min(1).max(100),
+  }),
+  z.object({
+    key: z.literal("leadExpiryHours"),
+    value: z.coerce.number().int().min(1).max(8760),
+  }),
+  z.object({
+    key: z.literal("defaultLeadTier"),
+    value: z.coerce.number().int().min(1).max(3),
+  }),
+]);
 
 export async function updateSetting(key: string, value: number): Promise<Result> {
   await requireAdmin();
@@ -361,53 +371,63 @@ const ContractorTypeSchema = z.object({
   name: z.string().trim().min(2, "Name is required").max(80),
   icon: IconSchema,
 });
+const CreateContractorTypeSchema = ContractorTypeSchema.extend({
+  tierPricesCents: z.tuple([
+    z.number().int().min(100).max(1_000_000),
+    z.number().int().min(100).max(1_000_000),
+    z.number().int().min(100).max(1_000_000),
+  ]),
+});
 
-export async function createContractorType(name: string, icon?: string): Promise<Result & { id?: string }> {
+export async function createContractorType(
+  name: string,
+  icon: string | undefined,
+  tierPricesCents: [number, number, number],
+): Promise<Result & { id?: string }> {
   const admin = await requireAdmin();
-  const parsed = ContractorTypeSchema.safeParse({ name, icon });
+  const parsed = CreateContractorTypeSchema.safeParse({ name, icon, tierPricesCents });
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid project" };
   }
   const clean = parsed.data.name;
   const iconValue = parsed.data.icon ?? ICON_AUTO;
   const existing = await prisma.contractorType.findUnique({ where: { name: clean }, select: { id: true } });
   if (existing) return { ok: false, message: "A project with this name already exists." };
 
-  const created = await prisma.contractorType.create({
-    data: { name: clean, icon: iconValue },
-    select: { id: true },
-  });
-
-  // Every project is 1:1 with a selectable ProjectType + exactly 3 tiers.
-  // Admins never manage a nested project-type level.
-  const { DEFAULT_PROJECT_PRICES } = await import("@/lib/catalog");
-  const pt = await prisma.projectType.create({
-    data: { name: clean, contractorTypeId: created.id },
-    select: { id: true },
-  });
-  await prisma.service.create({
-    data: { name: clean, contractorTypeId: created.id },
-  });
-  for (let tier = 1; tier <= 3; tier++) {
-    await prisma.priceTier.create({
+  const created = await prisma.$transaction(async (tx) => {
+    const project = await tx.contractorType.create({
+      data: { name: clean, icon: iconValue },
+      select: { id: true },
+    });
+    const pt = await tx.projectType.create({
+      data: { name: clean, contractorTypeId: project.id },
+      select: { id: true },
+    });
+    for (let tier = 1; tier <= 3; tier++) {
+      await tx.priceTier.create({
+        data: {
+          contractorTypeId: project.id,
+          projectTypeId: pt.id,
+          tier,
+          priceCents: parsed.data.tierPricesCents[tier - 1]!,
+        },
+      });
+    }
+    await tx.auditLog.create({
       data: {
-        contractorTypeId: created.id,
-        projectTypeId: pt.id,
-        tier,
-        priceCents: DEFAULT_PROJECT_PRICES[tier - 1]! * 100,
+        actorType: "admin",
+        actorId: admin.email,
+        action: "project.created.admin",
+        targetType: "ContractorType",
+        targetId: project.id,
+        metadata: {
+          name: clean,
+          icon: iconValue,
+          tierPricesCents: parsed.data.tierPricesCents,
+        },
       },
     });
-  }
-
-  await prisma.auditLog.create({
-    data: {
-      actorType: "admin",
-      actorId: admin.email,
-      action: "project.created.admin",
-      targetType: "ContractorType",
-      targetId: created.id,
-      metadata: { name: clean, icon: iconValue },
-    },
+    return project;
   });
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
@@ -436,24 +456,8 @@ export async function updateContractorType(id: string, name: string, icon?: stri
   // Keep the 1:1 ProjectType name in sync — UI only exposes the project level.
   await prisma.$transaction(async (tx) => {
     await tx.contractorType.update({ where: { id }, data: { name: clean, icon: iconValue } });
-    const projects = await tx.projectType.findMany({
+    await tx.projectType.update({
       where: { contractorTypeId: id },
-      select: { id: true, name: true },
-      orderBy: { createdAt: "asc" },
-    });
-    if (projects.length === 1) {
-      await tx.projectType.update({
-        where: { id: projects[0]!.id },
-        data: { name: clean },
-      });
-    } else if (projects.length > 1) {
-      // Collapse extras: rename primary, leave cleanup to flatten script if needed.
-      const primary =
-        projects.find((p) => p.name === current.name) ?? projects[0]!;
-      await tx.projectType.update({ where: { id: primary.id }, data: { name: clean } });
-    }
-    await tx.service.updateMany({
-      where: { contractorTypeId: id, name: current.name },
       data: { name: clean },
     });
   });
@@ -486,14 +490,14 @@ export async function deleteContractorType(id: string): Promise<Result> {
           assignedContractors: true,
         },
       },
-      projectTypes: {
+      projectType: {
         select: { id: true, _count: { select: { leads: true } } },
       },
     },
   });
   if (!ct) return { ok: false, message: "Project not found." };
 
-  const leadCount = ct.projectTypes.reduce((sum, p) => sum + p._count.leads, 0);
+  const leadCount = ct.projectType?._count.leads ?? 0;
   const assigned = ct._count.assignedContractors + ct._count.contractors;
   // Block while in use so we never orphan contractors or leads.
   if (assigned > 0 || leadCount > 0) {
@@ -504,10 +508,9 @@ export async function deleteContractorType(id: string): Promise<Result> {
   }
 
   await prisma.$transaction(async (tx) => {
-    // Cascade the 1:1 shadow project type + its three tiers + services.
+    // Price tiers reference both records, so remove them before the project.
     await tx.priceTier.deleteMany({ where: { contractorTypeId: id } });
     await tx.projectType.deleteMany({ where: { contractorTypeId: id } });
-    await tx.service.deleteMany({ where: { contractorTypeId: id } });
     await tx.contractorType.delete({ where: { id } });
     await tx.auditLog.create({
       data: {
@@ -619,7 +622,7 @@ export async function deleteLandType(id: string): Promise<Result> {
 }
 
 // ── Contractor creation / editing (admin-driven, no Clerk account required) ──
-// PENDING CLIENT: single vs multi-project assignment + any contractor self-service.
+// Contractors may have multiple projects; assignment is admin-controlled.
 // Default: multi-project, admin-only.
 const ContractorSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -656,8 +659,6 @@ async function syncContractorProjects(
       data: { contractorId, contractorTypeId },
     });
   }
-  // Clear legacy 1:1 service joins — projects replace them.
-  await tx.contractorService.deleteMany({ where: { contractorId } });
   await tx.contractor.update({
     where: { id: contractorId },
     data: { contractorTypeId: primaryProjectId },

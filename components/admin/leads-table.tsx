@@ -116,7 +116,7 @@ export function LeadsTable({
     boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
   });
 
-  const tierBtn = (value: string, label: string): React.CSSProperties => ({
+  const tierBtn = (value: string): React.CSSProperties => ({
     cursor: "pointer",
     border: "1px solid var(--line)",
     font: "600 12px/1 'Inter'",
@@ -294,16 +294,16 @@ export function LeadsTable({
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }} role="group" aria-label="Filter by tier">
-        <button type="button" style={tierBtn("", "All tiers")} onClick={() => pushParams({ tier: null })}>
+        <button type="button" style={tierBtn("")} onClick={() => pushParams({ tier: null })}>
           All tiers
         </button>
-        <button type="button" style={tierBtn("1", "Tier 1")} onClick={() => pushParams({ tier: "1" })}>
+        <button type="button" style={tierBtn("1")} onClick={() => pushParams({ tier: "1" })}>
           Tier 1
         </button>
-        <button type="button" style={tierBtn("2", "Tier 2")} onClick={() => pushParams({ tier: "2" })}>
+        <button type="button" style={tierBtn("2")} onClick={() => pushParams({ tier: "2" })}>
           Tier 2
         </button>
-        <button type="button" style={tierBtn("3", "Tier 3")} onClick={() => pushParams({ tier: "3" })}>
+        <button type="button" style={tierBtn("3")} onClick={() => pushParams({ tier: "3" })}>
           Tier 3
         </button>
       </div>

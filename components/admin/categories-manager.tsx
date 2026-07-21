@@ -18,6 +18,7 @@ import {
   type IconKey,
 } from "@/lib/project-icons";
 import { TrashIcon } from "@/components/admin/trash-icon";
+import { dollarsToCents } from "@/lib/money";
 
 type Category = {
   id: string;
@@ -137,6 +138,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
   const [pending, startTransition] = useTransition();
   const [newName, setNewName] = useState("");
   const [newIcon, setNewIcon] = useState<string>(ICON_AUTO);
+  const [newPrices, setNewPrices] = useState<[string, string, string]>(["", "", ""]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editIcon, setEditIcon] = useState<string>(ICON_AUTO);
@@ -144,6 +146,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const deferredQuery = useDeferredValue(query);
+  const validNewPrices = newPrices.every((price) => dollarsToCents(price) >= 100);
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
@@ -212,13 +215,19 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
           <button
             type="button"
             className="a-gold"
-            disabled={pending || newName.trim().length < 2}
+            disabled={pending || newName.trim().length < 2 || !validNewPrices}
             onClick={() =>
               run(
-                () => createContractorType(newName, newIcon),
+                () =>
+                  createContractorType(newName, newIcon, [
+                    dollarsToCents(newPrices[0]),
+                    dollarsToCents(newPrices[1]),
+                    dollarsToCents(newPrices[2]),
+                  ]),
                 () => {
                   setNewName("");
                   setNewIcon(ICON_AUTO);
+                  setNewPrices(["", "", ""]);
                 },
               )
             }
@@ -231,11 +240,50 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
               borderRadius: 10,
               font: "600 13px/1 'Inter'",
               cursor: "pointer",
-              opacity: pending || newName.trim().length < 2 ? 0.6 : 1,
+              opacity: pending || newName.trim().length < 2 || !validNewPrices ? 0.6 : 1,
             }}
           >
             Add project
           </button>
+        </div>
+        <div>
+          <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>
+            Initial lead prices
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+              gap: 8,
+            }}
+            className="admin-grid-tight"
+          >
+            {newPrices.map((price, index) => (
+              <label key={index} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ font: "500 11px/1 'Inter'", color: "var(--ink3)" }}>
+                  Tier {index + 1}
+                </span>
+                <span style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 11, color: "var(--gold)" }}>$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={price}
+                    onChange={(event) =>
+                      setNewPrices((current) => {
+                        const next = [...current] as [string, string, string];
+                        next[index] = event.target.value;
+                        return next;
+                      })
+                    }
+                    placeholder={`Tier ${index + 1}`}
+                    style={{ ...inputStyle, width: "100%", minWidth: 0, paddingLeft: 25 }}
+                  />
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
         <div>
           <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>Icon</p>

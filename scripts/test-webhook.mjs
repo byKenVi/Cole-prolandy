@@ -41,7 +41,7 @@ const c = await prisma.contractor.findFirst({
   orderBy: { createdAt: "asc" },
 });
 if (!c) {
-  console.error("No contractor found. Run `npm run db:seed` first.");
+  console.error("No contractor found. Create one from Admin before testing the webhook.");
   process.exit(1);
 }
 console.log(`Contractor: ${c.name} (${c.id})`);

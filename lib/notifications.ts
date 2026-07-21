@@ -43,7 +43,7 @@ async function recordFailure(n: LeadNotification, failed: FailedChannel): Promis
     to: failed.channel === "sms" ? n.contractor.phone : n.contractor.email,
     error: failed.error,
   };
-  // eslint-disable-next-line no-console
+
   console.error("[notify] send failed:", context);
 
   try {
@@ -57,7 +57,7 @@ async function recordFailure(n: LeadNotification, failed: FailedChannel): Promis
       },
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
+
     console.error("[notify] failed to write AuditLog for send failure:", err);
   }
 }

@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { getMaxLeadRecipients, getLeadExpiryHours } from "@/lib/domain/settings";
+import {
+  getDefaultLeadTier,
+  getLeadExpiryHours,
+  getMaxLeadRecipients,
+} from "@/lib/domain/settings";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { LandTypesManager } from "@/components/admin/land-types-manager";
@@ -26,9 +30,11 @@ const descStyle: React.CSSProperties = {
 };
 
 export default async function SettingsPage() {
-  const [maxLeadRecipients, leadExpiryHours, categories, landTypes] = await Promise.all([
+  const [maxLeadRecipients, leadExpiryHours, defaultLeadTier, categories, landTypes] =
+    await Promise.all([
     getMaxLeadRecipients(prisma),
     getLeadExpiryHours(prisma),
+    getDefaultLeadTier(prisma),
     prisma.contractorType.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -36,14 +42,14 @@ export default async function SettingsPage() {
         name: true,
         icon: true,
         _count: { select: { contractors: true } },
-        projectTypes: { select: { _count: { select: { leads: true } } } },
+        projectType: { select: { _count: { select: { leads: true } } } },
       },
     }),
     prisma.landType.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true, _count: { select: { leads: true } } },
     }),
-  ]);
+    ]);
 
   return (
     <div className="admin-fade-up">
@@ -68,7 +74,11 @@ export default async function SettingsPage() {
           <div style={cardStyle}>
             <p style={titleStyle}>Lead distribution</p>
             <p style={descStyle}>How leads are shared and how long they stay open.</p>
-            <SettingsForm maxLeadRecipients={maxLeadRecipients} leadExpiryHours={leadExpiryHours} />
+            <SettingsForm
+              maxLeadRecipients={maxLeadRecipients}
+              leadExpiryHours={leadExpiryHours}
+              defaultLeadTier={defaultLeadTier}
+            />
           </div>
 
           <div style={cardStyle}>
@@ -98,8 +108,8 @@ export default async function SettingsPage() {
           <p style={{ ...descStyle, marginBottom: 18 }}>
             Jobs landowners request and contractors fulfill. Hierarchy is{" "}
             <b style={{ color: "var(--ink)" }}>Project → 3 tiers</b> (small / medium / large lead
-            prices). Rename anytime; delete only when unused. New projects get default tier prices you
-            can edit under Pricing.
+            prices). Enter all three prices when creating a project; edit them later under Pricing.
+            Rename anytime and delete only when unused.
           </p>
           <CategoriesManager
             categories={categories.map((c) => ({
@@ -107,7 +117,7 @@ export default async function SettingsPage() {
               name: c.name,
               icon: c.icon,
               contractors: c._count.contractors,
-              leads: c.projectTypes.reduce((sum, p) => sum + p._count.leads, 0),
+              leads: c.projectType?._count.leads ?? 0,
             }))}
           />
         </div>

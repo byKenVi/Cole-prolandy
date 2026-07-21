@@ -9,8 +9,7 @@ import { normalizePhoneForStorage } from "@/lib/phone";
 
 /**
  * Contractor self-service profile fields only.
- * Project assignment is admin-controlled (PENDING CLIENT confirmation on whether
- * contractors ever get self-service over which projects they receive).
+ * Project assignment is admin-controlled.
  */
 const ProfileSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -107,7 +106,7 @@ export async function saveProfile(input: ProfileInput): Promise<SaveProfileResul
       phone,
       aboutSection: data.aboutSection || null,
       businessHours: data.businessHours || null,
-      // Intentionally do NOT update contractorTypeId / projects / services —
+      // Intentionally do not update project assignment —
       // lead routing is admin-owned.
     },
   });

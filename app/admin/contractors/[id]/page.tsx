@@ -131,9 +131,7 @@ export default async function ContractorDetail({
             <h1 className="text-2xl font-semibold" style={{ color: "var(--ink)" }}>
               {contractor.name}
             </h1>
-            {contractor.isTopPro ? (
-              <Badge variant="success">Top Pro</Badge>
-            ) : contractor.isPro ? (
+            {contractor.isPro ? (
               <Badge>Pro</Badge>
             ) : (
               <Badge variant="neutral">Free</Badge>

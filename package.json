@@ -10,23 +10,17 @@
     "replit:build": "node --env-file-if-exists=.env scripts/check-deploy-env.mjs --production && npm run build",
     "replit:start": "next start -H 0.0.0.0 -p 3000",
     "deploy:check": "node --env-file-if-exists=.env scripts/check-deploy-env.mjs --production",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.mjs,.jsx,.ts,.tsx",
     "test": "vitest run",
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:reconcile-wallets": "node scripts/reconcile-seed-wallets.mjs",
-    "db:sync-catalog": "node scripts/sync-catalog.mjs",
     "postinstall": "prisma generate"
   },
   "engines": {
     "node": ">=22 <23",
     "npm": ">=10"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.9.6",
@@ -54,6 +48,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
