@@ -27,6 +27,26 @@ app.use(
     },
   }),
 );
+// ── Invitation / magic-link ticket accept (BEFORE the FAPI proxy) ────────────
+// GET /api/__clerk/v1/tickets/accept is hit when a user clicks a Clerk
+// invitation or email link. Proxying that GET to frontend-api.clerk.dev trips
+// Cloudflare's bot challenge → blank 403 on fresh browsers (.replit.app cannot
+// load /cdn-cgi/* or store clerk.dev clearance cookies).
+//
+// Clerk's accept endpoint only issues a redirect with __clerk_ticket; the real
+// validation happens later in <SignUp/> via signUp.create({ strategy: "ticket" }).
+// Short-circuit locally with the same redirect invitations already declare
+// (redirectUrl → /sign-up). POST and every other FAPI path still go to the proxy.
+app.get(`${CLERK_PROXY_PATH}/v1/tickets/accept`, (req, res) => {
+  const ticket = typeof req.query.ticket === "string" ? req.query.ticket : "";
+  if (!ticket) {
+    res.redirect(302, "/sign-up");
+    return;
+  }
+  const params = new URLSearchParams({ __clerk_ticket: ticket });
+  res.redirect(302, `/sign-up?${params.toString()}`);
+});
+
 // ── Clerk FAPI proxy ─────────────────────────────────────────────────────────
 // Must be mounted BEFORE body parsers — the proxy streams raw bytes.
 // In production Replit sets CLERK_PROXY_URL so Clerk JS routes auth calls

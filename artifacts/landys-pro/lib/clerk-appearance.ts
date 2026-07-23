@@ -12,6 +12,10 @@ type ClerkAppearance = NonNullable<ComponentProps<typeof SignIn>["appearance"]>;
  *
  * Uses `variables` (safe across Clerk versions) to theme the hosted UI, with
  * targeted `elements` overrides only where variables aren't granular enough.
+ *
+ * Card chrome is stripped so our page wrapper is the only card (avoids the
+ * double-box look). Clerk's built-in footer is hidden; pages own the
+ * sign-in / request-access links.
  */
 export const clerkAppearance: ClerkAppearance = {
   variables: {
@@ -39,8 +43,11 @@ export const clerkAppearance: ClerkAppearance = {
     },
   },
   elements: {
-    // Remove Clerk's card chrome; we wrap in our own card
-    card: "shadow-none border-0 bg-transparent p-0 gap-4",
+    rootBox: "w-full",
+    // Strip Clerk's nested card chrome — page supplies the single outer card.
+    cardBox: "w-full shadow-none border-0 bg-transparent rounded-none",
+    card: "shadow-none border-0 bg-transparent p-0 gap-4 w-full",
+    main: "gap-4",
     headerTitle: "font-semibold text-text text-[1.25rem] leading-tight",
     headerSubtitle: "text-text-muted text-sm",
     // Form inputs — match the app's field style
@@ -50,14 +57,16 @@ export const clerkAppearance: ClerkAppearance = {
     // Primary action button
     formButtonPrimary:
       "bg-primary hover:bg-primary-hover active:bg-[#1e3026] text-white font-semibold rounded-xl shadow-sm transition-colors",
-    // Social / secondary buttons
+    // Social / secondary buttons — overflow visible so "Last used" badge isn't clipped
     socialButtonsBlockButton:
-      "border-border bg-surface text-text hover:bg-[#F5F0E8] rounded-xl font-medium transition-colors",
+      "relative overflow-visible border-border bg-surface text-text hover:bg-[#F5F0E8] rounded-xl font-medium transition-colors",
     socialButtonsBlockButtonText: "text-sm font-medium",
     // Divider
     dividerLine: "bg-border",
     dividerText: "text-text-muted text-xs",
-    // Footer links
+    // Hide Clerk footer — pages render a single CTA (Request access / Sign in)
+    footer: "hidden",
+    footerAction: "hidden",
     footerActionLink: "text-accent hover:text-accent-hover font-medium",
     footerActionText: "text-text-muted text-sm",
     // Identifier / alternate links inside the form
