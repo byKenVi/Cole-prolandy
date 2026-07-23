@@ -1,0 +1,92 @@
+Act as a senior SaaS Product Designer and Senior Full-Stack Engineer.
+
+Implement the following UX improvements with a strong focus on speed, usability, and a polished user experience. Keep the existing design system and codebase consistent. Avoid unnecessary refactoring.
+
+## Contractors
+
+### 1. Inline wallet top-up (Highest Priority)
+When a contractor doesn't have enough balance to accept a lead:
+- Don't redirect them to the Wallet page.
+- Open a compact modal/sheet directly from the lead detail.
+- Display:
+  - Current balance
+  - Required amount
+  - Missing amount
+  - Quick top-up button
+- After a successful payment, automatically close the modal and continue the lead acceptance flow without requiring another click.
+
+### 2. Live lead expiry countdown
+Display a real-time countdown:
+- On every lead card.
+- At the top of the lead detail page.
+- Use clear visual states:
+  - Normal
+  - Less than 1 hour remaining
+  - Expired
+- Update automatically every second without requiring a page refresh.
+
+### 3. Wallet balance in the navigation
+Display the contractor's current wallet balance in the top navigation/header.
+Requirements:
+- Always visible.
+- Updates immediately after any transaction.
+- Clicking it opens the Wallet page.
+
+### 4. One-click accept
+Add an "Accept" action directly on each lead card.
+Requirements:
+- Skip opening the detail page.
+- If balance is insufficient, trigger the inline top-up modal instead.
+- Show loading, success and error states.
+
+---
+
+## Admin
+
+### 1. Wallet adjustment audit trail (Highest Priority)
+Whenever an admin manually credits or debits a wallet:
+- Require a reason before confirming.
+- Store the reason with the transaction.
+- Display it in wallet history and transaction details.
+
+### 2. Global contractor search
+Add a fast search bar on the admin dashboard.
+Requirements:
+- Search by:
+  - Name
+  - Email
+  - Company
+- Results should appear instantly while typing.
+- Clicking a result opens the contractor profile.
+
+### 3. Lead assignment history
+On each lead page, add a timeline showing:
+- Contractor offered
+- Date/time
+- Accepted
+- Declined
+- Expired
+- Current status
+Display it as a clean chronological timeline.
+
+### 4. Export contractors
+Add an "Export CSV" button on the Contractors page.
+Include:
+- Name
+- Email
+- Company
+- Wallet balance
+- Status
+- Registration date
+
+---
+
+## General Requirements
+
+- Maintain a premium, modern UI.
+- Ensure full responsiveness.
+- Add smooth animations where appropriate.
+- Handle loading, empty and error states.
+- Reuse existing components whenever possible.
+- Do not introduce unnecessary dependencies.
+- Keep the implementation modular and production-ready.

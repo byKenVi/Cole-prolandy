@@ -1,0 +1,30 @@
+kind = "web"
+previewPath = "/"
+title = "Landy's Pro"
+version = "1.0.0"
+id = "artifacts/landys-pro"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21066
+
+[services.development]
+run = "pnpm --filter @workspace/landys-pro run dev"
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/landys-pro", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["pnpm", "--filter", "@workspace/landys-pro", "run", "start"]
+
+[services.production.run.env]
+PORT = "21066"
+NODE_ENV = "production"
+
+[services.env]
+PORT = "21066"

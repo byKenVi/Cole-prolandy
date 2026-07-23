@@ -1,0 +1,5 @@
+- [Clerk + Next.js App Router — Replit-managed setup](clerk-nextjs-replit-managed.md) — mismatched Clerk tenant keys cause "Invalid hook call" + hydration crash; fix with explicit publishableKey prop.
+- [api-server proxy routing](api-server-proxy.md) — /api/* goes to api-server (port 8080), not Next.js; use server actions for auth redirects, api-server proxies webhooks transparently to Next.js.
+- [Clerk proxy middleware wiring](clerk-proxy-middleware.md) — clerkProxyMiddleware must be mounted in api-server before body parsers; NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must NOT be baked via next.config.ts env block (build runs without production secrets so it bakes pk_test_...).
+- [Stripe connector migration](stripe-connector.md) — app uses Replit Stripe connector (conn_stripe_01KY58J6K9QM0DA15ZDFVG0AR6) via lib/integrations/stripe-client.ts; STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET env vars no longer required (connector is primary, env vars are fallback for local dev).
+- [Clerk magic link 403 in proxy setup](clerk-magic-link-proxy.md) — fresh-browser magic link 403 caused by auth.protect() on /post-auth before ticket exchange; fix: add /post-auth to publicRoutes.

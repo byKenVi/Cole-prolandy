@@ -1,0 +1,261 @@
+// Landy's Pro — Prisma schema (PostgreSQL / Supabase)
+// Money is ALWAYS integer cents. No floats anywhere in storage.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled, runtime
+  directUrl = env("DIRECT_URL") // direct, migrations
+}
+
+// ─────────────────────────────────────────────────────────────
+// Reference / taxonomy
+//
+// Intended hierarchy (exactly two levels for pricing):
+//   Project (ContractorType, 1:1 with a ProjectType of the same name)
+//     └─ Tier 1 / 2 / 3 (PriceTier rows — lead price by job scale)
+// There must not be multiple ProjectTypes nested under a ContractorType in
+// normal operation; Settings + Pricing UIs treat ContractorType as "Project".
+// ─────────────────────────────────────────────────────────────
+
+model ContractorType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  // Admin-selected 3D icon. Convention:
+  //   null / "auto" → resolve by keyword from the project name
+  //   "none"        → intentionally no icon (neutral fallback glyph)
+  //   otherwise     → an icon key = base filename in /public/icons (e.g. "pond")
+  icon      String?
+  createdAt DateTime @default(now())
+
+  contractors         Contractor[]
+  assignedContractors ContractorProject[] @relation("ContractorAssignedProjects")
+  projectType         ProjectType?
+  priceTiers          PriceTier[]
+}
+
+model ProjectType {
+  id               String   @id @default(cuid())
+  name             String
+  contractorTypeId String   @unique
+  createdAt        DateTime @default(now())
+
+  contractorType ContractorType @relation(fields: [contractorTypeId], references: [id], onDelete: Cascade)
+  priceTiers     PriceTier[]
+  leads          Lead[]
+
+  @@unique([name, contractorTypeId])
+}
+
+model LandType {
+  id    String @id @default(cuid())
+  name  String @unique
+  leads Lead[]
+}
+
+// ─────────────────────────────────────────────────────────────
+// Contractors
+// ─────────────────────────────────────────────────────────────
+
+model Contractor {
+  id                           String    @id @default(cuid())
+  name                         String
+  email                        String    @unique
+  phone                        String
+  aboutSection                 String?
+  businessHours                String?
+  // Explicit primary project used for display. Eligibility uses `projects`;
+  // assignment is multi-project and admin-controlled.
+  contractorTypeId             String
+  isPro                        Boolean   @default(false)
+  walletBalanceCents           Int       @default(0)
+  stripeCustomerId             String?
+  // Saved off-session payment method (card) captured from the first top-up's
+  // PaymentIntent (setup_future_usage=off_session). Enables admin "charge saved
+  // card" + contractor "1-click recharge". Nullable: null = no reusable card yet.
+  stripeDefaultPaymentMethodId String?
+  // Display fields for the saved card (from Stripe PaymentMethod.card).
+  cardBrand                    String?
+  cardLast4                    String?
+  clerkUserId                  String?   @unique
+  /**
+   * Optional profile / company logo path (e.g. /uploads/contractors/…).
+   */
+  logoUrl                      String?
+  // Soft-deactivate: blocks login + lead distribution while preserving money/lead history.
+  deactivatedAt                DateTime?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+
+  contractorType     ContractorType      @relation(fields: [contractorTypeId], references: [id])
+  projects           ContractorProject[]
+  leadMatches        LeadMatch[]
+  walletTransactions WalletTransaction[]
+
+  @@index([contractorTypeId])
+  @@index([deactivatedAt])
+}
+
+/**
+ * Projects a contractor is eligible to receive leads for (admin-assigned).
+ */
+model ContractorProject {
+  id               String @id @default(cuid())
+  contractorId     String
+  contractorTypeId String
+
+  contractor     Contractor     @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contractorType ContractorType @relation("ContractorAssignedProjects", fields: [contractorTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([contractorId, contractorTypeId])
+  @@index([contractorId])
+  @@index([contractorTypeId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Leads + distribution
+// ─────────────────────────────────────────────────────────────
+
+enum LeadStatus {
+  NEW
+  DISTRIBUTED
+  EXPIRED
+  CLOSED
+}
+
+enum LeadMatchStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum WalletTransactionType {
+  TOPUP // real money in via the contractor's card (Stripe)
+  LEAD_CHARGE // spend: accepting a lead
+  REFUND // returns money the contractor actually paid (bad lead, etc.) — CREDITS the wallet (internal, no card movement)
+  ADMIN_ADJUST // admin correction — DEDUCT only (never mints funds)
+  PROMO_CREDIT // admin-granted promotional balance — spendable, NOT real money
+  CARD_REFUND // real money sent BACK to the contractor's card (Stripe refund) — DEBITS the wallet (distinct from internal REFUND)
+}
+
+model Lead {
+  id               String     @id @default(cuid())
+  landownerName    String
+  landownerEmail   String
+  landownerPhone   String
+  propertyLocation String
+  description      String?
+  landTypeId       String?
+  projectTypeId    String
+  tier             Int // 1 / 2 / 3
+  priceCents       Int // snapshotted from PriceTier at creation
+  status           LeadStatus @default(NEW)
+  source           String     @default("wix_form")
+  createdAt        DateTime   @default(now())
+  expiresAt        DateTime
+
+  landType    LandType?   @relation(fields: [landTypeId], references: [id])
+  projectType ProjectType @relation(fields: [projectTypeId], references: [id])
+  matches     LeadMatch[]
+
+  @@index([status])
+  @@index([projectTypeId])
+}
+
+// This join row lets multiple contractors independently accept the SAME lead;
+// each tracks its own state and its own wallet charge.
+model LeadMatch {
+  id           String          @id @default(cuid())
+  leadId       String
+  contractorId String
+  status       LeadMatchStatus @default(PENDING)
+  acceptToken  String          @unique @default(cuid()) // tokenized SMS link
+  acceptedAt   DateTime?
+  createdAt    DateTime        @default(now())
+
+  lead               Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contractor         Contractor          @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  walletTransactions WalletTransaction[]
+
+  @@unique([leadId, contractorId])
+  @@index([contractorId])
+  @@index([leadId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Money
+// ─────────────────────────────────────────────────────────────
+
+model WalletTransaction {
+  id                    String                @id @default(cuid())
+  contractorId          String
+  amountCents           Int // signed: +topup/refund/adjust, -charge
+  type                  WalletTransactionType
+  leadMatchId           String?
+  stripePaymentIntentId String?               @unique
+  note                  String?
+  createdAt             DateTime              @default(now())
+
+  contractor Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  leadMatch  LeadMatch? @relation(fields: [leadMatchId], references: [id])
+
+  // At most one LEAD_CHARGE / REFUND per match (blocks concurrent double-refund).
+  @@unique([leadMatchId, type])
+  @@index([contractorId])
+  @@index([leadMatchId])
+}
+
+model PriceTier {
+  id               String   @id @default(cuid())
+  contractorTypeId String
+  projectTypeId    String
+  tier             Int // 1 / 2 / 3
+  priceCents       Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  contractorType ContractorType @relation(fields: [contractorTypeId], references: [id], onDelete: Cascade)
+  projectType    ProjectType    @relation(fields: [projectTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([contractorTypeId, projectTypeId, tier])
+  @@index([contractorTypeId])
+  @@index([projectTypeId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Config + audit
+// ─────────────────────────────────────────────────────────────
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorType  String // 'admin' | 'contractor' | 'system'
+  actorId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([action])
+}
+
+/// Idempotency ledger for Stripe webhooks. The primary key IS the Stripe event
+/// id (evt_...); inserting it inside the same transaction as the wallet credit
+/// means a duplicate webhook delivery fails the insert and the credit is skipped
+/// — money can never be credited twice for the same event.
+model ProcessedStripeEvent {
+  id          String   @id // Stripe event id
+  type        String
+  processedAt DateTime @default(now())
+}

@@ -1,0 +1,26 @@
+diff --git a/dist/runtime/proxy-B_Yui2Mf.js b/dist/runtime/proxy-B_Yui2Mf.js
+index f8782c208a348c9cdcce4045154c4746aa263ada..8bfc967eec8b7a5d0b923abb20d5c3be3b47b78a 100644
+--- a/dist/runtime/proxy-B_Yui2Mf.js
++++ b/dist/runtime/proxy-B_Yui2Mf.js
+@@ -12,7 +12,7 @@ function isProxyUrlRelative(key) {
+ }
+ function proxyUrlToAbsoluteURL(url) {
+ 	if (!url) return "";
+-	return isProxyUrlRelative(url) ? new URL(url, window.location.origin).toString() : url;
++	return isProxyUrlRelative(url) ? (typeof window !== "undefined" ? new URL(url, window.location.origin).toString() : url) : url;
+ }
+ 
+ //#endregion
+diff --git a/dist/runtime/proxy-Bq8EHApG.mjs b/dist/runtime/proxy-Bq8EHApG.mjs
+index bd40cff7c1f65552fa726d26552edd2ebd9c5d87..f4607b12770702953c0575ff1b2b58a2ef226d6c 100644
+--- a/dist/runtime/proxy-Bq8EHApG.mjs
++++ b/dist/runtime/proxy-Bq8EHApG.mjs
+@@ -11,7 +11,7 @@ function isProxyUrlRelative(key) {
+ }
+ function proxyUrlToAbsoluteURL(url) {
+ 	if (!url) return "";
+-	return isProxyUrlRelative(url) ? new URL(url, window.location.origin).toString() : url;
++	return isProxyUrlRelative(url) ? (typeof window !== "undefined" ? new URL(url, window.location.origin).toString() : url) : url;
+ }
+ 
+ //#endregion

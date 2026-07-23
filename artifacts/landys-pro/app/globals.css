@@ -1,0 +1,966 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Design tokens — single source of truth (see DESIGN.md §3).
+  Tailwind theme (tailwind.config.ts) mirrors these variables.
+*/
+:root {
+  /* Brand greens (primary) */
+  --color-primary: #2f4a3c;
+  --color-primary-hover: #263c31;
+  --color-primary-soft: #e7ede8;
+
+  /* Accent (action / go) */
+  --color-accent: #c6733b;
+  --color-accent-hover: #ae6231;
+
+  /* Warm neutrals (surfaces & text) — sepia paper system */
+  --color-bg: #fefbf6;
+  --color-surface: #ffffff;
+  --color-border: #e5ddcd;
+  --color-text: #3a332c;
+  --color-text-muted: #8a7f6d;
+
+  /* Semantic */
+  --color-success: #3f7d52;
+  --color-warning: #c99a2e;
+  --color-danger: #b23b3b;
+  --color-success-soft: #e6f0e9;
+  --color-warning-soft: #f7efd8;
+  --color-danger-soft: #f5e3e3;
+
+  /* Type */
+  --font-sans: "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Rubik", "Fraunces", sans-serif;
+  --font-script: "Caveat", "Fraunces", cursive;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Spacing (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-full: 9999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(35, 39, 31, 0.06);
+  --shadow-md: 0 4px 16px rgba(35, 39, 31, 0.08);
+  --shadow-lg: 0 12px 32px rgba(35, 39, 31, 0.12);
+
+  /* Focus ring token (shadcn compatibility) */
+  --ring: var(--color-primary);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge legacy */
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none; /* Chromium / Safari — keep scrolling, hide bars */
+    width: 0;
+    height: 0;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* Prevent any overflowing child from causing a horizontal scrollbar on the
+       root document, which breaks mobile layouts by widening the viewport. */
+    overflow-x: hidden;
+  }
+
+  /* Prevent iOS input zoom: never below 16px on inputs. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .font-script {
+    font-family: var(--font-script);
+  }
+  .font-fraunces {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+  }
+  .font-inter {
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+  .font-vibes {
+    font-family: "Great Vibes", cursive;
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-float-slow {
+    animation: float 8s ease-in-out infinite;
+  }
+
+  /*
+    3D clay nav icons — hover tilt/scale, click press, active emphasis.
+    Transform/opacity/filter only for GPU-friendly animation. Driven by the
+    parent Link having the `group` class (hover/active states).
+  */
+  .nav-icon-3d {
+    transition:
+      transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+      filter 220ms ease;
+    will-change: transform;
+    transform: scale(1);
+  }
+  .nav-icon-3d--active {
+    transform: scale(1.08);
+  }
+  .group:hover .nav-icon-3d {
+    transform: scale(1.15) rotate(-6deg);
+  }
+  .group:hover .nav-icon-3d--active {
+    transform: scale(1.2) rotate(-6deg);
+  }
+  .group:active .nav-icon-3d {
+    transform: scale(0.9);
+    transition-duration: 90ms;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+/*
+  Shared keyboard focus affordance (WCAG 2.4.7). Written unlayered so it wins
+  over Tailwind's layered `outline-none` utility on inputs/buttons. Only shows
+  for keyboard/AT users via :focus-visible, so mouse clicks stay ring-free.
+*/
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/*
+  ============================================================================
+  ADMIN THEME SYSTEM (light/dark)
+  ----------------------------------------------------------------------------
+  Scoped under `.admin-theme` so it ONLY affects the admin panel and never
+  touches the contractor app (which uses the --color-* tokens above). The
+  admin shell root carries `class="admin-theme"` + `data-theme="light|dark"`;
+  the initial value is set server-side from a cookie to avoid a theme flash.
+  ============================================================================
+*/
+.admin-theme {
+  --bg: #fefbf6;
+  --surface: #fbf6ec;
+  --card: #ffffff;
+  --card2: #faf4e9;
+  --sage: #e7ede8;
+  --sageFg: #2f5340;
+  --ink: #3a352d;
+  --ink2: #6b6459;
+  --ink3: #a79e8d;
+  --line: #ebe3d4;
+  --line2: #f1eadd;
+  --field: #ffffff;
+  --fieldLine: #e0d6c4;
+  --gold: #c0803c;
+  --goldStrong: #a56a2b;
+  --goldSoft: #f4ead3;
+  --goldSoftFg: #8a6b2e;
+  --chipBg: #efe7d8;
+  --chipFg: #5a4e3e;
+  --danger: #b23b3b;
+  --dangerBg: #f5e3e3;
+  --dangerLine: #e7d6d2;
+  --pos: #2f5340;
+  --posBg: #e7ede8;
+  --track: #ebe3d4;
+  /* Sidebar / hero green gradient (matches the reimagined model). */
+  --green: #263b2e;
+  --green2: #1b2a21;
+  --greenFg: #8fa592;
+  --shadow: 0 1px 2px rgba(58, 53, 45, 0.05);
+  --shadowSm: 0 4px 14px rgba(58, 53, 45, 0.07);
+  --shadowMd: 0 8px 22px rgba(58, 53, 45, 0.08);
+  --shadowLg: 0 20px 50px rgba(58, 53, 45, 0.12);
+  /* Type roles used across the admin design. */
+  --display: "Fraunces", ui-serif, Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.admin-theme[data-theme="dark"] {
+  --bg: #17140f;
+  --surface: #211d17;
+  --card: #28241c;
+  --card2: #312b22;
+  --sage: #243029;
+  --sageFg: #a9c6b0;
+  --ink: #f1e7d6;
+  --ink2: #beb4a2;
+  --ink3: #8a8175;
+  --line: #38332a;
+  --line2: #312c24;
+  --field: #312b22;
+  --fieldLine: #48412f;
+  --goldSoft: #3a3220;
+  --goldSoftFg: #e0a95c;
+  --chipBg: #3a3327;
+  --chipFg: #d8cbb2;
+  --danger: #e28c8c;
+  --dangerBg: #3a2622;
+  --dangerLine: #4c332e;
+  --pos: #a9c6b0;
+  --posBg: #243029;
+  --track: #38332a;
+  --green: #1c2c22;
+  --green2: #141f18;
+  --greenFg: #8fa592;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadowSm: 0 2px 12px rgba(0, 0, 0, 0.42);
+  --shadowMd: 0 10px 26px rgba(0, 0, 0, 0.35);
+  --shadowLg: 0 22px 54px rgba(0, 0, 0, 0.5);
+}
+
+.admin-theme {
+  background: var(--bg);
+  color: var(--ink);
+  transition:
+    background 0.35s ease,
+    color 0.35s ease;
+}
+
+/* Admin helper classes (hover/press states that inline styles can't express). */
+.admin-theme .a-lift {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.admin-theme .a-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadowMd);
+}
+.admin-theme .a-row {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-row:hover {
+  background: var(--card2);
+}
+.admin-theme .a-navitem {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-navitem:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.admin-theme .a-gold {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-gold:hover {
+  background: var(--goldStrong);
+}
+.admin-theme .a-ghostbtn {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-ghostbtn:hover {
+  background: var(--card2);
+}
+.admin-theme .a-dangerbtn {
+  transition: background 0.15s ease;
+}
+.admin-theme .a-dangerbtn:hover {
+  background: var(--dangerBg);
+}
+.admin-theme .a-linkgold {
+  transition: color 0.15s ease;
+}
+.admin-theme .a-linkgold:hover {
+  color: var(--goldStrong);
+}
+.admin-theme .a-field:focus-within {
+  border-color: var(--gold);
+}
+.admin-theme .a-input {
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--ink);
+}
+.admin-theme .a-input::placeholder {
+  color: var(--ink3);
+}
+/* Native controls inside admin keep the design's 15px scale, overriding the
+   global 16px iOS rule; desktop-first admin never triggers iOS zoom. */
+.admin-theme input,
+.admin-theme select,
+.admin-theme textarea {
+  font-size: 15px;
+}
+
+@keyframes admin-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes admin-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.admin-fade-up {
+  animation: admin-fade-up 0.3s ease;
+}
+
+/*
+  ----------------------------------------------------------------------------
+  RESPONSIVE LAYER (desktop-first)
+  The admin design is a fixed desktop console. These rules let it degrade
+  gracefully on narrower widths WITHOUT altering the desktop layout: the
+  sidebar collapses to an icon rail, paddings tighten, and wide tables gain a
+  horizontal scroll instead of overflowing the viewport.
+  ----------------------------------------------------------------------------
+*/
+.admin-scroll-x {
+  overflow-x: auto;
+}
+
+/* ── Shell skeleton (layout-critical props live here, not inline) ────────── */
+.admin-shell-root {
+  display: flex;
+  min-height: 100vh;
+}
+.admin-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.admin-main {
+  /* Full-bleed content: equal left/right padding, no artificial max-width. */
+  padding: 32px 40px 56px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.admin-sidebar {
+  width: 264px;
+  flex: none;
+  z-index: 50;
+  background: linear-gradient(178deg, var(--green), var(--green2));
+  color: #efe7d8;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 18px 18px;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow: hidden;
+  transition:
+    width 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.26s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-brand-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  padding: 2px 4px 0;
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.admin-collapse-btn,
+.admin-drawer-close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d9d0bf;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-collapse-btn:hover,
+.admin-drawer-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f6eedf;
+}
+.admin-drawer-close {
+  display: none;
+}
+
+.admin-nav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 30px;
+}
+.admin-navitem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  color: #b4aa98;
+  font: 500 15px/1 "Inter";
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.admin-navitem:hover {
+  background: rgba(224, 169, 92, 0.09);
+  color: #f6eedf;
+}
+.admin-navitem[data-active="true"] {
+  border-left-color: #e3ab5e;
+  background: rgba(224, 169, 92, 0.14);
+  color: #f6eedf;
+  font-weight: 600;
+}
+.admin-nav-icon {
+  display: flex;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+}
+.admin-nav-icon-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+.admin-nav-label {
+  white-space: nowrap;
+}
+.admin-lead-badge {
+  margin-left: auto;
+  font: 600 11px/1 "Inter";
+  color: #e3ab5e;
+  background: rgba(224, 169, 92, 0.16);
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.contractor-nav-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  font: 600 11px/1 Inter, system-ui, sans-serif;
+  color: #e0a95c;
+  background: rgba(224, 169, 92, 0.18);
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.contractor-tab-badge {
+  position: absolute;
+  top: -4px;
+  right: -10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #c0803c;
+  color: #fff;
+  font: 700 9px/16px Inter, system-ui, sans-serif;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-wallet-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 15px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin-user {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+/* Scrim behind the mobile drawer (only shown on small screens). */
+.admin-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.26s ease, visibility 0.26s ease;
+}
+
+/* Buttons that only make sense at a given breakpoint. */
+.admin-hamburger {
+  display: none;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--field);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ── Collapsed rail (desktop only) ──────────────────────────────────────── */
+@media (min-width: 901px) {
+  .admin-shell-root[data-collapsed="true"] .admin-sidebar {
+    width: 82px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-nav-label,
+  .admin-shell-root[data-collapsed="true"] .admin-lead-badge,
+  .admin-shell-root[data-collapsed="true"] .admin-brand-word,
+  .admin-shell-root[data-collapsed="true"] .admin-brand-tag,
+  .admin-shell-root[data-collapsed="true"] .admin-foot-text,
+  .admin-shell-root[data-collapsed="true"] .admin-wallet-body {
+    display: none;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-brand {
+    flex: none;
+    padding: 0;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-brand-row {
+    justify-content: center;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-navitem {
+    justify-content: center;
+    gap: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border-left-width: 0;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-wallet-card,
+  .admin-shell-root[data-collapsed="true"] .admin-user {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  /* Hide standalone logout when rail is collapsed — account row (topbar) retains it. */
+  .admin-shell-root[data-collapsed="true"] .admin-sidebar-signout {
+    display: none;
+  }
+}
+
+/* ── Mobile / tablet: tables → stacked cards ─────────────────────────────── */
+@media (max-width: 768px) {
+  .admin-table-desktop {
+    display: none !important;
+  }
+  .admin-table-mobile {
+    display: flex !important;
+    flex-direction: column;
+  }
+}
+@media (min-width: 769px) {
+  .admin-table-mobile {
+    display: none !important;
+  }
+}
+
+/* ── Narrow desktop / large tablet: tighten paddings ────────────────────── */
+@media (max-width: 1180px) {
+  .admin-main {
+    padding: 28px 26px 52px;
+  }
+  .admin-topbar {
+    padding-left: 26px !important;
+    padding-right: 26px !important;
+  }
+}
+
+/* ── Tablet & phone: sidebar becomes an off-canvas drawer ───────────────── */
+@media (max-width: 900px) {
+  .admin-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 260px;
+    transform: translateX(-100%);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+  .admin-shell-root[data-mobile-open="true"] .admin-sidebar {
+    transform: translateX(0);
+  }
+  .admin-scrim {
+    display: block;
+  }
+  .admin-shell-root[data-mobile-open="true"] .admin-scrim {
+    opacity: 1;
+    visibility: visible;
+  }
+  .admin-collapse-btn {
+    display: none;
+  }
+  .admin-drawer-close {
+    display: inline-flex;
+  }
+  .admin-hamburger {
+    display: inline-flex;
+  }
+  .admin-main {
+    padding: 22px 16px 44px;
+  }
+  .admin-topbar {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  .admin-topbar .admin-search {
+    min-width: 0 !important;
+  }
+  .admin-search-kbd {
+    display: none;
+  }
+}
+
+/* ── Pricing page: mobile-friendly matrix ───────────────────────────────── */
+.pricing-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+.pricing-page-intro {
+  max-width: 560px;
+  min-width: 0;
+}
+.pricing-page-title {
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--ink);
+}
+.pricing-page-sub {
+  margin: 9px 0 0;
+  color: var(--ink2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.pricing-avg-card {
+  flex: none;
+  background: var(--sage);
+  border-radius: 16px;
+  padding: 16px 20px;
+  min-width: 200px;
+}
+.pricing-tier-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.pricing-tier-legend-card {
+  flex: 1 1 210px;
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 15px 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.pricing-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.pricing-group-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+.pricing-group-body {
+  padding: 8px 24px 20px;
+}
+.pricing-matrix-desktop {
+  display: block;
+}
+.pricing-matrix-mobile {
+  display: none;
+}
+.pricing-matrix-head,
+.pricing-matrix-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.6fr) 1fr 1fr 1fr;
+  gap: 16px 20px;
+  align-items: center;
+}
+.pricing-matrix-head {
+  align-items: end;
+  padding: 14px 0 6px;
+}
+.pricing-matrix-row {
+  padding: 11px 0;
+  border-top: 1px solid var(--line2);
+}
+.pricing-mobile-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 0 4px;
+}
+.pricing-mobile-block + .pricing-mobile-block {
+  border-top: 1px solid var(--line2);
+  margin-top: 8px;
+  padding-top: 18px;
+}
+.pricing-mobile-project {
+  margin: 0;
+  font: 600 14px/1.3 "Inter";
+  color: var(--ink);
+}
+.pricing-mobile-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pricing-mobile-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* iPad mini / Air / Pro (portrait + narrow landscape): avoid cramped 4-col matrix */
+@media (max-width: 1100px) {
+  .pricing-page-header {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .pricing-page-intro {
+    max-width: none;
+  }
+  .pricing-page-title {
+    font-size: 28px;
+  }
+  .pricing-avg-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .pricing-tier-legend-card {
+    flex: 1 1 calc(50% - 12px);
+  }
+  .pricing-search {
+    flex: 1 1 100% !important;
+    max-width: none !important;
+  }
+  .pricing-group-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 16px 20px;
+    gap: 14px;
+  }
+  .pricing-group-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .pricing-save-btn {
+    min-height: 44px;
+    min-width: 140px;
+  }
+  .pricing-group-body {
+    padding: 4px 20px 18px;
+  }
+  .pricing-matrix-desktop {
+    display: none;
+  }
+  .pricing-matrix-mobile {
+    display: block;
+  }
+  /* Tablet: 3 tiers side-by-side under project label */
+  .pricing-mobile-tiers {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  .pricing-tier-legend-card {
+    flex: 1 1 100%;
+  }
+  .pricing-group-head {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
+  .pricing-group-actions {
+    justify-content: space-between;
+  }
+  .pricing-save-btn {
+    flex: 1;
+  }
+  .pricing-group-body {
+    padding: 4px 16px 18px;
+  }
+  /* Phone: stack tiers */
+  .pricing-mobile-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 460px) {
+  .pricing-page-title {
+    font-size: 24px;
+  }
+  .pricing-group-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+}
+
+/* ── Responsive grids (stat cards & tuned grids stack down) ─────────────── */
+@media (max-width: 720px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 640px) {
+  .admin-grid-tight {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .admin-grid-stack {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 460px) {
+  .admin-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme,
+  .admin-theme .a-lift,
+  .admin-theme .a-row,
+  .admin-fade-up {
+    transition: none;
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-float-slow {
+    animation: none;
+  }
+
+  .nav-icon-3d,
+  .nav-icon-3d--active,
+  .group:hover .nav-icon-3d,
+  .group:hover .nav-icon-3d--active,
+  .group:active .nav-icon-3d {
+    transform: none;
+    transition: none;
+  }
+}

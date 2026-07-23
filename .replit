@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -18,3 +18,16 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.production]
+STRIPE_WEBHOOK_SECRET = "whsec_9molDFgsrhEMD8pf9pTj9dhxwbMGvry6"
+CLERK_PROXY_URL = "https://cole-prolandy-project.replit.app/api/__clerk"
+NEXT_PUBLIC_APP_URL = "https://cole-prolandy-project.replit.app"
+STRIPE_MOCK = "false"
+RESEND_MOCK = "false"
+TWILIO_MOCK = "false"
