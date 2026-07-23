@@ -31,6 +31,9 @@ const isPublicRoute = createRouteMatcher([
   // the session ticket client-side before any server-side auth.protect() fires.
   // The page itself redirects unauthenticated visitors to /sign-in.
   "/post-auth",
+  // FAPI proxy lives on api-server, but if a handshake request is ever
+  // forwarded to Next (proxy no-op / misroute), auth.protect() must not 403 it.
+  "/api/__clerk(.*)",
   "/api/estimate",
   "/api/stripe/webhook",
   "/api/cron/expire-leads",

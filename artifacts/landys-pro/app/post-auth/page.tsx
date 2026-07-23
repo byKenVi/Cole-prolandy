@@ -10,11 +10,10 @@ import { getPostAuthRedirect } from "@/app/actions/auth";
  * to be loaded before we ask the server where to send the user.
  *
  * Problem solved: in the Replit proxy environment there is a brief window after
- * Clerk's OAuth redirect where the session cookie hasn't propagated to the
- * server yet. A pure Server Component calling auth() would see userId=null and
- * redirect to /sign-in, creating a blank-page loop. Moving the wait to the
- * client (useAuth isLoaded) eliminates the race, and the spinner gives the
- * user visible feedback instead of a blank page.
+ * Clerk's OAuth / magic-link redirect where the session cookie hasn't propagated
+ * to useAuth yet. A pure Server Component calling auth() would see userId=null
+ * and redirect to /sign-in, creating a blank-page loop. Waiting for isLoaded,
+ * then briefly retrying while !isSignedIn, eliminates the race.
  *
  * Uses a server action (not an API route) because the Replit proxy routes
  * all /api/* traffic to the api-server artifact, not this Next.js app.
@@ -26,12 +25,33 @@ export default function PostAuthPage() {
 
   useEffect(() => {
     if (!isLoaded || redirected.current) return;
-    redirected.current = true;
 
     if (!isSignedIn) {
-      router.replace("/sign-in");
-      return;
+      // Fresh handshake / ticket exchange can lag isLoaded by a moment.
+      // Don't bounce to /sign-in until we've given Clerk a chance to settle.
+      const timer = window.setTimeout(() => {
+        if (redirected.current) return;
+        redirected.current = true;
+
+        const params = window.location.search;
+        // If a ticket is still on the URL, finish the flow on sign-in instead
+        // of dropping the one-time token.
+        if (
+          params.includes("__clerk_ticket") ||
+          params.includes("__clerk_status") ||
+          params.includes("__clerk_db_jwt")
+        ) {
+          router.replace(`/sign-in${params}`);
+          return;
+        }
+
+        router.replace("/sign-in");
+      }, 2500);
+
+      return () => window.clearTimeout(timer);
     }
+
+    redirected.current = true;
 
     // Auth confirmed on the client — call a server action for the destination.
     getPostAuthRedirect()
