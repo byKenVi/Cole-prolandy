@@ -48,8 +48,9 @@ export const clerkAppearance: ClerkAppearance = {
     cardBox: "w-full shadow-none border-0 bg-transparent rounded-none",
     card: "shadow-none border-0 bg-transparent p-0 gap-4 w-full",
     main: "gap-4",
-    headerTitle: "font-semibold text-text text-[1.25rem] leading-tight",
-    headerSubtitle: "text-text-muted text-sm",
+    header: "hidden",
+    headerTitle: "hidden",
+    headerSubtitle: "hidden",
     // Form inputs — match the app's field style
     formFieldInput:
       "border-border bg-[#FEFBF6] text-text placeholder:text-text-muted focus:ring-primary focus:border-primary rounded-xl text-sm",
