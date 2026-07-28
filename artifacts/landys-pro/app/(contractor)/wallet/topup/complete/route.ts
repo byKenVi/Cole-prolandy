@@ -5,6 +5,32 @@ import { prisma } from "@/lib/prisma";
 import { revalidateContractorShell } from "@/lib/revalidate";
 
 /**
+ * Derive the public-facing origin from proxy headers.
+ *
+ * `req.url` / `url.origin` always contains the *internal* bind address
+ * (e.g. http://0.0.0.0:21066) because Next.js sees the raw TCP socket, not
+ * the proxied URL.  Replit (and Vercel) forward the real public host in
+ * x-forwarded-host / x-forwarded-proto, so we use those instead.
+ */
+function publicOrigin(req: NextRequest): string {
+  // x-forwarded-proto may be a comma-list; take the first (outermost) value.
+  const proto =
+    req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "https";
+  const host =
+    req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
+
+  // Reject internal / loopback addresses so we never redirect there.
+  if (host && !host.includes("0.0.0.0") && !host.includes("127.0.0.1")) {
+    return `${proto}://${host}`;
+  }
+
+  // Dev fallbacks: Replit dev domain → localhost.
+  const replitDev = process.env.REPLIT_DEV_DOMAIN;
+  if (replitDev) return `https://${replitDev}`;
+  return "http://localhost:3000";
+}
+
+/**
  * MOCK top-up / card-setup completion. In mock mode Stripe redirects here after
  * a simulated payment or card update.
  *
@@ -22,7 +48,7 @@ export async function GET(req: NextRequest) {
   const isProd =
     process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
 
-  const walletUrl = new URL("/wallet", url.origin);
+  const walletUrl = new URL("/wallet", publicOrigin(req));
 
   // Fail closed: never mint money from a browser redirect in production.
   if (!isMock || isProd) {
