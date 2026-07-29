@@ -25,7 +25,9 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.production]
-STRIPE_WEBHOOK_SECRET = "whsec_9molDFgsrhEMD8pf9pTj9dhxwbMGvry6"
+# STRIPE_WEBHOOK_SECRET is managed exclusively via Replit Secrets (not here) to
+# avoid a two-source conflict. The secret must match the webhook endpoint
+# registered on the Stripe connector account (we_1TyZA1DZftuEtu8223cR6xoe).
 CLERK_PROXY_URL = "https://cole-prolandy-project.replit.app/api/__clerk"
 NEXT_PUBLIC_APP_URL = "https://cole-prolandy-project.replit.app"
 STRIPE_MOCK = "false"
