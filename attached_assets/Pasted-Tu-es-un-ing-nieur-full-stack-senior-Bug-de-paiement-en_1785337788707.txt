@@ -1,0 +1,108 @@
+Tu es un ingénieur full-stack senior. Bug de paiement en production, à diagnostiquer
+avec des preuves avant toute correction. Ne devine pas, ne réécris pas l'architecture.
+
+## SYMPTÔME
+Un contracteur recharge son portefeuille. Stripe Checkout s'affiche, le paiement est
+accepté (l'argent est bien encaissé côté Stripe). De retour sur /wallet, la bannière
+"Payment received — your balance updates in a few seconds" s'affiche, mais le solde
+n'est JAMAIS crédité. Aucune erreur visible nulle part.
+
+## CE QUI EST DÉJÀ VÉRIFIÉ ET CORRECT — NE PAS MODIFIER
+- artifacts/landys-pro/app/(contractor)/wallet/topup/complete/route.ts refuse
+  volontairement de créditer en production (fail-closed). La bannière "pending" est
+  le comportement attendu. Ce n'est PAS le bug.
+- Le portefeuille doit être crédité UNIQUEMENT par le webhook signé
+  (artifacts/landys-pro/app/api/stripe/webhook/route.ts → creditTopUp).
+  Ne crédite jamais depuis la redirection navigateur, ne supprime pas cette garantie.
+- La logique de creditTopUp et l'idempotence (ProcessedStripeEvent +
+  WalletTransaction.stripePaymentIntentId unique) sont correctes. Ne les touche pas.
+
+## CONTEXTE TECHNIQUE
+- Monorepo pnpm. App Next.js : artifacts/landys-pro. API Express : artifacts/api-server.
+- artifacts/api-server/.replit-artifact/artifact.toml déclare paths = ["/api"], donc
+  Replit envoie TOUT /api/* vers api-server (port 8080), pas vers Next.js (port 21066).
+- artifacts/api-server/src/app.ts reforwarde les /api/* non gérés vers
+  http://localhost:21066 via http-proxy-middleware. Le webhook Stripe dépend
+  entièrement de ce saut interne.
+- Stripe passe par l'intégration/connecteur Replit
+  (conn_stripe_01KY58J6K9QM0DA15ZDFVG0AR6). Je n'ai PAS accès au dashboard Stripe :
+  tu dois tout vérifier via l'API Stripe avec la clé du connecteur.
+- Endpoint webhook historiquement enregistré : we_1Tw2owE6TxMHJbOhIeqGVBYN
+  pour https://cole-prolandy-project.replit.app/api/stripe/webhook
+
+## HYPOTHÈSES À TESTER, DANS CET ORDRE
+
+### H1 — Mauvais secret de signature (le plus probable)
+artifacts/landys-pro/lib/integrations/stripe-client.ts fait :
+    const webhookSecret = settings?.webhook_secret ?? process.env.STRIPE_WEBHOOK_SECRET;
+Le secret du connecteur est donc PRIORITAIRE sur la variable d'environnement.
+Trois valeurs différentes coexistent :
+  1. settings.webhook_secret du connecteur (peut appartenir à un webhook géré par
+     Replit, donc un AUTRE endpoint que we_1Tw2ow...)
+  2. .replit [userenv.production] STRIPE_WEBHOOK_SECRET = whsec_9mol...
+  3. un éventuel Replit Secret personnel STRIPE_WEBHOOK_SECRET qui écrase le n°2
+     (ancienne valeur "stripe listen", invalide en production)
+Si le secret résolu ne correspond pas à l'endpoint émetteur, constructStripeEvent
+lève une exception → la route renvoie 400 → aucun crédit, aucune trace.
+
+À faire : logge (masqué : 8 premiers caractères + longueur) quelle source est
+réellement utilisée en production, et compare-la à l'endpoint qui envoie vraiment
+les événements.
+
+### H2 — La requête n'atteint jamais Next.js
+Vérifie que POST https://cole-prolandy-project.replit.app/api/stripe/webhook SANS
+en-tête stripe-signature répond bien 400 {"error":"Missing stripe-signature header."}.
+- Si oui : la route est joignable, le problème est le secret (H1).
+- Si 404, 502, une redirection Clerk ou autre : le proxy api-server → Next.js est
+  cassé. Corrige alors le routage (ordre des middlewares, NEXTJS_PORT, et surtout
+  vérifie que le corps brut de la requête n'est PAS consommé par un body parser
+  avant le proxy — la vérification de signature Stripe exige le raw body).
+
+### H3 — Événements non abonnés
+Via l'API Stripe, liste les webhook endpoints (stripe.webhookEndpoints.list()) et
+vérifie pour chacun : url, status (enabled/disabled), enabled_events.
+L'endpoint doit être ACTIF et abonné à checkout.session.completed
+(idéalement aussi payment_intent.succeeded pour les recharges off-session).
+Signale s'il existe PLUSIEURS endpoints pointant vers cette URL — c'est une cause
+classique de mismatch de secret.
+
+## PREUVES À COLLECTER AVANT DE CORRIGER
+1. stripe.events.list({ type: "checkout.session.completed", limit: 5 }) — confirme
+   que Stripe a bien émis l'événement pour mon paiement, et récupère son id + ses
+   metadata (contractorId doit y être).
+2. En base : y a-t-il une ligne dans ProcessedStripeEvent pour cet event id ?
+   Une ligne dans WalletTransaction avec ce stripePaymentIntentId ?
+   → Aucune ligne = le handler n'a jamais abouti.
+3. Les logs de déploiement au moment du paiement : y a-t-il une trace de
+   POST /api/stripe/webhook ? Quel code de statut ?
+
+## CORRECTIONS DEMANDÉES
+1. Rends l'échec VISIBLE. artifacts/landys-pro/app/api/stripe/webhook/route.ts a un
+   `catch {}` vide et aucun log. Ajoute des console.error explicites : échec de
+   signature (avec la source du secret utilisée, masquée), event ignoré (avec le
+   type), et échec de crédit (avec eventId + contractorId). Ne logge JAMAIS le
+   secret complet ni la clé API.
+2. Corrige la vraie cause identifiée par les preuves ci-dessus — une seule cause,
+   pas trois correctifs "au cas où".
+3. Si c'est un mismatch de secret : rends la source déterministe et documentée.
+   Assure-toi que l'endpoint réellement utilisé et le secret réellement vérifié
+   proviennent de la MÊME origine. Supprime/neutralise les valeurs concurrentes
+   (Replit Secret périmé, doublon d'endpoint) et dis-moi explicitement ce que je
+   dois supprimer côté Replit si tu ne peux pas le faire toi-même.
+
+## CONTRAINTES
+- N'introduis pas stripe-replit-sync ni de webhook géré : le webhook custom de
+  app/api/stripe/webhook/route.ts est intentionnel.
+- Ne remets pas STRIPE_SECRET_KEY en variable d'environnement : la clé vient du
+  connecteur.
+- Garde STRIPE_MOCK="false" en production.
+- Le raw body doit rester intact sur tout le chemin jusqu'à la route.
+- `pnpm run typecheck` doit passer.
+
+## RENDU ATTENDU
+1. La cause racine, prouvée (pas supposée), avec le code de statut réel du webhook.
+2. Le correctif appliqué et pourquoi il traite la cause et non le symptôme.
+3. Comment je vérifie en production : je fais une recharge test, et je dois voir
+   quoi exactement dans les logs pour confirmer que le crédit a eu lieu.
+4. Ce que je dois changer manuellement côté Replit (secrets, intégration), s'il y
+   a lieu.
