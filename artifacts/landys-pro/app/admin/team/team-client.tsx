@@ -382,8 +382,8 @@ export function TeamPageClient({
             </span>
           </p>
         </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
             <thead>
               <tr>
                 <th style={thStyle}>Name</th>
@@ -430,8 +430,8 @@ export function TeamPageClient({
               </span>
             </p>
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
               <thead>
                 <tr>
                   <th style={thStyle}>Name</th>
