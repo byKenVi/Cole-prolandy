@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import {
   getDefaultLeadTier,
   getLeadExpiryHours,
   getMaxLeadRecipients,
 } from "@/lib/domain/settings";
+import { getSession } from "@/lib/auth";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { LandTypesManager } from "@/components/admin/land-types-manager";
@@ -30,8 +32,9 @@ const descStyle: React.CSSProperties = {
 };
 
 export default async function SettingsPage() {
-  const [maxLeadRecipients, leadExpiryHours, defaultLeadTier, categories, landTypes] =
+  const [session, maxLeadRecipients, leadExpiryHours, defaultLeadTier, categories, landTypes] =
     await Promise.all([
+    getSession(),
     getMaxLeadRecipients(prisma),
     getLeadExpiryHours(prisma),
     getDefaultLeadTier(prisma),
@@ -101,6 +104,49 @@ export default async function SettingsPage() {
               }))}
             />
           </div>
+
+          {session.adminRole === "owner" && (
+            <Link href="/admin/team" style={{ textDecoration: "none" }}>
+              <div
+                style={{
+                  ...cardStyle,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  cursor: "pointer",
+                  transition: "box-shadow .15s",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.boxShadow =
+                    "0 4px 16px rgba(47,74,60,.12)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow)";
+                }}
+              >
+                <div>
+                  <p style={titleStyle}>Team</p>
+                  <p style={{ ...descStyle, marginBottom: 0 }}>
+                    Invite admins, manage roles, and control who has access to this dashboard.
+                  </p>
+                </div>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--ink2)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ flexShrink: 0 }}
+                >
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </div>
+            </Link>
+          )}
         </div>
 
         <div style={cardStyle}>

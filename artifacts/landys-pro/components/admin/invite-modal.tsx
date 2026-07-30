@@ -128,32 +128,39 @@ export function InviteAdminModal({
               Role
             </label>
             <div style={{ display: "flex", gap: 10 }}>
-              {(["ADMIN", "OWNER"] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRole(r)}
-                  disabled={pending}
-                  style={{
-                    flex: 1,
-                    padding: "12px 10px",
-                    borderRadius: 12,
-                    border: `2px solid ${role === r ? "var(--green)" : "var(--line)"}`,
-                    background: role === r ? "color-mix(in srgb, var(--green) 10%, transparent)" : "var(--surface)",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: role === r ? "var(--green)" : "var(--ink)" }}>
-                    {r === "OWNER" ? "Owner" : "Admin"}
-                  </p>
-                  <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--ink2)", lineHeight: 1.4 }}>
-                    {r === "OWNER"
-                      ? "Full team management + dashboard"
-                      : "Dashboard access only"}
-                  </p>
-                </button>
-              ))}
+              {(["ADMIN", "OWNER"] as const).map((r) => {
+                const selected = role === r;
+                return (
+                  <div
+                    key={r}
+                    role="button"
+                    tabIndex={pending ? -1 : 0}
+                    aria-pressed={selected}
+                    onClick={() => !pending && setRole(r)}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && !pending && setRole(r)}
+                    style={{
+                      flex: 1,
+                      padding: "12px 10px",
+                      borderRadius: 12,
+                      border: `2px solid ${selected ? "#2F4A3C" : "var(--line)"}`,
+                      background: selected ? "#E7F0E9" : "var(--surface)",
+                      cursor: pending ? "default" : "pointer",
+                      textAlign: "left",
+                      userSelect: "none",
+                      opacity: pending ? 0.6 : 1,
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: selected ? "#2F4A3C" : "var(--ink)" }}>
+                      {r === "OWNER" ? "Owner" : "Admin"}
+                    </p>
+                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--ink2)", lineHeight: 1.4 }}>
+                      {r === "OWNER"
+                        ? "Full team management + dashboard"
+                        : "Dashboard access only"}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
