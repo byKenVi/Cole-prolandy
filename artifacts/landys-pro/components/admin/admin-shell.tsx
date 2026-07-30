@@ -39,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/finance", label: "Finance", icon: "/admin-icons/finance.png" },
   { href: "/admin/pricing", label: "Pricing", icon: "/admin-icons/pricing.png" },
   { href: "/admin/settings", label: "Settings", icon: "/admin-icons/settings.png" },
+  { href: "/admin/team", label: "Team", icon: "__team__", ownerOnly: true },
 ];
 
 function isActive(pathname: string, href: string): boolean {
