@@ -108,6 +108,7 @@ export default async function SettingsPage() {
           {session.adminRole === "owner" && (
             <Link href="/admin/team" style={{ textDecoration: "none" }}>
               <div
+                className="settings-team-card"
                 style={{
                   ...cardStyle,
                   display: "flex",
@@ -115,14 +116,6 @@ export default async function SettingsPage() {
                   justifyContent: "space-between",
                   gap: 16,
                   cursor: "pointer",
-                  transition: "box-shadow .15s",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.boxShadow =
-                    "0 4px 16px rgba(47,74,60,.12)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow)";
                 }}
               >
                 <div>

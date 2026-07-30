@@ -416,10 +416,10 @@ export function TeamPageClient({
                   </td>
                   <td style={tdStyle}><RoleBadge role={m.role} /></td>
                   <td style={tdStyle}><StatusBadge status={m.status} /></td>
-                  <td style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>
+                  <td suppressHydrationWarning style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>
                     {formatDate(m.invitedAt)}
                   </td>
-                  <td style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>
+                  <td suppressHydrationWarning style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>
                     {m.lastLoginAt ? formatDate(m.lastLoginAt) : "—"}
                   </td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
@@ -466,8 +466,8 @@ export function TeamPageClient({
                       </td>
                       <td style={tdStyle}><RoleBadge role={inv.role} /></td>
                       <td style={tdStyle}><StatusBadge status={expired ? "expired" : "pending"} /></td>
-                      <td style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>{formatDate(inv.invitedAt)}</td>
-                      <td style={{ ...tdStyle, color: expired ? "#9A3B2E" : "var(--ink2)", fontSize: 13 }}>
+                      <td suppressHydrationWarning style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>{formatDate(inv.invitedAt)}</td>
+                      <td suppressHydrationWarning style={{ ...tdStyle, color: expired ? "#9A3B2E" : "var(--ink2)", fontSize: 13 }}>
                         {formatDate(inv.expiresAt)}
                       </td>
                       <td style={{ ...tdStyle, textAlign: "right" }}>

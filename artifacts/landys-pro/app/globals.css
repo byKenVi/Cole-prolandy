@@ -925,6 +925,13 @@ textarea:focus-visible,
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }
+.settings-team-card {
+  transition: box-shadow 0.15s;
+}
+.settings-team-card:hover {
+  box-shadow: 0 4px 16px rgba(47, 74, 60, 0.12) !important;
+}
+
 @media (max-width: 640px) {
   .admin-grid-tight {
     grid-template-columns: 1fr 1fr !important;

@@ -26,9 +26,11 @@ export async function sendAdminInvitation({
 
   try {
     const client = await clerkClient();
+    const redirectUrl = `${appUrl()}/admin/invite?token=${token}`;
+    console.log("[admin-invite] sending Clerk invitation to", email, "redirectUrl:", redirectUrl);
     await client.invitations.createInvitation({
       emailAddress: email,
-      redirectUrl: `${appUrl()}/admin/invite?token=${token}`,
+      redirectUrl,
       ignoreExisting: true,
       publicMetadata: {
         role: "admin_invite",
@@ -36,12 +38,12 @@ export async function sendAdminInvitation({
         inviteeName: name,
       },
     });
+    console.log("[admin-invite] Clerk invitation created OK for", email);
     return { ok: true, provider: "clerk" };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[admin-invite] Clerk invitation FAILED for", email, ":", msg);
+    return { ok: false, error: msg };
   }
 }
 
