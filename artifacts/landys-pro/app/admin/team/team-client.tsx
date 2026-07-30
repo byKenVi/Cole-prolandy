@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { UserPlus, MoreHorizontal, RefreshCw, Ban, CheckCircle2, Trash2, Crown, Shield } from "lucide-react";
@@ -37,6 +37,13 @@ export type PendingInvite = {
   invitedAt: Date;
   expiresAt: Date;
 };
+
+// ─── Portal dropdown coords ────────────────────────────────────────────────────
+
+function getMenuCoords(btn: HTMLButtonElement): { top: number; right: number } {
+  const r = btn.getBoundingClientRect();
+  return { top: r.bottom + 6, right: window.innerWidth - r.right };
+}
 
 // ─── Shared card/table style values ───────────────────────────────────────────
 
@@ -110,27 +117,19 @@ function RoleBadge({ role }: { role: "OWNER" | "ADMIN" }) {
 
 // ─── Row action menu ───────────────────────────────────────────────────────────
 
-/** Shared portal dropdown — renders into document.body so table overflow never clips it. */
+/** Shared portal dropdown — renders into document.body so table overflow never clips it.
+ *  Coords are computed by the caller at click time so the menu never flashes at (0,0). */
 function ActionMenu({
   open,
-  anchorRef,
+  coords,
   onClose,
   children,
 }: {
   open: boolean;
-  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  coords: { top: number; right: number };
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  const [coords, setCoords] = useState({ top: 0, right: 0 });
-
-  useEffect(() => {
-    if (open && anchorRef.current) {
-      const r = anchorRef.current.getBoundingClientRect();
-      setCoords({ top: r.bottom + 4, right: window.innerWidth - r.right });
-    }
-  }, [open, anchorRef]);
-
   if (!open) return null;
 
   return createPortal(
@@ -165,6 +164,7 @@ function MemberActions({
   onDone: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, right: 0 });
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -183,6 +183,11 @@ function MemberActions({
     });
   }
 
+  function toggle() {
+    if (!open && btnRef.current) setCoords(getMenuCoords(btnRef.current));
+    setOpen((v) => !v);
+  }
+
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       {msg && (
@@ -191,7 +196,7 @@ function MemberActions({
       <button
         ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         disabled={pending}
         style={{
           display: "inline-flex",
@@ -209,7 +214,7 @@ function MemberActions({
       >
         <MoreHorizontal style={{ width: 15, height: 15 }} />
       </button>
-      <ActionMenu open={open} anchorRef={btnRef} onClose={() => setOpen(false)}>
+      <ActionMenu open={open} coords={coords} onClose={() => setOpen(false)}>
         {member.status === "active" ? (
           <>
             <MenuItem
@@ -256,6 +261,7 @@ function MemberActions({
 
 function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () => void }) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, right: 0 });
   const [pending, startTransition] = useTransition();
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -267,12 +273,17 @@ function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () =
     });
   }
 
+  function toggle() {
+    if (!open && btnRef.current) setCoords(getMenuCoords(btnRef.current));
+    setOpen((v) => !v);
+  }
+
   return (
     <div style={{ display: "inline-flex", alignItems: "center" }}>
       <button
         ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         disabled={pending}
         style={{
           display: "inline-flex",
@@ -290,7 +301,7 @@ function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () =
       >
         <MoreHorizontal style={{ width: 15, height: 15 }} />
       </button>
-      <ActionMenu open={open} anchorRef={btnRef} onClose={() => setOpen(false)}>
+      <ActionMenu open={open} coords={coords} onClose={() => setOpen(false)}>
         <MenuItem
           icon={<RefreshCw style={{ width: 14, height: 14 }} />}
           label="Resend invitation"

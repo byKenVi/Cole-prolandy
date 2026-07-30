@@ -74,37 +74,6 @@ export default async function SettingsPage() {
         className="admin-grid-stack"
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={cardStyle}>
-            <p style={titleStyle}>Lead distribution</p>
-            <p style={descStyle}>How leads are shared and how long they stay open.</p>
-            <SettingsForm
-              maxLeadRecipients={maxLeadRecipients}
-              leadExpiryHours={leadExpiryHours}
-              defaultLeadTier={defaultLeadTier}
-            />
-          </div>
-
-          <div style={cardStyle}>
-            <p style={titleStyle}>Appearance</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>Choose how the admin panel looks.</p>
-            <AppearancePicker />
-          </div>
-
-          <div style={cardStyle}>
-            <p style={titleStyle}>Land types</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>
-              Property classifications for leads. Renaming is safe; delete only when no leads use the
-              type.
-            </p>
-            <LandTypesManager
-              landTypes={landTypes.map((t) => ({
-                id: t.id,
-                name: t.name,
-                leads: t._count.leads,
-              }))}
-            />
-          </div>
-
           {session.adminRole === "owner" && (
             <Link href="/admin/team" style={{ textDecoration: "none" }}>
               <div
@@ -140,6 +109,38 @@ export default async function SettingsPage() {
               </div>
             </Link>
           )}
+
+          <div style={cardStyle}>
+            <p style={titleStyle}>Lead distribution</p>
+            <p style={descStyle}>How leads are shared and how long they stay open.</p>
+            <SettingsForm
+              maxLeadRecipients={maxLeadRecipients}
+              leadExpiryHours={leadExpiryHours}
+              defaultLeadTier={defaultLeadTier}
+            />
+          </div>
+
+          <div style={cardStyle}>
+            <p style={titleStyle}>Appearance</p>
+            <p style={{ ...descStyle, marginBottom: 18 }}>Choose how the admin panel looks.</p>
+            <AppearancePicker />
+          </div>
+
+          <div style={cardStyle}>
+            <p style={titleStyle}>Land types</p>
+            <p style={{ ...descStyle, marginBottom: 18 }}>
+              Property classifications for leads. Renaming is safe; delete only when no leads use the
+              type.
+            </p>
+            <LandTypesManager
+              landTypes={landTypes.map((t) => ({
+                id: t.id,
+                name: t.name,
+                leads: t._count.leads,
+              }))}
+            />
+          </div>
+
         </div>
 
         <div style={cardStyle}>
