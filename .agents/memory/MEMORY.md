@@ -5,3 +5,5 @@
 - [Clerk magic link 403 in proxy setup](clerk-magic-link-proxy.md) — fresh-browser magic link 403 caused by auth.protect() on /post-auth before ticket exchange; fix: add /post-auth to publicRoutes.
 - [Stripe top-up returnTo flow](topup-returnto-flow.md) — startTopUp accepts optional returnTo path; complete route redirects there so user returns to lead page after Stripe Checkout.
 - [Admin public route group](admin-public-route-group.md) — public pages at /admin/* URL must use app/(public)/admin/... route group to escape the admin auth layout; also use useAuth() not /api/ fetches for client-side sign-in detection.
+- [Radix Dialog role selector](radix-dialog-role-selector.md) — button type="button" inside Radix Dialog forms can swallow clicks; use label+hidden radio input instead.
+- [Admin invite email via Resend](admin-invite-email.md) — Clerk createInvitation ignoreExisting silently skips re-sends; admin invites use Resend (Replit connector) via lib/integrations/email.ts instead.

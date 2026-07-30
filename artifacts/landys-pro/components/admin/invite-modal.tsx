@@ -120,54 +120,100 @@ export function InviteAdminModal({
             />
           </div>
 
-          {/* Role */}
+          {/* Role — uses label+radio so clicks always register inside Radix Dialog */}
           <div>
-            <label
-              style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--ink)" }}
-            >
+            <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
               Role
-            </label>
+            </p>
             <div style={{ display: "flex", gap: 10 }}>
-              {(["ADMIN", "OWNER"] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRole(r)}
-                  disabled={pending}
-                  style={{
-                    flex: 1,
-                    padding: "12px 10px",
-                    borderRadius: 12,
-                    border: `2px solid ${role === r ? "var(--green)" : "var(--line)"}`,
-                    background: role === r ? "color-mix(in srgb, var(--green) 10%, transparent)" : "var(--surface)",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: role === r ? "var(--green)" : "var(--ink)" }}>
-                    {r === "OWNER" ? "Owner" : "Admin"}
-                  </p>
-                  <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--ink2)", lineHeight: 1.4 }}>
-                    {r === "OWNER"
-                      ? "Full team management + dashboard"
-                      : "Dashboard access only"}
-                  </p>
-                </button>
-              ))}
+              {(["ADMIN", "OWNER"] as const).map((r) => {
+                const selected = role === r;
+                return (
+                  <label
+                    key={r}
+                    style={{
+                      flex: 1,
+                      padding: "12px 10px",
+                      borderRadius: 12,
+                      border: `2px solid ${selected ? "var(--green)" : "var(--line)"}`,
+                      background: selected
+                        ? "color-mix(in srgb, var(--green) 10%, transparent)"
+                        : "var(--surface)",
+                      cursor: pending ? "not-allowed" : "pointer",
+                      display: "block",
+                      userSelect: "none",
+                    }}
+                  >
+                    {/* Hidden radio — fully reliable inside any form/dialog */}
+                    <input
+                      type="radio"
+                      name="role"
+                      value={r}
+                      checked={selected}
+                      disabled={pending}
+                      onChange={() => setRole(r)}
+                      style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
+                    />
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: selected ? "var(--green)" : "var(--ink)",
+                      }}
+                    >
+                      {r === "OWNER" ? "Owner" : "Admin"}
+                    </p>
+                    <p
+                      style={{
+                        margin: "3px 0 0",
+                        fontSize: 11,
+                        color: "var(--ink2)",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {r === "OWNER"
+                        ? "Full team management + dashboard"
+                        : "Dashboard access only"}
+                    </p>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
           {error && (
-            <p style={{ margin: 0, fontSize: 13, color: "#9A3B2E", background: "#F6E4E1", borderRadius: 8, padding: "8px 12px" }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                color: "#9A3B2E",
+                background: "#F6E4E1",
+                borderRadius: 8,
+                padding: "8px 12px",
+              }}
+            >
               {error}
             </p>
           )}
 
           <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-            <Button type="button" variant="ghost" onClick={handleClose} disabled={pending} style={{ flex: 1 }}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleClose}
+              disabled={pending}
+              style={{ flex: 1 }}
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="accent" loading={pending} disabled={pending} style={{ flex: 2 }}>
+            <Button
+              type="submit"
+              variant="accent"
+              loading={pending}
+              disabled={pending}
+              style={{ flex: 2 }}
+            >
               Send invitation
             </Button>
           </div>
