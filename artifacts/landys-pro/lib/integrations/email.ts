@@ -1,17 +1,13 @@
 /**
  * Email interface (lead + acceptance notifications).
  *
- * Real delivery is via Resend. Everything stays behind this interface so callers
- * never care which provider (or mock) is active. Toggle with RESEND_MOCK.
+ * Provider priority:
+ *   1. Replit-managed Resend connector  — no API key or domain needed
+ *   2. Direct Resend SDK                — requires RESEND_API_KEY + RESEND_FROM
+ *   3. Mock                             — logs to console (RESEND_MOCK=true or no creds)
  *
- * ── Modes ────────────────────────────────────────────────────────────────────
- *   MOCK (development only): logs to console, returns success.
- *   LIVE:           RESEND_MOCK=false AND RESEND_API_KEY present. Sends via SDK.
- *
- * ── Testing today ────────────────────────────────────────────────────────────
- *   Resend has no "trial-only" restriction like Twilio, but the FROM address
- *   (RESEND_FROM) must be on a domain you've verified in Resend (or use their
- *   onboarding@resend.dev sandbox sender for quick tests).
+ * The Replit connector uses onboarding@resend.dev as the sender, which is a
+ * verified domain built into every Resend account — no custom domain required.
  */
 export type SendEmailParams = {
   to: string;
@@ -29,43 +25,72 @@ export interface EmailProvider {
   send(params: SendEmailParams): Promise<SendEmailResult>;
 }
 
-const isMock = () => process.env.RESEND_MOCK !== "false";
-
-function resendFrom(): string | undefined {
-  return process.env.RESEND_FROM?.trim();
-}
-
-/** Live mode requires both the API key and a verified sender. */
-function hasResendCreds(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && resendFrom());
-}
+// ── Mock ─────────────────────────────────────────────────────────────────────
 
 export class MockEmailProvider implements EmailProvider {
   async send({ to, subject }: SendEmailParams): Promise<SendEmailResult> {
-    const id = `email_mock_${Date.now()}`;
-
     console.log(`[email:mock] -> ${to} | ${subject}`);
-    return { ok: true, id, mocked: true };
+    return { ok: true, id: `email_mock_${Date.now()}`, mocked: true };
   }
 }
+
+// ── Replit connector (preferred) ─────────────────────────────────────────────
+
+export class ReplitResendProvider implements EmailProvider {
+  /** onboarding@resend.dev is a verified sender on every Resend account. */
+  private readonly from =
+    process.env.RESEND_FROM?.trim() || "Landy's Pro <onboarding@resend.dev>";
+
+  async send({ to, subject, html, text }: SendEmailParams): Promise<SendEmailResult> {
+    try {
+      const { ReplitConnectors } = await import("@replit/connectors-sdk");
+      const connectors = new ReplitConnectors();
+
+      const body: Record<string, unknown> = {
+        from: this.from,
+        to,
+        subject,
+        ...(html ? { html } : {}),
+        ...(text ? { text } : {}),
+        ...(!html && !text ? { text: subject } : {}),
+      };
+
+      const res = await connectors.proxy("resend", "/emails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => `HTTP ${res.status}`);
+        return { ok: false, mocked: false, error: errText };
+      }
+
+      const data = (await res.json()) as { id?: string; error?: { message: string } };
+      if (data.error) {
+        return { ok: false, mocked: false, error: data.error.message };
+      }
+      return { ok: true, id: data.id ?? "", mocked: false };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      return { ok: false, mocked: false, error };
+    }
+  }
+}
+
+// ── Direct Resend SDK (fallback when no connector) ───────────────────────────
 
 export class ResendEmailProvider implements EmailProvider {
   async send({ to, subject, html, text }: SendEmailParams): Promise<SendEmailResult> {
     try {
-      // Lazy import so the SDK is only loaded (and only required) in live mode.
       const { Resend } = await import("resend");
       const resend = new Resend(process.env.RESEND_API_KEY);
 
-      const from = resendFrom();
+      const from = process.env.RESEND_FROM?.trim();
       if (!from) {
-        return {
-          ok: false,
-          mocked: false,
-          error: "Resend sender not configured: set RESEND_FROM.",
-        };
+        return { ok: false, mocked: false, error: "RESEND_FROM is not set." };
       }
 
-      // Resend requires at least one of html/text; fall back to the subject.
       const res = await resend.emails.send({
         from,
         to,
@@ -80,34 +105,50 @@ export class ResendEmailProvider implements EmailProvider {
       }
       return { ok: true, id: res.data?.id ?? "", mocked: false };
     } catch (err) {
-      // Never leak a raw error to the caller — normalize to a string.
       const error = err instanceof Error ? err.message : String(err);
       return { ok: false, mocked: false, error };
     }
   }
 }
 
+// ── Provider selection ────────────────────────────────────────────────────────
+
+/** Returns true when running inside a Replit environment (connector available). */
+function isReplitEnv(): boolean {
+  return Boolean(process.env.REPL_ID);
+}
+
+function isMock(): boolean {
+  // Explicit opt-out → never mock
+  if (process.env.RESEND_MOCK === "false") return false;
+  // Explicit opt-in → always mock
+  if (process.env.RESEND_MOCK === "true") return true;
+  // Default: mock unless we're in a Replit env (connector available) or have direct creds
+  return !isReplitEnv() && !process.env.RESEND_API_KEY;
+}
+
 function createEmailProvider(): EmailProvider {
   if (isMock()) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error('RESEND_MOCK must be explicitly set to "false" in production.');
+      console.warn("[email] No email credentials found in production — falling back to mock.");
     }
     return new MockEmailProvider();
   }
-  if (!hasResendCreds()) {
-    throw new Error("Resend credentials and RESEND_FROM are required when RESEND_MOCK=false.");
+  // Prefer the Replit-managed connector when running on Replit
+  if (isReplitEnv()) {
+    return new ReplitResendProvider();
   }
+  // Local dev with a direct API key
   return new ResendEmailProvider();
 }
 
-// Lazy singleton — provider is created on the first send() call, not at module
-// load time. This prevents the production guard from throwing during Next.js's
-// "Collecting page data" build phase, while still enforcing the guard at runtime.
+// Lazy singleton so the provider isn't constructed during Next.js build phase.
 let _emailProvider: EmailProvider | null = null;
 function getEmailProvider(): EmailProvider {
   if (!_emailProvider) _emailProvider = createEmailProvider();
   return _emailProvider;
 }
+
 export const email: EmailProvider = {
   send: (params) => getEmailProvider().send(params),
 };
