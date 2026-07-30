@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { UserPlus, MoreHorizontal, RefreshCw, Ban, CheckCircle2, Trash2, Crown, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,53 @@ function RoleBadge({ role }: { role: "OWNER" | "ADMIN" }) {
 
 // ─── Row action menu ───────────────────────────────────────────────────────────
 
+/** Shared portal dropdown — renders into document.body so table overflow never clips it. */
+function ActionMenu({
+  open,
+  anchorRef,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const [coords, setCoords] = useState({ top: 0, right: 0 });
+
+  useEffect(() => {
+    if (open && anchorRef.current) {
+      const r = anchorRef.current.getBoundingClientRect();
+      setCoords({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    }
+  }, [open, anchorRef]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <>
+      <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={onClose} />
+      <div
+        style={{
+          position: "fixed",
+          top: coords.top,
+          right: coords.right,
+          zIndex: 9999,
+          minWidth: 200,
+          background: "var(--card)",
+          border: "1px solid var(--line)",
+          borderRadius: 12,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
+          padding: "4px 0",
+        }}
+      >
+        {children}
+      </div>
+    </>,
+    document.body,
+  );
+}
+
 function MemberActions({
   member,
   onDone,
@@ -119,6 +167,7 @@ function MemberActions({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   if (member.isSelf) {
     return <span style={{ fontSize: 12, color: "var(--ink3)" }}>You</span>;
@@ -135,11 +184,12 @@ function MemberActions({
   }
 
   return (
-    <div style={{ position: "relative", display: "inline-block" }}>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       {msg && (
-        <span style={{ marginRight: 8, fontSize: 12, color: "#9A3B2E" }}>{msg}</span>
+        <span style={{ fontSize: 12, color: "#9A3B2E", whiteSpace: "nowrap" }}>{msg}</span>
       )}
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={pending}
@@ -151,7 +201,7 @@ function MemberActions({
           height: 32,
           borderRadius: 8,
           border: "1px solid var(--line)",
-          background: "var(--card)",
+          background: open ? "var(--surface)" : "var(--card)",
           cursor: pending ? "wait" : "pointer",
           color: "var(--ink2)",
         }}
@@ -159,68 +209,47 @@ function MemberActions({
       >
         <MoreHorizontal style={{ width: 15, height: 15 }} />
       </button>
-      {open && (
-        <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 40 }}
-            onClick={() => setOpen(false)}
-          />
-          <div
-            style={{
-              position: "absolute",
-              right: 0,
-              top: "calc(100% + 4px)",
-              zIndex: 50,
-              minWidth: 190,
-              background: "var(--card)",
-              border: "1px solid var(--line)",
-              borderRadius: 12,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-              padding: "4px 0",
-            }}
-          >
-            {member.status === "active" ? (
-              <>
-                <MenuItem
-                  icon={<Ban style={{ width: 14, height: 14 }} />}
-                  label="Disable account"
-                  danger
-                  onClick={() => act(() => disableAdmin(member.id))}
-                />
-                {member.role === "ADMIN" ? (
-                  <MenuItem
-                    icon={<Crown style={{ width: 14, height: 14 }} />}
-                    label="Promote to Owner"
-                    onClick={() => act(() => changeAdminRole(member.id, "OWNER"))}
-                  />
-                ) : (
-                  <MenuItem
-                    icon={<Shield style={{ width: 14, height: 14 }} />}
-                    label="Change to Admin"
-                    onClick={() => act(() => changeAdminRole(member.id, "ADMIN"))}
-                  />
-                )}
-              </>
+      <ActionMenu open={open} anchorRef={btnRef} onClose={() => setOpen(false)}>
+        {member.status === "active" ? (
+          <>
+            <MenuItem
+              icon={<Ban style={{ width: 14, height: 14 }} />}
+              label="Disable account"
+              danger
+              onClick={() => act(() => disableAdmin(member.id))}
+            />
+            {member.role === "ADMIN" ? (
+              <MenuItem
+                icon={<Crown style={{ width: 14, height: 14 }} />}
+                label="Promote to Owner"
+                onClick={() => act(() => changeAdminRole(member.id, "OWNER"))}
+              />
             ) : (
               <MenuItem
-                icon={<CheckCircle2 style={{ width: 14, height: 14 }} />}
-                label="Enable account"
-                onClick={() => act(() => enableAdmin(member.id))}
+                icon={<Shield style={{ width: 14, height: 14 }} />}
+                label="Change to Admin"
+                onClick={() => act(() => changeAdminRole(member.id, "ADMIN"))}
               />
             )}
-            <div style={{ height: 1, background: "var(--line)", margin: "4px 0" }} />
-            <MenuItem
-              icon={<Trash2 style={{ width: 14, height: 14 }} />}
-              label="Remove administrator"
-              danger
-              onClick={() => {
-                if (!confirm(`Remove ${member.name} from the team? This cannot be undone.`)) return;
-                act(() => removeAdmin(member.id));
-              }}
-            />
-          </div>
-        </>
-      )}
+          </>
+        ) : (
+          <MenuItem
+            icon={<CheckCircle2 style={{ width: 14, height: 14 }} />}
+            label="Enable account"
+            onClick={() => act(() => enableAdmin(member.id))}
+          />
+        )}
+        <div style={{ height: 1, background: "var(--line)", margin: "4px 0" }} />
+        <MenuItem
+          icon={<Trash2 style={{ width: 14, height: 14 }} />}
+          label="Remove administrator"
+          danger
+          onClick={() => {
+            if (!confirm(`Remove ${member.name} from the team? This cannot be undone.`)) return;
+            act(() => removeAdmin(member.id));
+          }}
+        />
+      </ActionMenu>
     </div>
   );
 }
@@ -228,6 +257,7 @@ function MemberActions({
 function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   function act(fn: () => Promise<{ ok: boolean; message?: string }>) {
     setOpen(false);
@@ -238,8 +268,9 @@ function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () =
   }
 
   return (
-    <div style={{ position: "relative", display: "inline-block" }}>
+    <div style={{ display: "inline-flex", alignItems: "center" }}>
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={pending}
@@ -251,7 +282,7 @@ function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () =
           height: 32,
           borderRadius: 8,
           border: "1px solid var(--line)",
-          background: "var(--card)",
+          background: open ? "var(--surface)" : "var(--card)",
           cursor: pending ? "wait" : "pointer",
           color: "var(--ink2)",
         }}
@@ -259,37 +290,19 @@ function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () =
       >
         <MoreHorizontal style={{ width: 15, height: 15 }} />
       </button>
-      {open && (
-        <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
-          <div
-            style={{
-              position: "absolute",
-              right: 0,
-              top: "calc(100% + 4px)",
-              zIndex: 50,
-              minWidth: 190,
-              background: "var(--card)",
-              border: "1px solid var(--line)",
-              borderRadius: 12,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-              padding: "4px 0",
-            }}
-          >
-            <MenuItem
-              icon={<RefreshCw style={{ width: 14, height: 14 }} />}
-              label="Resend invitation"
-              onClick={() => act(() => resendInvite(invite.id))}
-            />
-            <MenuItem
-              icon={<Ban style={{ width: 14, height: 14 }} />}
-              label="Revoke invitation"
-              danger
-              onClick={() => act(() => revokeInvite(invite.id))}
-            />
-          </div>
-        </>
-      )}
+      <ActionMenu open={open} anchorRef={btnRef} onClose={() => setOpen(false)}>
+        <MenuItem
+          icon={<RefreshCw style={{ width: 14, height: 14 }} />}
+          label="Resend invitation"
+          onClick={() => act(() => resendInvite(invite.id))}
+        />
+        <MenuItem
+          icon={<Ban style={{ width: 14, height: 14 }} />}
+          label="Revoke invitation"
+          danger
+          onClick={() => act(() => revokeInvite(invite.id))}
+        />
+      </ActionMenu>
     </div>
   );
 }

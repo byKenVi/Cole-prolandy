@@ -4,9 +4,7 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOwner, getSession } from "@/lib/auth";
-import { email } from "@/lib/integrations/email";
-import { buildAdminInviteEmail } from "@/lib/emails/admin-invite";
-import { appUrl } from "@/lib/app-url";
+import { sendAdminInvitation } from "@/lib/contractor-invitations";
 
 type Result<T = undefined> =
   | { ok: true; data?: T; message?: string }
@@ -67,32 +65,14 @@ export async function inviteAdmin(data: {
     },
   });
 
-  // 4. Resolve inviter name.
-  const inviterName = session.adminUserId
-    ? ((await prisma.adminUser.findUnique({
-        where: { id: session.adminUserId },
-        select: { name: true },
-      }))?.name ?? "An administrator")
-    : "An administrator";
-
-  // 5. Send the email.
-  const inviteUrl = `${appUrl()}/admin/invite?token=${token}`;
-  const emailContent = buildAdminInviteEmail({
-    inviteeName: data.name.trim(),
-    inviterName,
-    role: data.role,
-    inviteUrl,
-    expiresAt,
+  // 4. Send invitation via Clerk (same delivery as contractor invites — no custom domain needed).
+  const sendResult = await sendAdminInvitation({
+    email: normalizedEmail,
+    name: data.name.trim(),
+    token,
   });
 
-  const sendResult = await email.send({
-    to: normalizedEmail,
-    subject: emailContent.subject,
-    html: emailContent.html,
-    text: emailContent.text,
-  });
-
-  // Log audit — include email result note.
+  // Log audit — include send result.
   await prisma.auditLog.create({
     data: {
       actorType: "admin",
@@ -139,28 +119,11 @@ export async function resendInvite(inviteId: string): Promise<Result> {
     data: { token, expiresAt },
   });
 
-  // Resolve inviter name.
-  const inviterName = session.adminUserId
-    ? ((await prisma.adminUser.findUnique({
-        where: { id: session.adminUserId },
-        select: { name: true },
-      }))?.name ?? "An administrator")
-    : "An administrator";
-
-  const inviteUrl = `${appUrl()}/admin/invite?token=${token}`;
-  const emailContent = buildAdminInviteEmail({
-    inviteeName: invite.name,
-    inviterName,
-    role: invite.role,
-    inviteUrl,
-    expiresAt,
-  });
-
-  const sendResult = await email.send({
-    to: invite.email,
-    subject: emailContent.subject,
-    html: emailContent.html,
-    text: emailContent.text,
+  // Re-send via Clerk using the refreshed token.
+  const sendResult = await sendAdminInvitation({
+    email: invite.email,
+    name: invite.name,
+    token,
   });
 
   await prisma.auditLog.create({
