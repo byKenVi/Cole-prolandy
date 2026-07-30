@@ -1,0 +1,153 @@
+# Fix Client Review Issues & Improve UX
+
+During the client demo, several UX and functional issues were identified. Please fix all of them and perform a complete quality review to ensure similar issues do not exist elsewhere in the application.
+
+## 1. Delete Lead Confirmation
+
+### Current issue
+
+When deleting a lead, the success/error message appears outside the confirmation modal, near the delete button.
+
+### Expected behavior
+
+* The confirmation dialog should behave correctly.
+* Success and error messages should appear inside the modal or as a global toast notification.
+* The modal should close only after a successful deletion (or follow the existing UX pattern consistently).
+* Refresh the lead list automatically after deletion.
+* Ensure no UI glitches occur.
+
+---
+
+## 2. Contractor Wallet Top-up Flow
+
+### Current issue
+
+When a contractor tries to purchase a lead without sufficient balance, clicking **Add Funds** does not allow them to continue the purchase seamlessly.
+
+The user must manually navigate back to the Wallet page.
+
+### Expected behavior
+
+Create a frictionless flow.
+
+Example:
+
+1. Contractor selects a lead.
+2. System detects insufficient balance.
+3. Show an "Insufficient Balance" dialog.
+4. Clicking **Add Funds** opens the funding flow immediately.
+5. After successful payment:
+
+   * update the wallet balance,
+   * automatically return to the previous purchase flow,
+   * allow the contractor to complete the purchase without restarting the process.
+
+The user should never have to manually navigate back to continue.
+
+---
+
+## 3. Mobile Responsiveness
+
+Perform a complete responsive audit across the entire application.
+
+Review every page in:
+
+* Contractor Portal
+* Admin Dashboard
+* Authentication pages
+* Wallet
+* Leads
+* Profile
+* Settings
+* All modals
+* Tables
+* Forms
+* Navigation
+* Sidebars
+
+Fix issues including but not limited to:
+
+* Buttons being cut off
+* Overflow
+* Horizontal scrolling
+* Broken layouts
+* Incorrect spacing
+* Modal sizing
+* Table responsiveness
+* Cards overflowing
+* Header issues
+* Navigation issues
+* Floating buttons
+* Forms extending outside the viewport
+* Touch targets too small
+
+Test common breakpoints including:
+
+* 320px
+* 375px
+* 390px
+* 414px
+* 768px
+* 1024px
+
+The application should be fully usable on phones, tablets and desktop.
+
+---
+
+## 4. UI Consistency Review
+
+Review every dialog, confirmation popup and notification.
+
+Ensure:
+
+* Consistent spacing
+* Consistent typography
+* Consistent button styles
+* Proper loading states
+* Proper disabled states
+* Success messages
+* Error handling
+* Empty states
+* No visual regressions
+
+---
+
+## 5. Full QA Pass
+
+Perform a complete QA review of the application.
+
+Verify:
+
+* Every button performs its expected action.
+* Every modal opens and closes correctly.
+* Every API call handles loading, success and failure.
+* No console errors.
+* No broken navigation.
+* No dead links.
+* No duplicate actions.
+* No visual glitches.
+* No layout shifts.
+
+Fix every issue discovered during this review.
+
+---
+
+## 6. Improve Demo Readiness
+
+Review the application from the perspective of a live client demonstration.
+
+Ask yourself for every screen:
+
+* Would this look polished in front of a paying client?
+* Is every interaction smooth?
+* Are there unnecessary clicks?
+* Is the workflow intuitive?
+* Are there any rough edges that could reduce confidence?
+
+Improve anything that feels unfinished, even if it was not explicitly reported.
+
+---
+
+## Expected Result
+
+Deliver a production-ready application with polished UX, seamless navigation, excellent mobile responsiveness, and no obvious bugs during a client demonstration. The goal is to eliminate friction, improve confidence during demos, and ensure the product feels professional and reliable.

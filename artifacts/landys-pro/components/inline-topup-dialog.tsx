@@ -70,13 +70,15 @@ export function InlineTopUpDialog({
           }
         } else if (res.fallbackToCheckout) {
           // Saved card needs cardholder present — redirect to Stripe Checkout.
-          await startTopUp(cents, window.location.origin);
+          // Pass the current page path so the user returns here after payment.
+          await startTopUp(cents, window.location.origin, window.location.pathname + window.location.search);
         } else {
           setError(res.message);
         }
       } else {
         // No saved card → Stripe Checkout (redirect away).
-        await startTopUp(cents, window.location.origin);
+        // Return to this lead page after payment so the user can complete the purchase.
+        await startTopUp(cents, window.location.origin, window.location.pathname + window.location.search);
       }
       setSelectedCents(null);
     });

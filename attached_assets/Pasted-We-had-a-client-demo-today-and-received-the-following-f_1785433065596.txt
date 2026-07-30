@@ -1,0 +1,86 @@
+We had a client demo today and received the following feedback. Please fix every issue below carefully without breaking any existing functionality.
+
+## Goal
+Resolve all reported bugs, improve the user experience, and ensure the application is production-ready.
+
+### 1. Delete Lead confirmation bug
+Current behavior:
+- When deleting a lead, the confirmation/error message appears next to the Delete button instead of inside the confirmation modal.
+
+Expected behavior:
+- The confirmation dialog should behave correctly.
+- Success and error messages must appear inside the modal (or as a proper toast if that is the application's design system), never beside the button.
+- Verify the entire delete flow works correctly.
+
+---
+
+### 2. Contractor wallet top-up flow
+Current behavior:
+- When a contractor has insufficient balance and tries to purchase a lead, clicking "Add Funds" does not continue the flow.
+- The user has to manually navigate to the Wallet page.
+
+Expected behavior:
+- When balance is insufficient, display an inline "Add Funds" flow directly from the purchase screen.
+- After a successful payment/top-up, automatically refresh the balance.
+- Continue the original purchase flow without forcing the user to manually visit the Wallet page.
+- The experience should be seamless.
+
+---
+
+### 3. Mobile responsiveness
+The contractor interface is not fully responsive.
+
+Please review every contractor page on common mobile widths (320px, 375px, 390px, 414px, 768px).
+
+Fix all responsive issues including:
+- Buttons being cut off
+- Elements overflowing the screen
+- Improper spacing
+- Broken layouts
+- Text overflow
+- Horizontal scrolling
+- Navigation issues
+- Modal sizing
+- Tables/cards rendering correctly
+
+The entire contractor experience should feel polished on mobile devices.
+
+---
+
+### 4. General UI polish
+Perform a complete UI review and fix any visual inconsistencies you discover while implementing the above changes.
+
+Examples:
+- Alignment
+- Padding
+- Margins
+- Overflow
+- Responsive containers
+- Disabled/loading states
+- Button consistency
+
+---
+
+### 5. Regression testing
+Before considering the task complete, verify:
+
+- Lead creation
+- Lead deletion
+- Contractor creation
+- Wallet top-up
+- Lead purchase
+- Authentication
+- Desktop layout
+- Tablet layout
+- Mobile layout
+
+Ensure no existing functionality has been broken.
+
+---
+
+### Deliverables
+1. Fix every issue.
+2. Explain the root cause of each bug.
+3. List every modified file.
+4. Summarize all changes.
+5. Report any remaining issues if something cannot be fully resolved.

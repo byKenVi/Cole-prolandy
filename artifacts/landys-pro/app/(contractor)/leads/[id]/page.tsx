@@ -12,8 +12,14 @@ import { formatMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
-export default async function LeadDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function LeadDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ topup?: string }>;
+}) {
+  const [{ id }, { topup }] = await Promise.all([params, searchParams]);
   const session = await getSession();
 
   const match = await prisma.leadMatch.findUnique({
@@ -56,10 +62,22 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
         <ArrowLeft className="h-4 w-4" /> Back to leads
       </Link>
 
+      {/* Post-payment return banner — shown when Stripe redirects back here */}
+      {topup === "success" && (
+        <div className="mb-5 rounded-[12px] bg-[#E7F0E9] px-4 py-3 text-sm font-medium text-[#2F6B4A]">
+          Funds added — your balance has been updated. You can accept this lead now.
+        </div>
+      )}
+      {topup === "pending" && (
+        <div className="mb-5 rounded-[12px] bg-[#F4EAD3] px-4 py-3 text-sm font-medium text-[#8A6B2E]">
+          Payment received — your balance will update in a few seconds. Refresh the page, then accept.
+        </div>
+      )}
+
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* LEFT — lead card */}
         <div className="order-2 overflow-hidden rounded-[22px] border border-[#EBE3D4] bg-[#FFFDF9] shadow-[0_12px_32px_rgba(58,53,45,0.08)] lg:order-1">
-          <div className="px-8 pb-8 pt-7">
+          <div className="px-5 pb-6 pt-5 md:px-8 md:pb-8 md:pt-7">
             <div className="mb-2 flex items-center gap-[15px]">
               <span className="flex h-14 w-14 flex-none items-center justify-center rounded-[15px] bg-[#F5EEDF]">
                 {iconSrc ? (

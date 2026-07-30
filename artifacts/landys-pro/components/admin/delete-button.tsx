@@ -40,21 +40,33 @@ export function DeleteButton({
         if (redirectTo) router.push(redirectTo);
         router.refresh();
       } else {
+        // Keep armed so the error appears inside the confirmation UI, not
+        // floating next to the initial delete button.
         setMsg(res.message ?? "Could not delete.");
-        setArmed(false);
       }
     });
   }
 
   if (armed) {
     return (
-      <span className="relative z-10 inline-flex items-center gap-2">
-        <Button variant="destructive" size={size} loading={pending} disabled={pending} onClick={run}>
-          {confirmLabel}
-        </Button>
-        <Button variant="ghost" size={size} disabled={pending} onClick={() => setArmed(false)}>
-          Cancel
-        </Button>
+      <span className="relative z-10 inline-flex flex-col items-start gap-1.5">
+        {msg && <span className="max-w-xs text-xs text-danger">{msg}</span>}
+        <span className="inline-flex items-center gap-2">
+          <Button variant="destructive" size={size} loading={pending} disabled={pending} onClick={run}>
+            {confirmLabel}
+          </Button>
+          <Button
+            variant="ghost"
+            size={size}
+            disabled={pending}
+            onClick={() => {
+              setArmed(false);
+              setMsg(null);
+            }}
+          >
+            Cancel
+          </Button>
+        </span>
       </span>
     );
   }
@@ -67,7 +79,6 @@ export function DeleteButton({
           {label}
         </span>
       </Button>
-      {msg && <span className="max-w-xs text-xs text-danger">{msg}</span>}
     </span>
   );
 }

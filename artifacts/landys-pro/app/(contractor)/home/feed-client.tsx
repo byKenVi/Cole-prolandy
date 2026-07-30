@@ -89,20 +89,20 @@ export function ContractorFeed({
             {totalOpen} open {totalOpen === 1 ? "job" : "jobs"} matched to your trade
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <label className="flex h-[42px] min-w-[230px] flex-1 items-center gap-[9px] rounded-[12px] border border-[#E6DFD1] bg-white px-[15px] md:flex-none">
-            <Search className="h-[17px] w-[17px] text-[#8A7E68]" strokeWidth={1.8} aria-hidden />
+        <div className="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
+          <label className="flex h-[42px] min-w-0 flex-1 items-center gap-[9px] rounded-[12px] border border-[#E6DFD1] bg-white px-[15px] md:w-[230px] md:flex-none">
+            <Search className="h-[17px] w-[17px] flex-none text-[#8A7E68]" strokeWidth={1.8} aria-hidden />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search jobs or towns"
               aria-label="Search jobs or towns"
-              className="w-full border-none bg-transparent text-[14px] text-[#3A352D] outline-none placeholder:text-[#8A7E68]"
+              className="min-w-0 flex-1 border-none bg-transparent text-[14px] text-[#3A352D] outline-none placeholder:text-[#8A7E68]"
             />
           </label>
           {totalOpen > 0 && (
-            <span className="inline-flex h-[42px] items-center gap-[7px] whitespace-nowrap rounded-[12px] bg-[#F4EAD3] px-[14px] text-[13px] font-semibold text-[#8A6B2E]">
+            <span className="inline-flex h-[42px] flex-none items-center gap-[7px] whitespace-nowrap rounded-[12px] bg-[#F4EAD3] px-[14px] text-[13px] font-semibold text-[#8A6B2E]">
               <span className="h-[7px] w-[7px] rounded-full bg-[#C0803C]" />
               {totalOpen} new
             </span>

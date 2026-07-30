@@ -37,6 +37,24 @@ function publicOrigin(req: NextRequest): string {
  * ⚠️ In REAL / production mode this never credits — money and cards come from
  * the verified Stripe webhook only.
  */
+/**
+ * Validate a `returnTo` query param so we never redirect to an external URL.
+ * Must start with "/" and not be a protocol-relative URL ("//...").
+ */
+function safeReturnPath(val: string | null): string | null {
+  if (!val) return null;
+  const decoded = decodeURIComponent(val);
+  if (!decoded.startsWith("/") || decoded.startsWith("//")) return null;
+  // Strip any existing topup param so we can set our own.
+  try {
+    const dummy = new URL(decoded, "https://x");
+    dummy.searchParams.delete("topup");
+    return dummy.pathname + (dummy.search ? dummy.search : "");
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const contractorId = url.searchParams.get("contractorId");
@@ -44,21 +62,32 @@ export async function GET(req: NextRequest) {
   const pi = url.searchParams.get("pi");
   const pm = url.searchParams.get("pm");
   const isSetup = url.searchParams.get("setup") === "1";
+  const returnPath = safeReturnPath(url.searchParams.get("returnTo"));
   const isMock = process.env.STRIPE_MOCK !== "false";
   const isProd =
     process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
 
-  const walletUrl = new URL("/wallet", publicOrigin(req));
+  const origin = publicOrigin(req);
+  const walletUrl = new URL("/wallet", origin);
+
+  // Helper: build the final redirect target, preferring returnPath when present.
+  function makeRedirect(status: "success" | "pending" | "card_saved" | "card_pending" | "error") {
+    if (returnPath && status !== "error") {
+      const dest = new URL(returnPath, origin);
+      dest.searchParams.set("topup", status);
+      return dest;
+    }
+    walletUrl.searchParams.set("topup", status);
+    return walletUrl;
+  }
 
   // Fail closed: never mint money from a browser redirect in production.
   if (!isMock || isProd) {
-    walletUrl.searchParams.set("topup", isSetup ? "card_pending" : "pending");
-    return NextResponse.redirect(walletUrl);
+    return NextResponse.redirect(makeRedirect(isSetup ? "card_pending" : "pending"));
   }
 
   if (!contractorId) {
-    walletUrl.searchParams.set("topup", "error");
-    return NextResponse.redirect(walletUrl);
+    return NextResponse.redirect(makeRedirect("error"));
   }
 
   if (isSetup) {
@@ -86,14 +115,12 @@ export async function GET(req: NextRequest) {
         metadata: { paymentMethodId, mocked: true, cardBrand: "visa", cardLast4: "4242" },
       },
     });
-    walletUrl.searchParams.set("topup", "card_saved");
     revalidateContractorShell();
-    return NextResponse.redirect(walletUrl);
+    return NextResponse.redirect(makeRedirect("card_saved"));
   }
 
   if (!pi || !Number.isFinite(amountCents) || amountCents <= 0) {
-    walletUrl.searchParams.set("topup", "error");
-    return NextResponse.redirect(walletUrl);
+    return NextResponse.redirect(makeRedirect("error"));
   }
 
   try {
@@ -139,12 +166,10 @@ export async function GET(req: NextRequest) {
     const isDuplicate =
       typeof e === "object" && e !== null && "code" in e && (e as { code?: string }).code === "P2002";
     if (!isDuplicate) {
-      walletUrl.searchParams.set("topup", "error");
-      return NextResponse.redirect(walletUrl);
+      return NextResponse.redirect(makeRedirect("error"));
     }
   }
 
-  walletUrl.searchParams.set("topup", "success");
   revalidateContractorShell();
-  return NextResponse.redirect(walletUrl);
+  return NextResponse.redirect(makeRedirect("success"));
 }

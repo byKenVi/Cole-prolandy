@@ -40,7 +40,7 @@ function resolveBaseUrl(clientOrigin: string | null | undefined): string {
  * client. The wallet is credited later, only by the webhook (real mode) or the
  * idempotent mock-complete route (mock mode), never on this call.
  */
-export async function startTopUp(amountCents: number, clientOrigin?: string) {
+export async function startTopUp(amountCents: number, clientOrigin?: string, returnTo?: string) {
   const contractorId = await requireContractorId();
   const check = validateTopUpAmountCents(amountCents);
   if (!check.ok) throw new Error(check.message);
@@ -51,13 +51,23 @@ export async function startTopUp(amountCents: number, clientOrigin?: string) {
   });
 
   const base = resolveBaseUrl(clientOrigin);
+
+  // Build the success URL. If the caller supplies a `returnTo` path (e.g. the
+  // lead detail page the contractor was on), thread it through so the complete
+  // route can redirect back there instead of always going to /wallet.
+  const successBase = `/wallet/topup/complete?contractorId=${contractorId}`;
+  const successPath =
+    returnTo && returnTo.startsWith("/")
+      ? `${successBase}&returnTo=${encodeURIComponent(returnTo)}`
+      : successBase;
+
   const { checkoutUrl, customerId } = await payments.createTopUpCheckout({
     contractorId,
     amountCents: check.amountCents,
     stripeCustomerId: contractor?.stripeCustomerId ?? null,
     contractorEmail: contractor?.email ?? null,
     contractorName: contractor?.name ?? null,
-    successUrl: `${base}/wallet/topup/complete?contractorId=${contractorId}`,
+    successUrl: `${base}${successPath}`,
     cancelUrl: `${base}/wallet`,
     metadata: { contractorId },
   });
