@@ -1,0 +1,164 @@
+# Add Team Management & Admin Invitation System
+
+Implement a complete **Team Management** feature so administrators no longer need to be manually added through environment secrets.
+
+## Goal
+
+Replace the current hardcoded admin email mechanism with a secure invitation workflow.
+
+## New Team Management page
+
+Create a new **Settings → Team** (or **Administration → Team**) page.
+
+The page must display:
+
+* List of all administrators.
+* Name.
+* Email.
+* Role.
+* Status:
+
+  * Active
+  * Invitation Pending
+  * Disabled
+* Date invited.
+* Last login (if available).
+
+## Invite Administrator
+
+Add an **Invite Administrator** button.
+
+When clicked, open a modal containing:
+
+* Full Name
+* Email
+* Role (default: Admin)
+
+Validation:
+
+* Email must be valid.
+* Email cannot already belong to an active admin.
+* If an invitation already exists and is still pending, prevent duplicates.
+
+## Invitation Workflow
+
+When an invitation is submitted:
+
+1. Create a secure, random invitation token.
+2. Store the invitation in the database.
+3. Set an expiration date (7 days).
+4. Mark the invitation as Pending.
+5. Send an invitation email.
+
+The email must contain a secure link such as:
+
+`https://app-domain/admin/invite?token=<secure_token>`
+
+## Invitation Page
+
+Create a dedicated invitation page.
+
+When opening the invitation link:
+
+* Validate the token.
+* Check that it hasn't expired.
+* Check that it hasn't already been used.
+
+If invalid:
+
+Show an appropriate error page.
+
+If valid:
+
+If the invited user does not yet have an account:
+
+* Allow account creation through Clerk.
+* After successful signup, automatically assign the Admin role.
+
+If the user already has a Clerk account:
+
+* Allow them to accept the invitation.
+* Grant the Admin role immediately.
+
+Finally:
+
+* Mark invitation as Accepted.
+* Remove or invalidate the token so it cannot be reused.
+
+## Roles
+
+Introduce proper role management.
+
+Owner / Super Admin
+
+Permissions:
+
+* Invite administrators
+* Disable administrators
+* Remove administrators
+* Change administrator roles
+* View Team page
+
+Admin
+
+Permissions:
+
+* Access the admin dashboard
+* Manage application data
+* Cannot invite administrators
+* Cannot modify administrator roles
+* Cannot remove administrators
+
+Only Owners may manage the Team page.
+
+## Team Actions
+
+For each administrator allow:
+
+* Disable account
+* Enable account
+* Change role (Owner ↔ Admin if business rules allow)
+* Remove administrator
+* Resend invitation (only if invitation is still pending)
+
+Never permanently delete audit history.
+
+## Authentication
+
+Integrate the feature with the existing Clerk authentication.
+
+After accepting an invitation:
+
+* Update Clerk metadata/public metadata with the assigned role.
+* Synchronize the role with the application's database if needed.
+
+Remove the dependency on environment secrets for admin access.
+
+## Security
+
+* Tokens must be cryptographically secure.
+* Tokens expire after 7 days.
+* Tokens are single-use.
+* Only authenticated Owners may invite administrators.
+* Log every invitation, role change, disable/enable action, and removal.
+
+## UX
+
+The experience should feel seamless.
+
+After sending an invitation:
+
+* Show a success toast.
+* Refresh the Team list automatically.
+
+If an invitation expires:
+
+* Display an "Invitation expired" page with an option for the Owner to resend a new invitation.
+
+The UI should match the existing design system and be fully responsive.
+
+## Expected Result
+
+The application should support complete administrator lifecycle management without requiring code changes or environment variable updates whenever a new administrator needs to be added.
+
+Cette approche est **beaucoup plus scalable** et correspond à ce qu'on attend d'un SaaS : le client devient totalement autonome pour gérer son équipe, et tu n'as plus besoin d'intervenir à chaque nouvel administrateur.

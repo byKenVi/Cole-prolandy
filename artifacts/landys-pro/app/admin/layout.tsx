@@ -39,7 +39,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       chargedLeads={chargedLeads}
       userMenu={clerk ? <UserMenu /> : undefined}
       showSignOut={clerk}
-      identity={{ name: adminName, email: session.email ?? undefined }}
+      identity={{
+        name: adminName,
+        email: session.email ?? undefined,
+        adminRole: session.adminRole,
+      }}
+      isOwner={session.adminRole === "owner"}
     >
       {children}
     </AdminShell>

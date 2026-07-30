@@ -31,6 +31,9 @@ const isPublicRoute = createRouteMatcher([
   // the session ticket client-side before any server-side auth.protect() fires.
   // The page itself redirects unauthenticated visitors to /sign-in.
   "/post-auth",
+  // Admin invitation acceptance — must be public so invited users can view
+  // the page before signing in, and Clerk can redirect back after sign-up.
+  "/admin/invite(.*)",
   // FAPI proxy lives on api-server, but if a handshake request is ever
   // forwarded to Next (proxy no-op / misroute), auth.protect() must not 403 it.
   "/api/__clerk(.*)",

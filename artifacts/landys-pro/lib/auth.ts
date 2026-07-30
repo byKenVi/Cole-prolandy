@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
  * The tokenized SMS accept flow is intentionally UNAUTHENTICATED regardless.
  */
 export type Role = "contractor" | "admin";
+export type AdminRole = "owner" | "admin";
 
 export type Session = {
   role: Role;
@@ -26,6 +27,13 @@ export type Session = {
   needsOnboarding: boolean;
   /** True when the linked contractor was soft-deactivated by admin. */
   deactivated: boolean;
+  /**
+   * Sub-role for admin users. "owner" = full team management; "admin" =
+   * dashboard access only. Only set when role === "admin".
+   */
+  adminRole?: AdminRole;
+  /** DB id of the AdminUser record (when role === "admin" in clerk mode). */
+  adminUserId?: string | null;
 };
 
 const COOKIE = {
@@ -112,6 +120,8 @@ async function getDevSession(): Promise<Session> {
       email: "admin@prolandys.com",
       needsOnboarding: false,
       deactivated: false,
+      adminRole: "owner" as AdminRole,
+      adminUserId: null,
     };
   }
 
@@ -146,12 +156,46 @@ async function getClerkSession(): Promise<Session> {
   // the Backend API so admin email matching still works on /post-auth.
   const user = await resolveClerkUser(userId);
   const emails = collectAllEmails(user);
+  const verifiedEmails = collectVerifiedEmails(user);
   const email = emails[0] ?? null;
-  const isAdmin = userIsAdmin(user);
 
-  if (isAdmin) {
+  // ── Admin resolution ──────────────────────────────────────────────────
+  // Priority 1: ADMIN_EMAILS env var → bootstrap Owner in DB on first login.
+  // Priority 2: AdminUser DB record (set by invitation flow).
+  // A disabled AdminUser is not granted admin access.
+  const allowed = adminEmails();
+  const isEnvAdmin =
+    allowed.length > 0 && verifiedEmails.some((e) => allowed.includes(e));
+
+  let dbAdmin: { id: string; role: string; disabledAt: Date | null } | null = null;
+  if (!isEnvAdmin && verifiedEmails.length > 0) {
+    // Check by Clerk userId first (fast path once linked), then by email.
+    dbAdmin = await prisma.adminUser.findFirst({
+      where: {
+        OR: [
+          { clerkUserId: userId },
+          { email: { in: verifiedEmails, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, role: true, disabledAt: true },
+    });
+  }
+
+  if (isEnvAdmin || (dbAdmin && !dbAdmin.disabledAt)) {
+    // Upsert the AdminUser record and track last login.
+    const adminUserRecord = await upsertAdminUser({
+      clerkUserId: userId,
+      email: email ?? verifiedEmails[0] ?? "",
+      user,
+      isEnvOwner: isEnvAdmin,
+      existingId: dbAdmin?.id,
+    });
+
     const jar = await cookies();
     const viewAs = jar.get(COOKIE.viewAs)?.value ?? null;
+    const adminRole: AdminRole =
+      isEnvAdmin || adminUserRecord?.role === "OWNER" ? "owner" : "admin";
+
     return {
       role: "admin",
       userId,
@@ -160,6 +204,8 @@ async function getClerkSession(): Promise<Session> {
       email,
       needsOnboarding: false,
       deactivated: false,
+      adminRole,
+      adminUserId: adminUserRecord?.id ?? null,
     };
   }
 
@@ -195,7 +241,7 @@ async function getClerkSession(): Promise<Session> {
   // Clerk. Phone numbers are not an account-ownership credential.
   // This is the primary onboarding path: the client's team enters contractors,
   // and the contractor simply signs in to adopt their existing profile.
-  const verifiedEmails = collectVerifiedEmails(user);
+  // (verifiedEmails was already collected above for the admin check.)
   const claimed = await claimContractorForClerkUser(userId, verifiedEmails);
 
   if (claimed?.deactivated) {
@@ -258,12 +304,15 @@ export function collectAllEmails(user: ClerkUserLike): string[] {
   return out;
 }
 
-/** Admin authorization has one source: a verified email in ADMIN_EMAILS. */
+/** Admin authorization: ADMIN_EMAILS env var (Owner bootstrap) OR AdminUser DB record. */
 export function userIsAdmin(user: ClerkUserLike): boolean {
   const emails = collectVerifiedEmails(user);
+  if (emails.length === 0) return false;
   const allowed = adminEmails();
-  if (allowed.length === 0 || emails.length === 0) return false;
-  return emails.some((e) => allowed.includes(e));
+  // ADMIN_EMAILS still grants access as owner bootstrap
+  if (allowed.length > 0 && emails.some((e) => allowed.includes(e))) return true;
+  // DB check happens in getClerkSession; this function is a quick pre-check
+  return false;
 }
 
 function collectVerifiedEmails(user: ClerkUserLike): string[] {
@@ -330,6 +379,71 @@ async function auditLink(
   });
 }
 
+/**
+ * Upsert the AdminUser record on every admin login.
+ * - ADMIN_EMAILS users are always upserted as OWNER.
+ * - Invited admins already have a record; we just link their Clerk userId and
+ *   bump lastLoginAt.
+ * Returns the upserted record (id + role).
+ */
+async function upsertAdminUser({
+  clerkUserId,
+  email,
+  user,
+  isEnvOwner,
+  existingId,
+}: {
+  clerkUserId: string;
+  email: string;
+  user: ClerkUserLike;
+  isEnvOwner: boolean;
+  existingId?: string;
+}): Promise<{ id: string; role: string } | null> {
+  try {
+    const name =
+      (user as { firstName?: string; lastName?: string } | null | undefined)
+        ?.firstName
+        ? [
+            (user as { firstName?: string }).firstName,
+            (user as { lastName?: string }).lastName,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        : email.split("@")[0] ?? "Administrator";
+
+    if (existingId) {
+      // Already exists — link Clerk userId if not yet set, update login time.
+      return await prisma.adminUser.update({
+        where: { id: existingId },
+        data: { clerkUserId, lastLoginAt: new Date() },
+        select: { id: true, role: true },
+      });
+    }
+
+    // Upsert by email (handles first login for ADMIN_EMAILS owners).
+    return await prisma.adminUser.upsert({
+      where: { email: email.toLowerCase() },
+      create: {
+        email: email.toLowerCase(),
+        name,
+        role: isEnvOwner ? "OWNER" : "ADMIN",
+        clerkUserId,
+        lastLoginAt: new Date(),
+      },
+      update: {
+        clerkUserId,
+        lastLoginAt: new Date(),
+        // Promote to OWNER if the env var grants ownership.
+        ...(isEnvOwner ? { role: "OWNER" as const } : {}),
+      },
+      select: { id: true, role: true },
+    });
+  } catch {
+    // Non-critical — don't fail the session if the upsert errors.
+    return null;
+  }
+}
+
 // ── Guards ───────────────────────────────────────────────────
 
 export async function requireContractorId(): Promise<string> {
@@ -343,6 +457,14 @@ export async function requireContractorId(): Promise<string> {
 export async function requireAdmin(): Promise<Session> {
   const s = await getSession();
   if (s.role !== "admin") throw new Error("Admin access required.");
+  return s;
+}
+
+/** Only Owners may manage the Team page and invite/modify admins. */
+export async function requireOwner(): Promise<Session> {
+  const s = await getSession();
+  if (s.role !== "admin") throw new Error("Admin access required.");
+  if (s.adminRole !== "owner") throw new Error("Owner access required.");
   return s;
 }
 

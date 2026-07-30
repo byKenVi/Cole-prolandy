@@ -4,3 +4,4 @@
 - [Stripe connector migration](stripe-connector.md) — app uses Replit Stripe connector (conn_stripe_01KY58J6K9QM0DA15ZDFVG0AR6) via lib/integrations/stripe-client.ts; STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET env vars no longer required (connector is primary, env vars are fallback for local dev).
 - [Clerk magic link 403 in proxy setup](clerk-magic-link-proxy.md) — fresh-browser magic link 403 caused by auth.protect() on /post-auth before ticket exchange; fix: add /post-auth to publicRoutes.
 - [Stripe top-up returnTo flow](topup-returnto-flow.md) — startTopUp accepts optional returnTo path; complete route redirects there so user returns to lead page after Stripe Checkout.
+- [Admin public route group](admin-public-route-group.md) — public pages at /admin/* URL must use app/(public)/admin/... route group to escape the admin auth layout; also use useAuth() not /api/ fetches for client-side sign-in detection.

@@ -23,8 +23,14 @@ import { AdminGlobalSearch } from "@/components/admin/global-search";
  * root; only decorative styling stays inline here.
  */
 
-type NavItem = { href: string; label: string; icon: string };
-type AdminIdentity = { name: string; email?: string };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  /** When true, only show if the signed-in admin is an Owner. */
+  ownerOnly?: boolean;
+};
+type AdminIdentity = { name: string; email?: string; adminRole?: "owner" | "admin" };
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: "/admin-icons/dashboard.png" },
@@ -33,24 +39,51 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/finance", label: "Finance", icon: "/admin-icons/finance.png" },
   { href: "/admin/pricing", label: "Pricing", icon: "/admin-icons/pricing.png" },
   { href: "/admin/settings", label: "Settings", icon: "/admin-icons/settings.png" },
+  { href: "/admin/team", label: "Team", icon: "__team__", ownerOnly: true },
 ];
 
 function isActive(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
+/** SVG used for the Team nav item (no PNG available). */
+function TeamIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="9" cy="7" r="3" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      <path d="M21 21v-2a4 4 0 0 0-3-3.85" />
+    </svg>
+  );
+}
+
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link href={item.href} className="admin-navitem" data-active={active} title={item.label}>
       <span className="admin-nav-icon">
-        <Image
-          src={item.icon}
-          alt=""
-          aria-hidden
-          width={26}
-          height={26}
-          className="admin-nav-icon-img"
-        />
+        {item.icon === "__team__" ? (
+          <TeamIcon />
+        ) : (
+          <Image
+            src={item.icon}
+            alt=""
+            aria-hidden
+            width={26}
+            height={26}
+            className="admin-nav-icon-img"
+          />
+        )}
       </span>
       <NavLabel label={item.label} />
     </Link>
@@ -124,6 +157,7 @@ function Sidebar({
   onCloseMobile,
   showSignOut,
   identity,
+  isOwner,
 }: {
   leadRevenue: string;
   chargedLeads: number;
@@ -132,8 +166,10 @@ function Sidebar({
   onCloseMobile: () => void;
   showSignOut?: boolean;
   identity: AdminIdentity;
+  isOwner?: boolean;
 }) {
   const pathname = usePathname();
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner);
   const initials =
     identity.name
       .split(/\s+/)
@@ -189,7 +225,7 @@ function Sidebar({
       </div>
 
       <nav className="admin-nav">
-        {NAV_ITEMS.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
         ))}
       </nav>
@@ -282,7 +318,7 @@ function Sidebar({
                 padding: "3px 6px",
               }}
             >
-              Admin
+              {identity.adminRole === "owner" ? "Owner" : "Admin"}
             </span>
           </p>
           <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "#8FA592" }}>
@@ -375,6 +411,7 @@ export function AdminShell({
   userMenu,
   showSignOut = false,
   identity,
+  isOwner = false,
   children,
 }: {
   initialTheme: AdminTheme;
@@ -384,6 +421,8 @@ export function AdminShell({
   userMenu?: React.ReactNode;
   showSignOut?: boolean;
   identity: AdminIdentity;
+  /** Pass true when the signed-in admin has the Owner role (shows Team nav). */
+  isOwner?: boolean;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
@@ -420,6 +459,7 @@ export function AdminShell({
             onCloseMobile={() => setMobileOpen(false)}
             showSignOut={showSignOut}
             identity={identity}
+            isOwner={isOwner}
           />
           <div className="admin-scrim" aria-hidden onClick={() => setMobileOpen(false)} />
           <div className="admin-content">

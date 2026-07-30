@@ -227,6 +227,64 @@ model PriceTier {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Team / administration
+// ─────────────────────────────────────────────────────────────
+
+enum AdminRole {
+  OWNER // can invite / remove / change roles of other admins
+  ADMIN // full dashboard access; cannot manage team
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+/// Persistent admin user records. Bootstrapped for ADMIN_EMAILS users on
+/// first login (as OWNER); all subsequent admins arrive via AdminInvite.
+model AdminUser {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String
+  role        AdminRole @default(ADMIN)
+  clerkUserId String?   @unique
+  invitedById String?   // null = bootstrapped from ADMIN_EMAILS
+  lastLoginAt DateTime?
+  disabledAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  invitedBy     AdminUser?    @relation("InvitedBy", fields: [invitedById], references: [id])
+  invitedAdmins AdminUser[]   @relation("InvitedBy")
+  sentInvites   AdminInvite[] @relation("SentBy")
+
+  @@index([email])
+  @@index([clerkUserId])
+}
+
+/// Pending/historical invitation tokens.
+model AdminInvite {
+  id          String       @id @default(cuid())
+  email       String
+  name        String
+  role        AdminRole    @default(ADMIN)
+  token       String       @unique @default(cuid())
+  status      InviteStatus @default(PENDING)
+  invitedById String?
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime     @default(now())
+
+  invitedBy AdminUser? @relation("SentBy", fields: [invitedById], references: [id])
+
+  @@index([email])
+  @@index([token])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────
 // Config + audit
 // ─────────────────────────────────────────────────────────────
 

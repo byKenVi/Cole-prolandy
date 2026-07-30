@@ -1037,9 +1037,6 @@ video {
 .min-w-\[200px\] {
   min-width: 200px;
 }
-.min-w-\[230px\] {
-  min-width: 230px;
-}
 .min-w-\[48px\] {
   min-width: 48px;
 }
@@ -1833,6 +1830,9 @@ video {
 .pb-5 {
   padding-bottom: var(--space-5);
 }
+.pb-6 {
+  padding-bottom: var(--space-6);
+}
 .pb-8 {
   padding-bottom: var(--space-8);
 }
@@ -1872,9 +1872,6 @@ video {
 .pt-6 {
   padding-top: var(--space-6);
 }
-.pt-7 {
-  padding-top: 1.75rem;
-}
 .pt-\[18px\] {
   padding-top: 18px;
 }
@@ -1883,9 +1880,6 @@ video {
 }
 .pt-\[2px\] {
   padding-top: 2px;
-}
-.pb-6 {
-  padding-bottom: var(--space-6);
 }
 .text-center {
   text-align: center;
@@ -3813,6 +3807,11 @@ textarea:focus-visible,
     padding: var(--space-10);
   }
 
+  .md\:px-8 {
+    padding-left: var(--space-8);
+    padding-right: var(--space-8);
+  }
+
   .md\:px-\[34px\] {
     padding-left: 34px;
     padding-right: 34px;
@@ -3828,17 +3827,8 @@ textarea:focus-visible,
     padding-bottom: var(--space-8);
   }
 
-  .md\:px-8 {
-    padding-left: var(--space-8);
-    padding-right: var(--space-8);
-  }
-
   .md\:pb-0 {
     padding-bottom: 0px;
-  }
-
-  .md\:pt-\[26px\] {
-    padding-top: 26px;
   }
 
   .md\:pb-8 {
@@ -3847,6 +3837,10 @@ textarea:focus-visible,
 
   .md\:pt-7 {
     padding-top: 1.75rem;
+  }
+
+  .md\:pt-\[26px\] {
+    padding-top: 26px;
   }
 }
 
