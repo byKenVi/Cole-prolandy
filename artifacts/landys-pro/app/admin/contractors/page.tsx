@@ -214,6 +214,7 @@ export default async function AdminContractors({
                 </div>
                 <ContractorRowActions
                   contractorId={c.id}
+                  contractorName={c.name}
                   deactivated={Boolean(c.deactivatedAt)}
                   signedIn={Boolean(c.clerkUserId)}
                 />

@@ -445,8 +445,8 @@ textarea:focus-visible,
 .admin-collapse-btn,
 .admin-drawer-close {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -586,8 +586,8 @@ textarea:focus-visible,
 .admin-hamburger {
   display: none;
   flex: none;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   align-items: center;
   justify-content: center;
   border-radius: 11px;

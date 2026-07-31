@@ -269,12 +269,15 @@ export function LeadsTable({
             display: "flex",
             alignItems: "center",
             gap: 10,
-            height: 40,
+            height: 44,
             padding: "0 14px",
             background: "var(--field)",
             border: "1px solid var(--line)",
             borderRadius: 11,
-            minWidth: 240,
+            // Grow to 240px when there is room, but shrink freely on phones
+            // rather than forcing the toolbar wider than the viewport.
+            flex: "1 1 240px",
+            minWidth: 0,
             marginLeft: "auto",
           }}
         >

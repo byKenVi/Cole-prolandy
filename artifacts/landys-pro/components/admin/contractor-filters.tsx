@@ -85,12 +85,14 @@ export function ContractorFilters({ q, filter }: { q: string; filter: string }) 
           display: "flex",
           alignItems: "center",
           gap: 10,
-          height: 40,
+          height: 44,
           padding: "0 14px",
           background: "var(--field)",
           border: "1px solid var(--line)",
           borderRadius: 11,
-          minWidth: 240,
+          // Prefer 240px, but shrink instead of overflowing on narrow screens.
+          flex: "1 1 240px",
+          minWidth: 0,
           marginLeft: "auto",
         }}
       >

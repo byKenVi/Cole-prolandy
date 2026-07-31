@@ -22,7 +22,10 @@ const TABS: { href: string; label: string; icon: string }[] = [
 export function ContractorTabs() {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-[#E3DAC9] bg-[#3B372F] md:hidden">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-10 border-t border-[#E3DAC9] bg-[#3B372F] md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       <div className="grid grid-cols-4">
         {TABS.map(({ href, label, icon }) => {
           const active =

@@ -56,6 +56,7 @@ export function RevenueHero({
         style={{
           position: "relative",
           display: "flex",
+          flexWrap: "wrap",
           alignItems: "flex-start",
           justifyContent: "space-between",
           gap: 20,
@@ -104,7 +105,10 @@ export function RevenueHero({
                     aria-selected={active}
                     scroll={false}
                     style={{
-                      padding: "5px 10px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      minHeight: 34,
+                      padding: "0 12px",
                       borderRadius: 999,
                       font: "600 11px/1 'Inter'",
                       textDecoration: "none",
@@ -121,7 +125,11 @@ export function RevenueHero({
           <p
             style={{
               margin: "0 0 6px",
-              font: "600 48px/1 var(--display)",
+              // Scales down on phones so a large total never overflows the card.
+              fontFamily: "var(--display)",
+              fontWeight: 600,
+              fontSize: "clamp(32px, 9vw, 48px)",
+              lineHeight: 1,
               letterSpacing: "-.02em",
               color: "#F8F1E2",
               fontVariantNumeric: "tabular-nums",

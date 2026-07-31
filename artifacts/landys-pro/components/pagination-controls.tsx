@@ -131,7 +131,7 @@ function PageLink({
 }) {
   const isAdmin = variant === "admin";
   const baseClass = cn(
-    "inline-flex h-9 items-center gap-1 rounded-[10px] px-3 text-[13px] font-semibold transition-colors",
+    "inline-flex h-11 items-center gap-1 rounded-[10px] px-3.5 text-[13px] font-semibold transition-colors",
     !isAdmin &&
       (disabled
         ? "pointer-events-none border border-[#E6DFD1] bg-[#F7F0E3] text-[#B0A691] opacity-60"
@@ -141,8 +141,8 @@ function PageLink({
     display: "inline-flex",
     alignItems: "center",
     gap: 4,
-    height: 36,
-    padding: "0 12px",
+    height: 44,
+    padding: "0 14px",
     borderRadius: 10,
     font: "600 13px/1 'Inter'",
     textDecoration: "none",
@@ -206,7 +206,7 @@ function PageSizeLinks({
             <span
               key={size}
               className={cn(
-                "inline-flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[12px] font-semibold",
+                "inline-flex h-10 min-w-10 items-center justify-center rounded-md px-2 text-[12px] font-semibold",
                 !isAdmin && "bg-[#F4EAD3] text-[#8A6B2E]",
               )}
               style={
@@ -215,8 +215,8 @@ function PageSizeLinks({
                       background: "var(--goldSoft)",
                       color: "var(--goldSoftFg)",
                       borderRadius: 8,
-                      padding: "0 8px",
-                      font: "600 12px/28px 'Inter'",
+                      padding: "0 10px",
+                      font: "600 12px/40px 'Inter'",
                     }
                   : undefined
               }
@@ -231,7 +231,7 @@ function PageSizeLinks({
             key={size}
             href={href}
             className={cn(
-              "inline-flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[12px] font-medium",
+              "inline-flex h-10 min-w-10 items-center justify-center rounded-md px-2 text-[12px] font-medium",
               !isAdmin && "text-[#8A7E68] hover:bg-[#F7F0E3] hover:text-[#5A4E3E]",
             )}
             style={
@@ -239,8 +239,8 @@ function PageSizeLinks({
                 ? {
                     color: "var(--ink2)",
                     borderRadius: 8,
-                    padding: "0 8px",
-                    font: "500 12px/28px 'Inter'",
+                    padding: "0 10px",
+                    font: "500 12px/40px 'Inter'",
                     textDecoration: "none",
                   }
                 : undefined

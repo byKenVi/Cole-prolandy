@@ -140,7 +140,7 @@ export function PricingGroup({
             disabled={pending}
             className="pricing-save-btn"
             style={{
-              height: 38,
+              minHeight: 44,
               padding: "0 18px",
               background: "var(--sageFg)",
               color: "#fff",

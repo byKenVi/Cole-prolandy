@@ -14,11 +14,11 @@ export function ViewAsButton({ contractorId }: { contractorId: string }) {
       onClick={() => startTransition(() => viewAsContractor(contractorId))}
       title="View as this contractor"
       style={{
-        height: 34,
-        padding: "0 12px",
+        minHeight: 44,
+        padding: "0 14px",
         background: "var(--field)",
         border: "1px solid var(--fieldLine)",
-        borderRadius: 9,
+        borderRadius: 10,
         font: "600 12px/1 'Inter'",
         color: "var(--ink)",
         cursor: pending ? "wait" : "pointer",

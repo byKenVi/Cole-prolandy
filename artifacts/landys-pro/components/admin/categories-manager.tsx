@@ -18,6 +18,8 @@ import {
   type IconKey,
 } from "@/lib/project-icons";
 import { TrashIcon } from "@/components/admin/trash-icon";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { dollarsToCents } from "@/lib/money";
 
 type Category = {
@@ -113,11 +115,11 @@ function IconPreview({ icon }: { icon: string }) {
 }
 
 const smallBtn: React.CSSProperties = {
-  height: 34,
-  padding: "0 13px",
+  minHeight: 44,
+  padding: "0 14px",
   background: "var(--field)",
   border: "1px solid var(--fieldLine)",
-  borderRadius: 9,
+  borderRadius: 10,
   font: "600 12px/1 'Inter'",
   color: "var(--ink)",
   cursor: "pointer",
@@ -145,6 +147,8 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
+  const toast = useToast();
   const deferredQuery = useDeferredValue(query);
   const validNewPrices = newPrices.every((price) => dollarsToCents(price) >= 100);
 
@@ -210,7 +214,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="New project name (e.g. Culvert Install)"
-            style={{ ...inputStyle, flex: 1, minWidth: 200 }}
+            style={{ ...inputStyle, flex: "1 1 200px", minWidth: 0 }}
           />
           <button
             type="button"
@@ -360,12 +364,13 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
               <div
                 style={{
                   display: "flex",
+                  flexWrap: "wrap",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  gap: 14,
+                  gap: 12,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 180px" }}>
                   <span
                     style={{
                       width: 40,
@@ -411,16 +416,17 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
                     aria-label={`Delete ${c.name}`}
                     className="a-dangerbtn"
                     disabled={pending}
-                    onClick={() => run(() => deleteContractorType(c.id))}
+                    onClick={() => setPendingDelete(c)}
                     style={{
-                      width: 34,
-                      height: 34,
+                      width: 44,
+                      height: 44,
+                      flex: "none",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       background: "var(--field)",
                       border: "1px solid var(--dangerLine)",
-                      borderRadius: 9,
+                      borderRadius: 10,
                       color: "var(--danger)",
                       cursor: "pointer",
                     }}
@@ -487,6 +493,32 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="Delete this project?"
+        description={
+          pendingDelete
+            ? `“${pendingDelete.name}” and its three price tiers will be removed. ${
+                pendingDelete.contractors > 0
+                  ? `${pendingDelete.contractors} contractor${pendingDelete.contractors === 1 ? "" : "s"} currently assigned to it will lose the assignment.`
+                  : "No contractors are assigned to it."
+              }`
+            : undefined
+        }
+        confirmLabel="Delete project"
+        onConfirm={async () =>
+          pendingDelete
+            ? deleteContractorType(pendingDelete.id)
+            : { ok: false, message: "Nothing selected." }
+        }
+        onSuccess={() => {
+          toast.success(`“${pendingDelete?.name}” deleted.`);
+          setPendingDelete(null);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

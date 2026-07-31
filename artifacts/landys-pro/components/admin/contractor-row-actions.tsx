@@ -9,52 +9,57 @@ import {
   resendContractorInvitation,
 } from "@/app/actions/admin";
 import { TrashIcon } from "@/components/admin/trash-icon";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 
 /**
  * Per-row "View as" + deactivate/reactivate controls for the contractors list.
+ *
+ * Outcomes are reported through toasts and the confirmation dialog rather than
+ * inline text, so a long error never widens the row or pushes buttons off screen.
  */
+const rowBtn: React.CSSProperties = {
+  minHeight: 44,
+  padding: "0 12px",
+  background: "var(--field)",
+  border: "1px solid var(--fieldLine)",
+  borderRadius: 10,
+  font: "600 12px/1 'Inter'",
+  color: "var(--ink)",
+  cursor: "pointer",
+};
+
 export function ContractorRowActions({
   contractorId,
+  contractorName,
   deactivated,
   signedIn,
 }: {
   contractorId: string;
+  contractorName?: string;
   deactivated?: boolean;
   signedIn?: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [pendingView, startView] = useTransition();
-  const [pendingAct, startAct] = useTransition();
   const [pendingInvite, startInvite] = useTransition();
-  const [inviteSent, setInviteSent] = useState(false);
-  const [armed, setArmed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  function run() {
-    setError(null);
-    startAct(async () => {
-      const res = deactivated
-        ? await reactivateContractor(contractorId)
-        : await deactivateContractor(contractorId);
-      if (res.ok) {
-        setArmed(false);
-        router.refresh();
-      } else {
-        setError(res.message ?? "Could not update contractor.");
-        setArmed(false);
-      }
-    });
-  }
+  const who = contractorName ?? "This contractor";
 
   return (
     <div
-      style={{ position: "relative", zIndex: 10, display: "flex", alignItems: "center", gap: 14 }}
+      style={{
+        position: "relative",
+        zIndex: 10,
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "flex-end",
+        alignItems: "center",
+        gap: 8,
+      }}
     >
-      {error && (
-        <span style={{ maxWidth: 220, font: "500 11px/1.3 'Inter'", color: "var(--danger)" }}>
-          {error}
-        </span>
-      )}
       {!signedIn && (
         <button
           type="button"
@@ -62,40 +67,28 @@ export function ContractorRowActions({
           disabled={pendingInvite || deactivated}
           onClick={() =>
             startInvite(async () => {
-              setError(null);
-              setInviteSent(false);
               const res = await resendContractorInvitation(contractorId);
-              if (res.ok) setInviteSent(true);
-              else setError(res.message);
+              if (res.ok) toast.success(`Invitation sent to ${who}.`);
+              else toast.error(res.message);
             })
           }
           style={{
-            height: 34,
-            padding: "0 12px",
-            background: "var(--field)",
-            border: "1px solid var(--fieldLine)",
-            borderRadius: 9,
-            font: "600 12px/1 'Inter'",
-            color: "var(--ink)",
+            ...rowBtn,
             cursor: deactivated ? "not-allowed" : "pointer",
+            opacity: deactivated ? 0.5 : 1,
           }}
         >
-          {pendingInvite ? "Sending…" : inviteSent ? "Invite sent" : "Send invite"}
+          {pendingInvite ? "Sending…" : "Send invite"}
         </button>
       )}
+
       <button
         type="button"
         className="a-ghostbtn"
         disabled={pendingView || deactivated}
         onClick={() => startView(() => viewAsContractor(contractorId))}
         style={{
-          height: 34,
-          padding: "0 12px",
-          background: "var(--field)",
-          border: "1px solid var(--fieldLine)",
-          borderRadius: 9,
-          font: "600 12px/1 'Inter'",
-          color: "var(--ink)",
+          ...rowBtn,
           cursor: deactivated ? "not-allowed" : "pointer",
           opacity: deactivated ? 0.5 : 1,
         }}
@@ -103,70 +96,45 @@ export function ContractorRowActions({
         {pendingView ? "…" : "View as"}
       </button>
 
-      {armed ? (
-        <>
-          <button
-            type="button"
-            className="a-dangerbtn"
-            disabled={pendingAct}
-            onClick={run}
-            style={{
-              height: 38,
-              padding: "0 13px",
-              background: deactivated ? "var(--sage)" : "var(--dangerBg)",
-              border: `1px solid ${deactivated ? "var(--sage)" : "var(--dangerLine)"}`,
-              borderRadius: 10,
-              font: "600 13px/1 'Inter'",
-              color: deactivated ? "var(--sageFg)" : "var(--danger)",
-              cursor: "pointer",
-            }}
-          >
-            {pendingAct ? "Saving…" : deactivated ? "Confirm reactivate" : "Confirm deactivate"}
-          </button>
-          <button
-            type="button"
-            className="a-ghostbtn"
-            disabled={pendingAct}
-            onClick={() => setArmed(false)}
-            style={{
-              height: 38,
-              padding: "0 13px",
-              background: "var(--field)",
-              border: "1px solid var(--fieldLine)",
-              borderRadius: 10,
-              font: "600 13px/1 'Inter'",
-              color: "var(--ink2)",
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-        </>
-      ) : (
-        <button
-          type="button"
-          aria-label={deactivated ? "Reactivate contractor" : "Deactivate contractor"}
-          className="a-dangerbtn"
-          onClick={() => setArmed(true)}
-          style={{
-            height: 38,
-            padding: deactivated ? "0 13px" : 0,
-            width: deactivated ? "auto" : 38,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            background: "var(--field)",
-            border: `1px solid ${deactivated ? "var(--fieldLine)" : "var(--dangerLine)"}`,
-            borderRadius: 10,
-            color: deactivated ? "var(--ink2)" : "var(--danger)",
-            cursor: "pointer",
-            font: "600 12px/1 'Inter'",
-          }}
-        >
-          {deactivated ? "Reactivate" : <TrashIcon size={18} />}
-        </button>
-      )}
+      <button
+        type="button"
+        aria-label={deactivated ? "Reactivate contractor" : "Deactivate contractor"}
+        className="a-dangerbtn"
+        onClick={() => setConfirmOpen(true)}
+        style={{
+          ...rowBtn,
+          padding: deactivated ? "0 13px" : 0,
+          width: deactivated ? "auto" : 44,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          border: `1px solid ${deactivated ? "var(--fieldLine)" : "var(--dangerLine)"}`,
+          color: deactivated ? "var(--ink2)" : "var(--danger)",
+        }}
+      >
+        {deactivated ? "Reactivate" : <TrashIcon size={18} />}
+      </button>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={deactivated ? "Reactivate this contractor?" : "Deactivate this contractor?"}
+        description={
+          deactivated
+            ? `${who} will regain access to the portal and start receiving leads again.`
+            : `${who} will lose portal access and stop receiving new leads. You can reactivate them later.`
+        }
+        confirmLabel={deactivated ? "Reactivate" : "Deactivate"}
+        destructive={!deactivated}
+        onConfirm={() =>
+          deactivated ? reactivateContractor(contractorId) : deactivateContractor(contractorId)
+        }
+        onSuccess={() => {
+          toast.success(deactivated ? `${who} reactivated.` : `${who} deactivated.`);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }
