@@ -3,21 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
-
-export type TopUpStatus = "success" | "pending" | "card_saved" | "card_pending" | "error";
-
-const TOPUP_STATUSES: readonly TopUpStatus[] = [
-  "success",
-  "pending",
-  "card_saved",
-  "card_pending",
-  "error",
-];
-
-/** Narrow an untrusted `?topup=` query value to a known status, or null. */
-export function parseTopUpStatus(value: string | undefined | null): TopUpStatus | null {
-  return TOPUP_STATUSES.find((s) => s === value) ?? null;
-}
+import type { TopUpStatus } from "@/lib/topup-status";
 
 const POLL_INTERVAL_MS = 2500;
 const MAX_POLLS = 12; // ~30s, then stop and tell the user what to do.

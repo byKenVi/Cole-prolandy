@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { TopUp } from "@/components/topup";
-import { TopUpReturnBanner, parseTopUpStatus } from "@/components/topup-return-banner";
+import { TopUpReturnBanner } from "@/components/topup-return-banner";
+import { parseTopUpStatus } from "@/lib/topup-status";
 import { SavedCardPanel } from "@/components/saved-card-panel";
 import { EmptyState } from "@/components/empty-state";
 import { PaginationControls } from "@/components/pagination-controls";

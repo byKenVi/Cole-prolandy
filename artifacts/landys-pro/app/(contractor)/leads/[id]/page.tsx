@@ -5,7 +5,8 @@ import { ArrowLeft, MapPin, Phone, Mail, CheckCircle2, Lock, Hammer } from "luci
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { LeadActions } from "@/components/lead-actions";
-import { TopUpReturnBanner, parseTopUpStatus } from "@/components/topup-return-banner";
+import { TopUpReturnBanner } from "@/components/topup-return-banner";
+import { parseTopUpStatus } from "@/lib/topup-status";
 import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
