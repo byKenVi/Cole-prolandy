@@ -161,50 +161,53 @@ async function getClerkSession(): Promise<Session> {
   const email = emails[0] ?? null;
 
   // ── Admin resolution ──────────────────────────────────────────────────
-  // Priority 1: ADMIN_EMAILS env var → bootstrap Owner in DB on first login.
-  // Priority 2: AdminUser DB record (set by invitation flow).
-  // Priority 3: pending AdminInvite for a verified email → accepted on the spot.
-  // A disabled AdminUser is not granted admin access.
+  // 1. Pending invitations for a verified email are claimed first — the
+  //    invited role is authoritative (an invite to Admin must not become Owner
+  //    just because the address also sits in ADMIN_EMAILS).
+  // 2. Existing AdminUser rows grant access (unless disabled).
+  // 3. ADMIN_EMAILS is a bootstrap only: it creates an Owner when no AdminUser
+  //    and no invitation apply. It never overrides an invited / stored role.
   const allowed = adminEmails();
-  const isEnvAdmin =
+  const isEnvBootstrap =
     allowed.length > 0 && verifiedEmails.some((e) => allowed.includes(e));
 
   let dbAdmin: { id: string; role: string; disabledAt: Date | null } | null = null;
-  if (!isEnvAdmin && verifiedEmails.length > 0) {
-    // Check by Clerk userId first (fast path once linked), then by email.
-    dbAdmin = await prisma.adminUser.findFirst({
-      where: {
-        OR: [
-          { clerkUserId: userId },
-          { email: { in: verifiedEmails, mode: "insensitive" } },
-        ],
-      },
-      select: { id: true, role: true, disabledAt: true },
-    });
 
-    // Priority 3: an unexpired invitation addressed to one of the user's
-    // verified emails is accepted here, on first sign-in. The emailed token
-    // cannot be relied on — see claimPendingAdminInvite.
-    if (!dbAdmin) {
-      const claimed = await claimPendingAdminInvite({ clerkUserId: userId, verifiedEmails });
-      if (claimed) dbAdmin = { ...claimed, disabledAt: null };
+  if (verifiedEmails.length > 0) {
+    // Always try the invitation path first, even for ADMIN_EMAILS addresses —
+    // previously we skipped it when isEnvAdmin was true, which left the invite
+    // PENDING forever and forced Owner on the AdminUser row.
+    const claimed = await claimPendingAdminInvite({ clerkUserId: userId, verifiedEmails });
+    if (claimed) {
+      dbAdmin = { ...claimed, disabledAt: null };
+    } else {
+      dbAdmin = await prisma.adminUser.findFirst({
+        where: {
+          OR: [
+            { clerkUserId: userId },
+            { email: { in: verifiedEmails, mode: "insensitive" } },
+          ],
+        },
+        select: { id: true, role: true, disabledAt: true },
+      });
     }
   }
 
-  if (isEnvAdmin || (dbAdmin && !dbAdmin.disabledAt)) {
-    // Upsert the AdminUser record and track last login.
+  if ((dbAdmin && !dbAdmin.disabledAt) || (isEnvBootstrap && !dbAdmin?.disabledAt)) {
+    // Upsert links Clerk + lastLogin. Pass isEnvOwner only when there is no
+    // AdminUser yet so bootstrap can create the first Owner; never on update.
     const adminUserRecord = await upsertAdminUser({
       clerkUserId: userId,
       email: email ?? verifiedEmails[0] ?? "",
       user,
-      isEnvOwner: isEnvAdmin,
+      isEnvOwner: isEnvBootstrap && !dbAdmin,
       existingId: dbAdmin?.id,
     });
 
     const jar = await cookies();
     const viewAs = jar.get(COOKIE.viewAs)?.value ?? null;
-    const adminRole: AdminRole =
-      isEnvAdmin || adminUserRecord?.role === "OWNER" ? "owner" : "admin";
+    const resolvedRole = adminUserRecord?.role ?? dbAdmin?.role;
+    const adminRole: AdminRole = resolvedRole === "OWNER" ? "owner" : "admin";
 
     return {
       role: "admin",
@@ -215,7 +218,7 @@ async function getClerkSession(): Promise<Session> {
       needsOnboarding: false,
       deactivated: false,
       adminRole,
-      adminUserId: adminUserRecord?.id ?? null,
+      adminUserId: adminUserRecord?.id ?? dbAdmin?.id ?? null,
     };
   }
 
@@ -314,14 +317,13 @@ export function collectAllEmails(user: ClerkUserLike): string[] {
   return out;
 }
 
-/** Admin authorization: ADMIN_EMAILS env var (Owner bootstrap) OR AdminUser DB record. */
+/** Quick check: is this Clerk user in the ADMIN_EMAILS bootstrap list? */
 export function userIsAdmin(user: ClerkUserLike): boolean {
   const emails = collectVerifiedEmails(user);
   if (emails.length === 0) return false;
   const allowed = adminEmails();
-  // ADMIN_EMAILS still grants access as owner bootstrap
   if (allowed.length > 0 && emails.some((e) => allowed.includes(e))) return true;
-  // DB check happens in getClerkSession; this function is a quick pre-check
+  // DB / invitation checks happen in getClerkSession.
   return false;
 }
 
@@ -391,9 +393,8 @@ async function auditLink(
 
 /**
  * Upsert the AdminUser record on every admin login.
- * - ADMIN_EMAILS users are always upserted as OWNER.
- * - Invited admins already have a record; we just link their Clerk userId and
- *   bump lastLoginAt.
+ * - New ADMIN_EMAILS bootstrap (isEnvOwner && no existing row) creates an Owner.
+ * - Existing rows keep their stored role — invitations and Team actions own it.
  * Returns the upserted record (id + role).
  */
 async function upsertAdminUser({
@@ -423,6 +424,7 @@ async function upsertAdminUser({
 
     if (existingId) {
       // Already exists — link Clerk userId if not yet set, update login time.
+      // Role is never changed here; Team actions / invitation claims own it.
       return await prisma.adminUser.update({
         where: { id: existingId },
         data: { clerkUserId, lastLoginAt: new Date() },
@@ -430,7 +432,7 @@ async function upsertAdminUser({
       });
     }
 
-    // Upsert by email (handles first login for ADMIN_EMAILS owners).
+    // First sight of this email: bootstrap Owner from ADMIN_EMAILS, otherwise Admin.
     return await prisma.adminUser.upsert({
       where: { email: email.toLowerCase() },
       create: {
@@ -443,8 +445,6 @@ async function upsertAdminUser({
       update: {
         clerkUserId,
         lastLoginAt: new Date(),
-        // Promote to OWNER if the env var grants ownership.
-        ...(isEnvOwner ? { role: "OWNER" as const } : {}),
       },
       select: { id: true, role: true },
     });

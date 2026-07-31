@@ -40,13 +40,6 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/integrations/email", () => ({
   email: { send: vi.fn().mockResolvedValue({ ok: true }) },
 }));
-vi.mock("@/lib/emails/admin-invite", () => ({
-  buildAdminInviteEmail: vi.fn().mockReturnValue({
-    subject: "test",
-    html: "<p>test</p>",
-    text: "test",
-  }),
-}));
 vi.mock("@/lib/app-url", () => ({ appUrl: vi.fn().mockReturnValue("https://test.example") }));
 
 // Import after mocks are registered.

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { consumeStalePendingInvites } from "@/lib/admin-invites";
 import { TeamPageClient, type TeamMember, type PendingInvite } from "./team-client";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,10 @@ export default async function TeamPage() {
 
   if (session.role !== "admin") redirect("/sign-in");
   if (session.adminRole !== "owner") redirect("/admin");
+
+  // Repair leftover PENDING rows (and wrong Owner badges) left by the old
+  // ADMIN_EMAILS path that skipped invitation claims.
+  await consumeStalePendingInvites().catch(() => undefined);
 
   const [rawMembers, rawInvites] = await Promise.all([
     prisma.adminUser.findMany({
