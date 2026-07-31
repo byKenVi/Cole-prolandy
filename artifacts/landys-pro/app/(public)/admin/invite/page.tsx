@@ -93,10 +93,10 @@ function InvitePageInner() {
     return (
       <InviteCard icon={<CheckCircle2 style={{ color: "#2F6B4A" }} />} title="You've been invited">
         <p style={bodyStyle}>
-          Sign in to accept your invitation and access the Landy's Pro admin dashboard.
+          Sign in to accept your invitation and access the Landy&apos;s Pro admin dashboard.
         </p>
         <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--ink2)" }}>
-          Don't have an account yet? You'll be able to create one on the next screen.
+          Don&apos;t have an account yet? You&apos;ll be able to create one on the next screen.
         </p>
         <Button
           variant="accent"
@@ -125,7 +125,7 @@ function InvitePageInner() {
   return (
     <InviteCard icon={<CheckCircle2 style={{ color: "#2F6B4A" }} />} title="Accept your invitation">
       <p style={bodyStyle}>
-        You've been invited to join the Landy's Pro admin team. Click below to accept.
+        You&apos;ve been invited to join the Landy&apos;s Pro admin team. Click below to accept.
       </p>
       <Button
         variant="accent"

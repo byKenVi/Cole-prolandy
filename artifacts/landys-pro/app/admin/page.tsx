@@ -353,7 +353,9 @@ export default async function AdminDashboard({
                   style={{
                     position: "relative",
                     display: "grid",
-                    gridTemplateColumns: "44px 1fr auto auto",
+                    // Status + price share one wrapping cell so the row degrades
+                    // gracefully instead of overflowing on phones.
+                    gridTemplateColumns: "44px minmax(0,1fr) auto",
                     alignItems: "center",
                     gap: 14,
                     padding: "13px 24px",
@@ -370,21 +372,29 @@ export default async function AdminDashboard({
                       {lead.projectType.contractorType.name}
                     </p>
                   </div>
-                  <span style={{ justifySelf: "start" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                      gap: 10,
+                    }}
+                  >
                     <Chip bg={chip.bg} fg={chip.fg}>
                       {chip.label}
                     </Chip>
-                  </span>
-                  <span
-                    style={{
-                      font: "600 16px/1 var(--display)",
-                      color: "var(--ink)",
-                      fontVariantNumeric: "tabular-nums",
-                      textAlign: "right",
-                    }}
-                  >
-                    {formatMoney(lead.priceCents)}
-                  </span>
+                    <span
+                      style={{
+                        font: "600 16px/1 var(--display)",
+                        color: "var(--ink)",
+                        fontVariantNumeric: "tabular-nums",
+                        textAlign: "right",
+                      }}
+                    >
+                      {formatMoney(lead.priceCents)}
+                    </span>
+                  </div>
                 </div>
               );
             })

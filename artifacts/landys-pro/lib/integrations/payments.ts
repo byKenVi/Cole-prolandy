@@ -122,6 +122,8 @@ class MockPaymentsProvider implements PaymentsProvider {
       `[payments:mock] top-up of ${params.amountCents}c for contractor ${params.contractorId} -> ${paymentIntentId}`,
     );
     const url = new URL(params.successUrl);
+    // Only real Checkout substitutes this placeholder.
+    url.searchParams.delete("session_id");
     url.searchParams.set("mock", "1");
     url.searchParams.set("amountCents", String(params.amountCents));
     url.searchParams.set("pi", paymentIntentId);
@@ -134,6 +136,7 @@ class MockPaymentsProvider implements PaymentsProvider {
 
     console.log(`[payments:mock] card setup for contractor ${params.contractorId} -> ${setupId}`);
     const url = new URL(params.successUrl);
+    url.searchParams.delete("session_id");
     url.searchParams.set("mock", "1");
     url.searchParams.set("setup", "1");
     url.searchParams.set("pm", `pm_mock_${Date.now().toString(36)}`);

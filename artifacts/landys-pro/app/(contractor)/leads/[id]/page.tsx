@@ -5,6 +5,7 @@ import { ArrowLeft, MapPin, Phone, Mail, CheckCircle2, Lock, Hammer } from "luci
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { LeadActions } from "@/components/lead-actions";
+import { TopUpReturnBanner, parseTopUpStatus } from "@/components/topup-return-banner";
 import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
@@ -37,6 +38,7 @@ export default async function LeadDetail({
   }
 
   const { lead, contractor } = match;
+  const topUpStatus = parseTopUpStatus(topup);
   const expired =
     match.status === "EXPIRED" ||
     lead.status === "EXPIRED" ||
@@ -62,16 +64,13 @@ export default async function LeadDetail({
         <ArrowLeft className="h-4 w-4" /> Back to leads
       </Link>
 
-      {/* Post-payment return banner — shown when Stripe redirects back here */}
-      {topup === "success" && (
-        <div className="mb-5 rounded-[12px] bg-[#E7F0E9] px-4 py-3 text-sm font-medium text-[#2F6B4A]">
-          Funds added — your balance has been updated. You can accept this lead now.
-        </div>
-      )}
-      {topup === "pending" && (
-        <div className="mb-5 rounded-[12px] bg-[#F4EAD3] px-4 py-3 text-sm font-medium text-[#8A6B2E]">
-          Payment received — your balance will update in a few seconds. Refresh the page, then accept.
-        </div>
+      {/* Post-payment return — self-refreshes until the credit lands so the
+          contractor can finish the purchase without navigating away. */}
+      {topUpStatus && (
+        <TopUpReturnBanner
+          status={topUpStatus}
+          sufficient={contractor.walletBalanceCents >= lead.priceCents}
+        />
       )}
 
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_340px]">

@@ -114,7 +114,7 @@ export function ContractorFeed({
         <WalletCard cents={walletCents} />
       </div>
 
-      <div className="flex items-center justify-between gap-3 px-5 py-4 md:px-[34px]">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-5 py-4 md:px-[34px]">
         <div
           role="tablist"
           aria-label="Filter leads by tier"
@@ -129,7 +129,7 @@ export function ContractorFeed({
           type="button"
           onClick={() => setSort((s) => (s === "newest" ? "oldest" : "newest"))}
           aria-label={`Sort by date received: ${sort === "newest" ? "newest first" : "oldest first"}. Tap to toggle.`}
-          className="flex h-[38px] flex-none items-center gap-[7px] rounded-[10px] border border-[#E6DFD1] bg-white px-[13px] text-[13px] font-medium text-[#5A4E3E] transition-colors hover:bg-[#F7F0E3]"
+          className="flex h-11 flex-none items-center gap-[7px] rounded-[10px] border border-[#E6DFD1] bg-white px-[13px] text-[13px] font-medium text-[#5A4E3E] transition-colors hover:bg-[#F7F0E3]"
         >
           Sort: {sort === "newest" ? "Newest" : "Oldest"}
           <ChevronDown className="h-[15px] w-[15px]" strokeWidth={1.8} aria-hidden />

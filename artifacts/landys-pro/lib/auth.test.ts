@@ -32,10 +32,21 @@ describe("assertAuthConfigFailClosed (prod fail-closed)", () => {
     expect(() => assertAuthConfigFailClosed()).toThrow();
   });
 
-  it("passes in production when AUTH_MODE is clerk", () => {
+  it("passes in production when AUTH_MODE is clerk and a publishable key is set", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("AUTH_MODE", "clerk");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
     expect(() => assertAuthConfigFailClosed()).not.toThrow();
+  });
+
+  it("throws in production when AUTH_MODE is clerk but no publishable key is set", () => {
+    // authMode() falls back to dev auth without a key, which must never boot in
+    // production — dev auth trusts a self-set lp_role cookie.
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("AUTH_MODE", "clerk");
+    vi.stubEnv("CLERK_PUBLISHABLE_KEY", "");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    expect(() => assertAuthConfigFailClosed()).toThrow(/AUTH_MODE must be "clerk"/);
   });
 
   it("passes in development regardless of AUTH_MODE (dev unchanged)", () => {

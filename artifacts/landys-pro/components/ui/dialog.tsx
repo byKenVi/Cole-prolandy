@@ -53,8 +53,8 @@ const DialogContent = React.forwardRef<
     >
       {children}
       {showClose && (
-        <RadixDialog.Close className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[#8A7E68] transition-colors hover:bg-[#F5EEDF] hover:text-[#3A352D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C0803C]">
-          <X className="h-4 w-4" />
+        <RadixDialog.Close className="absolute right-2.5 top-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[#8A7E68] transition-colors hover:bg-[#F5EEDF] hover:text-[#3A352D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C0803C]">
+          <X className="h-[18px] w-[18px]" />
           <span className="sr-only">Close</span>
         </RadixDialog.Close>
       )}

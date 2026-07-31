@@ -22,25 +22,34 @@ export default function Loading() {
     <div className="admin-fade-up">
       <div style={{ marginBottom: 22 }}>
         <div className="animate-pulse" style={block({ height: 12, width: 180, marginBottom: 12 })} />
-        <div className="animate-pulse" style={block({ height: 34, width: 320, marginBottom: 10 })} />
-        <div className="animate-pulse" style={block({ height: 14, width: 220 })} />
+        <div className="animate-pulse" style={block({ height: 34, maxWidth: 320, marginBottom: 10 })} />
+        <div className="animate-pulse" style={block({ height: 14, maxWidth: 220 })} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 16, marginBottom: 16 }}>
+      <div
+        className="admin-grid-stack"
+        style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 16, marginBottom: 16 }}
+      >
         <div
           className="animate-pulse"
           style={{ height: 250, borderRadius: 22, background: "var(--card2)" }}
         />
         <div style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: 16 }}>
           <div className="animate-pulse" style={{ height: 118, borderRadius: 20, background: "var(--card2)" }} />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div className="animate-pulse" style={{ borderRadius: 20, background: "var(--card2)" }} />
-            <div className="animate-pulse" style={{ borderRadius: 20, background: "var(--card2)" }} />
+          <div
+            className="admin-grid-stack"
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
+          >
+            <div className="animate-pulse" style={{ minHeight: 90, borderRadius: 20, background: "var(--card2)" }} />
+            <div className="animate-pulse" style={{ minHeight: 90, borderRadius: 20, background: "var(--card2)" }} />
           </div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 16 }}>
+      <div
+        className="admin-grid-stack"
+        style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 16 }}
+      >
         <div style={card}>
           <div className="animate-pulse" style={block({ height: 14, width: 120, marginBottom: 10 })} />
           <div className="animate-pulse" style={block({ height: 14, width: 22, borderRadius: 999, marginBottom: 18 })} />

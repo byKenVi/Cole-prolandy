@@ -3,6 +3,10 @@ import { applyWalletTransaction } from "@/lib/domain/wallet";
 import { WalletTransactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { revalidateContractorShell } from "@/lib/revalidate";
+import {
+  verifyAndCreditCheckoutSession,
+  verifyAndPersistSetupSession,
+} from "@/lib/services/topup-verify";
 
 /**
  * Derive the public-facing origin from proxy headers.
@@ -31,11 +35,14 @@ function publicOrigin(req: NextRequest): string {
 }
 
 /**
- * MOCK top-up / card-setup completion. In mock mode Stripe redirects here after
- * a simulated payment or card update.
+ * Top-up / card-setup completion. Stripe redirects the browser here after a
+ * payment (or a simulated one in mock mode).
  *
- * ⚠️ In REAL / production mode this never credits — money and cards come from
- * the verified Stripe webhook only.
+ * In real mode this route never trusts the redirect itself: it asks Stripe
+ * whether the Checkout Session was actually paid before crediting, and shares
+ * the webhook's idempotent credit path so the two can't double-credit. The
+ * webhook remains primary; this is the fallback that keeps a paid contractor
+ * from being left with an uncredited balance when webhook delivery fails.
  */
 /**
  * Validate a `returnTo` query param so we never redirect to an external URL.
@@ -63,6 +70,7 @@ export async function GET(req: NextRequest) {
   const pm = url.searchParams.get("pm");
   const isSetup = url.searchParams.get("setup") === "1";
   const returnPath = safeReturnPath(url.searchParams.get("returnTo"));
+  const sessionId = url.searchParams.get("session_id") ?? "";
   const isMock = process.env.STRIPE_MOCK !== "false";
   const isProd =
     process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
@@ -81,9 +89,43 @@ export async function GET(req: NextRequest) {
     return walletUrl;
   }
 
-  // Fail closed: never mint money from a browser redirect in production.
+  // ── Real Stripe mode ────────────────────────────────────────────────────────
+  // Confirm the outcome with Stripe's API before crediting anything. Without a
+  // session id there is nothing verifiable, so we fall back to "pending" and let
+  // the webhook do its job.
   if (!isMock || isProd) {
-    return NextResponse.redirect(makeRedirect(isSetup ? "card_pending" : "pending"));
+    if (!sessionId || !contractorId) {
+      return NextResponse.redirect(makeRedirect(isSetup ? "card_pending" : "pending"));
+    }
+    try {
+      if (isSetup) {
+        const res = await verifyAndPersistSetupSession({
+          sessionId,
+          expectedContractorId: contractorId,
+        });
+        if (res.status === "ignored") {
+          return NextResponse.redirect(makeRedirect("card_pending"));
+        }
+        revalidateContractorShell();
+        return NextResponse.redirect(makeRedirect("card_saved"));
+      }
+
+      const res = await verifyAndCreditCheckoutSession({
+        sessionId,
+        expectedContractorId: contractorId,
+      });
+      // "duplicate" means the webhook already credited — the balance is correct.
+      if (res.status === "ignored") {
+        return NextResponse.redirect(makeRedirect("pending"));
+      }
+      revalidateContractorShell();
+      return NextResponse.redirect(makeRedirect("success"));
+    } catch (error) {
+      // Stripe unreachable or the key rotated — the webhook is still the
+      // authoritative path, so show "pending" rather than an error.
+      console.error("[topup-complete] Stripe verification failed:", error);
+      return NextResponse.redirect(makeRedirect(isSetup ? "card_pending" : "pending"));
+    }
   }
 
   if (!contractorId) {

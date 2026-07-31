@@ -27,7 +27,7 @@ export function SignOutLink({
     return (
       <span
         className={cn(
-          ICON_ONLY.has(variant) ? "inline-block h-8 w-8" : "inline-block h-9 w-full",
+          ICON_ONLY.has(variant) ? "inline-block h-11 w-11" : "inline-block h-9 w-full",
           className,
         )}
         aria-hidden
@@ -39,11 +39,11 @@ export function SignOutLink({
     variant === "admin"
       ? "flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
       : variant === "adminIcon"
-        ? "inline-flex h-8 w-8 items-center justify-center rounded-full text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
+        ? "inline-flex h-11 w-11 items-center justify-center rounded-full text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
         : variant === "sidebarIcon"
-          ? "inline-flex h-8 w-8 flex-none items-center justify-center rounded-full text-[#9A9084] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
+          ? "inline-flex h-11 w-11 flex-none items-center justify-center rounded-full text-[#9A9084] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
           : variant === "icon"
-            ? "inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#E3DAC9] bg-white text-[#5C5142] transition-colors hover:bg-[#F5EEDF]"
+            ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E3DAC9] bg-white text-[#5C5142] transition-colors hover:bg-[#F5EEDF]"
             : "flex w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[13px] font-semibold text-[#C8BFAE] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]";
 
   return (

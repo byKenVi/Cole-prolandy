@@ -129,17 +129,17 @@ export function LeadFeedCard({ lead }: { lead: FeedLead }) {
       <Link href={`/leads/${lead.matchId}`} className="block p-4 pb-3">
         {head}
       </Link>
-      <div className="flex items-center justify-between gap-3 border-t border-[#F2EBDD] px-4 pb-4 pt-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 border-t border-[#F2EBDD] px-4 pb-4 pt-3">
+        <div className="flex min-w-0 items-center gap-2">
           <TierPill tier={lead.tier} />
           <span className="text-[19px] font-semibold tabular-nums text-[#3A352D]">
             {formatMoney(lead.priceCents)}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-none items-center gap-2">
           <Link
             href={`/leads/${lead.matchId}`}
-            className="inline-flex h-[38px] items-center gap-1 whitespace-nowrap rounded-[10px] border border-[#EAD9BC] bg-[#FBF3E6] px-[13px] text-[13px] font-semibold text-[#9A6E2E] transition-colors hover:border-[#C0803C] hover:bg-[#C0803C] hover:text-white"
+            className="inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-[10px] border border-[#EAD9BC] bg-[#FBF3E6] px-[13px] text-[13px] font-semibold text-[#9A6E2E] transition-colors hover:border-[#C0803C] hover:bg-[#C0803C] hover:text-white"
           >
             View
           </Link>

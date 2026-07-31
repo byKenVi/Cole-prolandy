@@ -1,84 +1,74 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { TrashIcon } from "@/components/admin/trash-icon";
 
 type DeleteResult = { ok: boolean; message?: string };
 
 /**
- * Two-step delete with an inline confirm (no blocking browser dialog).
- * `onDelete` is a bound server action; on success we redirect/refresh, on
- * failure (e.g. blocked for integrity) we surface the message.
+ * Delete action guarded by a modal confirmation.
+ *
+ * Failures render inside the dialog (it stays open); success closes the dialog,
+ * raises a toast and refreshes the list so the removed row disappears without a
+ * manual reload.
  */
 export function DeleteButton({
   onDelete,
   redirectTo,
   label = "Delete",
-  confirmLabel = "Confirm delete",
+  confirmLabel = "Delete",
+  title,
+  description,
+  successMessage,
   size = "sm",
   showTrashIcon = true,
+  destructive = true,
 }: {
   onDelete: () => Promise<DeleteResult>;
   redirectTo?: string;
   label?: string;
   confirmLabel?: string;
+  title?: string;
+  description?: string;
+  successMessage?: string;
   size?: "sm" | "default";
   showTrashIcon?: boolean;
+  destructive?: boolean;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [armed, setArmed] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  function run() {
-    setMsg(null);
-    startTransition(async () => {
-      const res = await onDelete();
-      if (res.ok) {
-        if (redirectTo) router.push(redirectTo);
-        router.refresh();
-      } else {
-        // Keep armed so the error appears inside the confirmation UI, not
-        // floating next to the initial delete button.
-        setMsg(res.message ?? "Could not delete.");
-      }
-    });
-  }
-
-  if (armed) {
-    return (
-      <span className="relative z-10 inline-flex flex-col items-start gap-1.5">
-        {msg && <span className="max-w-xs text-xs text-danger">{msg}</span>}
-        <span className="inline-flex items-center gap-2">
-          <Button variant="destructive" size={size} loading={pending} disabled={pending} onClick={run}>
-            {confirmLabel}
-          </Button>
-          <Button
-            variant="ghost"
-            size={size}
-            disabled={pending}
-            onClick={() => {
-              setArmed(false);
-              setMsg(null);
-            }}
-          >
-            Cancel
-          </Button>
-        </span>
-      </span>
-    );
-  }
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
 
   return (
-    <span className="relative z-10 inline-flex items-center gap-2">
-      <Button variant="outline" size={size} onClick={() => setArmed(true)}>
+    <>
+      <Button variant="outline" size={size} onClick={() => setOpen(true)}>
         <span className="inline-flex items-center gap-1.5">
           {showTrashIcon && <TrashIcon size={16} />}
           {label}
         </span>
       </Button>
-    </span>
+
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={title ?? `${confirmLabel}?`}
+        description={
+          description ??
+          (destructive ? "This action is permanent and cannot be undone." : undefined)
+        }
+        confirmLabel={confirmLabel}
+        destructive={destructive}
+        onConfirm={onDelete}
+        onSuccess={() => {
+          toast.success(successMessage ?? "Deleted successfully.");
+          if (redirectTo) router.push(redirectTo);
+          router.refresh();
+        }}
+      />
+    </>
   );
 }

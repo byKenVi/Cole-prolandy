@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createLandType, updateLandType, deleteLandType } from "@/app/actions/admin";
 import { TrashIcon } from "@/components/admin/trash-icon";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 
 type LandTypeRow = {
   id: string;
@@ -22,7 +24,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 const smallBtn: React.CSSProperties = {
-  height: 36,
+  minHeight: 44,
   borderRadius: 10,
   border: "1px solid var(--fieldLine)",
   background: "var(--field)",
@@ -34,11 +36,13 @@ const smallBtn: React.CSSProperties = {
 
 export function LandTypesManager({ landTypes }: { landTypes: LandTypeRow[] }) {
   const router = useRouter();
+  const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<LandTypeRow | null>(null);
 
   function run(fn: () => Promise<{ ok: boolean; message?: string }>, onOk?: () => void) {
     setError(null);
@@ -120,11 +124,7 @@ export function LandTypesManager({ landTypes }: { landTypes: LandTypeRow[] }) {
                   type="button"
                   disabled={pending || lt.leads > 0}
                   title={lt.leads > 0 ? "Remove leads first" : "Delete"}
-                  onClick={() => {
-                    if (confirm(`Delete land type "${lt.name}"?`)) {
-                      run(() => deleteLandType(lt.id));
-                    }
-                  }}
+                  onClick={() => setPendingDelete(lt)}
                   style={{
                     ...smallBtn,
                     opacity: lt.leads > 0 ? 0.4 : 1,
@@ -162,6 +162,26 @@ export function LandTypesManager({ landTypes }: { landTypes: LandTypeRow[] }) {
           Add
         </button>
       </div>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="Delete this land type?"
+        description={
+          pendingDelete
+            ? `“${pendingDelete.name}” will be removed from the list of land types available on new leads.`
+            : undefined
+        }
+        confirmLabel="Delete land type"
+        onConfirm={async () =>
+          pendingDelete ? deleteLandType(pendingDelete.id) : { ok: false, message: "Nothing selected." }
+        }
+        onSuccess={() => {
+          toast.success("Land type deleted.");
+          setPendingDelete(null);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

@@ -56,10 +56,15 @@ export async function startTopUp(amountCents: number, clientOrigin?: string, ret
   // lead detail page the contractor was on), thread it through so the complete
   // route can redirect back there instead of always going to /wallet.
   const successBase = `/wallet/topup/complete?contractorId=${contractorId}`;
-  const successPath =
+  const withReturn =
     returnTo && returnTo.startsWith("/")
       ? `${successBase}&returnTo=${encodeURIComponent(returnTo)}`
       : successBase;
+  // `{CHECKOUT_SESSION_ID}` is a Stripe template placeholder — it must stay
+  // literal (unencoded braces) so Stripe substitutes the real session id on
+  // redirect. The complete route uses it to confirm payment with Stripe's API
+  // when the webhook hasn't credited yet.
+  const successPath = `${withReturn}&session_id={CHECKOUT_SESSION_ID}`;
 
   const { checkoutUrl, customerId } = await payments.createTopUpCheckout({
     contractorId,
@@ -118,7 +123,7 @@ export async function startCardUpdate(clientOrigin?: string) {
     stripeCustomerId: contractor?.stripeCustomerId ?? null,
     contractorEmail: contractor?.email ?? null,
     contractorName: contractor?.name ?? null,
-    successUrl: `${base}/wallet/topup/complete?contractorId=${contractorId}&setup=1`,
+    successUrl: `${base}/wallet/topup/complete?contractorId=${contractorId}&setup=1&session_id={CHECKOUT_SESSION_ID}`,
     cancelUrl: `${base}/wallet`,
   });
 

@@ -52,15 +52,18 @@ export function ExpiryCountdown({
   variant?: "badge" | "prominent" | "inline";
   className?: string;
 }) {
-  const date = typeof expiresAt === "string" ? new Date(expiresAt) : expiresAt;
-  const [state, setState] = useState<CountdownState>(() => compute(date));
+  // Depend on the timestamp, not a Date object: a string `expiresAt` would build
+  // a new Date on every render and restart the interval each tick.
+  const expiresAtMs =
+    typeof expiresAt === "string" ? new Date(expiresAt).getTime() : expiresAt.getTime();
+  const [state, setState] = useState<CountdownState>(() => compute(new Date(expiresAtMs)));
 
   useEffect(() => {
-    const tick = () => setState(compute(date));
+    const tick = () => setState(compute(new Date(expiresAtMs)));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [date]);
+  }, [expiresAtMs]);
 
   if (variant === "inline") {
     return (

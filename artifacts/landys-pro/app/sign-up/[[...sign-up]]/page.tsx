@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SignUp } from "@clerk/nextjs";
 import { authMode } from "@/lib/auth";
 import { BrandLogo } from "@/components/brand-logo";
@@ -84,12 +85,12 @@ export default function SignUpPage() {
 
         <p className="mt-6 text-xs text-text-muted">
           Already have an account?{" "}
-          <a
+          <Link
             href="/sign-in"
-            className="font-medium text-accent hover:text-accent-hover underline underline-offset-2"
+            className="font-medium text-accent underline underline-offset-2 hover:text-accent-hover"
           >
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
     </div>

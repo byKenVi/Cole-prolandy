@@ -69,6 +69,7 @@ export function PageHeader({
 }) {
   return (
     <div
+      className="admin-page-header"
       style={{
         display: "flex",
         alignItems: "flex-start",
@@ -77,18 +78,18 @@ export function PageHeader({
         marginBottom: 22,
       }}
     >
-      <div>
+      <div style={{ minWidth: 0 }}>
         {kicker && <Kicker>{kicker}</Kicker>}
         <h1
-          className="font-fraunces"
+          className="font-fraunces admin-page-title"
           style={{
             fontWeight: 600,
-            fontSize: titleSize,
-            lineHeight: 1,
+            // Upper bound only — .admin-page-title clamps this down on phones.
+            "--admin-title-max": `${titleSize}px`,
             letterSpacing: "-.015em",
             margin: 0,
             color: "var(--ink)",
-          }}
+          } as React.CSSProperties}
         >
           {title}
         </h1>
@@ -98,7 +99,7 @@ export function PageHeader({
           </p>
         )}
       </div>
-      {action}
+      {action && <div className="admin-page-header-actions">{action}</div>}
     </div>
   );
 }

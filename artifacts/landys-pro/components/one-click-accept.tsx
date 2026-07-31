@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { acceptLeadAction } from "@/app/actions/leads";
 import { InlineTopUpDialog } from "@/components/inline-topup-dialog";
+import { useToast } from "@/components/ui/toast";
 
 /**
  * One-click Accept button for lead feed cards.
@@ -24,32 +25,36 @@ export function OneClickAccept({
   hasSavedCard: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   function handleAccept(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     if (done || pending) return;
-    setError(null);
+    setFailed(false);
     startTransition(async () => {
       const res = await acceptLeadAction(matchId);
       if (res.ok) {
         setDone(true);
+        toast.success("Lead accepted — the landowner's contact is now unlocked.");
         router.refresh();
       } else if (res.code === "INSUFFICIENT_BALANCE") {
         setDialogOpen(true);
       } else {
-        setError(res.message ?? "Something went wrong.");
+        // A tooltip is invisible on touch devices, so surface this as a toast.
+        setFailed(true);
+        toast.error(res.message ?? "We couldn't accept that lead. Please try again.");
       }
     });
   }
 
   if (done) {
     return (
-      <span className="inline-flex h-[38px] items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-[#2F4A3C] px-[15px] text-[13px] font-semibold text-white">
+      <span className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-[#2F4A3C] px-[15px] text-[13px] font-semibold text-white">
         <CheckCircle2 className="h-[14px] w-[14px]" strokeWidth={2.2} aria-hidden />
         Accepted
       </span>
@@ -62,13 +67,12 @@ export function OneClickAccept({
         type="button"
         onClick={handleAccept}
         disabled={pending}
-        title={error ?? undefined}
-        className="inline-flex h-[38px] items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-[#C0803C] px-[15px] text-[13px] font-semibold text-white transition-colors hover:bg-[#A56A2B] disabled:opacity-60"
+        className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-[#C0803C] px-[15px] text-[13px] font-semibold text-white transition-colors hover:bg-[#A56A2B] disabled:opacity-60"
       >
         {pending ? (
           <Loader2 className="h-[14px] w-[14px] animate-spin" aria-hidden />
         ) : null}
-        {pending ? "Accepting…" : error ? "Retry" : "Accept"}
+        {pending ? "Accepting…" : failed ? "Retry" : "Accept"}
       </button>
 
       <InlineTopUpDialog

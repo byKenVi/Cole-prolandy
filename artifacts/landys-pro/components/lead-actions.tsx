@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InlineTopUpDialog } from "@/components/inline-topup-dialog";
+import { useToast } from "@/components/ui/toast";
 import { acceptLeadAction, declineLeadAction } from "@/app/actions/leads";
 import { formatMoney } from "@/lib/money";
 
@@ -24,6 +25,7 @@ export function LeadActions({
   hasSavedCard?: boolean;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [action, setAction] = useState<null | "accept" | "decline">(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export function LeadActions({
     startTransition(async () => {
       const res = await acceptLeadAction(matchId);
       if (res.ok) {
+        toast.success("Lead accepted — the landowner's contact is now unlocked.");
         router.refresh();
       } else if (res.code === "INSUFFICIENT_BALANCE") {
         setTopUpOpen(true);

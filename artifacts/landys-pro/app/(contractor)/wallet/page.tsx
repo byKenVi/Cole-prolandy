@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { TopUp } from "@/components/topup";
+import { TopUpReturnBanner, parseTopUpStatus } from "@/components/topup-return-banner";
 import { SavedCardPanel } from "@/components/saved-card-panel";
 import { EmptyState } from "@/components/empty-state";
 import { PaginationControls } from "@/components/pagination-controls";
@@ -27,6 +28,7 @@ export default async function WalletPage({
   searchParams: Promise<{ topup?: string; page?: string }>;
 }) {
   const { topup, page: pageRaw } = await searchParams;
+  const topUpStatus = parseTopUpStatus(topup);
   const session = await getSession();
   if (!session.contractorId) {
     return (
@@ -62,6 +64,19 @@ export default async function WalletPage({
     take,
   });
 
+  // Lets the return banner stop polling once the top-up it is waiting on has
+  // actually been credited.
+  const justCredited =
+    topUpStatus === "pending"
+      ? (await prisma.walletTransaction.count({
+          where: {
+            ...where,
+            type: "TOPUP",
+            createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+          },
+        })) > 0
+      : false;
+
   return (
     <div className="flex min-h-full flex-col">
       <header className="border-b border-[#EDE4D3] px-5 pb-5 pt-6 md:px-[34px] md:pt-[26px]">
@@ -74,18 +89,8 @@ export default async function WalletPage({
       </header>
 
       <div className="flex-1 px-5 py-6 md:px-[34px]">
-        {topup === "success" && <Banner tone="ok">Funds added successfully.</Banner>}
-        {topup === "card_saved" && <Banner tone="ok">Card saved. You can update it anytime.</Banner>}
-        {topup === "card_pending" && (
-          <Banner tone="info">Card update received — it will show as saved once Stripe confirms.</Banner>
-        )}
-        {topup === "pending" && (
-          <Banner tone="info">
-            Payment received — your balance updates in a few seconds once the card payment confirms.
-          </Banner>
-        )}
-        {topup === "error" && (
-          <Banner tone="err">Top-up could not be completed. Please try again.</Banner>
+        {topUpStatus && (
+          <TopUpReturnBanner status={topUpStatus} sufficient={justCredited} context="wallet" />
         )}
 
         <div className="grid items-start gap-6 lg:grid-cols-2">
@@ -159,12 +164,3 @@ export default async function WalletPage({
   );
 }
 
-function Banner({ tone, children }: { tone: "ok" | "info" | "err"; children: React.ReactNode }) {
-  const styles =
-    tone === "ok"
-      ? "bg-[#E7F0E9] text-[#2F6B4A]"
-      : tone === "err"
-        ? "bg-[#F6E4E1] text-[#9A3B2E]"
-        : "bg-[#F4EAD3] text-[#8A6B2E]";
-  return <p className={`mb-6 rounded-[12px] p-3 text-sm font-medium ${styles}`}>{children}</p>;
-}

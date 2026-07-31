@@ -152,23 +152,34 @@ export default async function ContractorDetail({
             <DeleteButton
               onDelete={resetContractorClerkLink.bind(null, contractor.id)}
               label="Reset Clerk link"
-              confirmLabel="Confirm reset"
+              confirmLabel="Reset link"
+              title="Reset this contractor's Clerk link?"
+              description={`${contractor.name} will need to claim their account again from a fresh invitation email.`}
+              successMessage="Clerk link reset."
               showTrashIcon={false}
+              destructive={false}
             />
           )}
           {contractor.deactivatedAt ? (
             <DeleteButton
               onDelete={reactivateContractor.bind(null, contractor.id)}
               label="Reactivate"
-              confirmLabel="Confirm reactivate"
+              confirmLabel="Reactivate"
+              title="Reactivate this contractor?"
+              description={`${contractor.name} will regain access to the portal and start receiving leads again.`}
+              successMessage="Contractor reactivated."
               showTrashIcon={false}
+              destructive={false}
             />
           ) : (
             <DeleteButton
               onDelete={deactivateContractor.bind(null, contractor.id)}
               redirectTo="/admin/contractors"
               label="Deactivate"
-              confirmLabel="Confirm deactivate"
+              confirmLabel="Deactivate"
+              title="Deactivate this contractor?"
+              description={`${contractor.name} will lose portal access and stop receiving new leads. You can reactivate them later.`}
+              successMessage="Contractor deactivated."
             />
           )}
         </div>

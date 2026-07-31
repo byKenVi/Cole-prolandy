@@ -189,6 +189,9 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             redirectTo="/admin/leads"
             label="Delete"
             confirmLabel="Delete lead"
+            title="Delete this lead?"
+            description={`“${lead.projectType.name}” for ${lead.landownerName} will be removed permanently. This cannot be undone.`}
+            successMessage="Lead deleted."
           />
         </div>
       </header>

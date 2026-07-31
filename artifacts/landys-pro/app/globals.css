@@ -944,6 +944,39 @@ textarea:focus-visible,
   .admin-stat-grid {
     grid-template-columns: 1fr !important;
   }
+  /* Two columns of stat cards crush their captions on small phones. */
+  .admin-grid-tight {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Page titles: fluid so long headings never force a horizontal scroll ─── */
+/* --admin-title-max is set per page by <PageHeader titleSize>; it is only an
+   upper bound, the clamp shrinks the title on narrow viewports. */
+.admin-page-title {
+  font-size: clamp(24px, 6vw, var(--admin-title-max, 34px));
+  line-height: 1.15;
+}
+
+/* ── Header rows (title + actions) wrap instead of squashing ─────────────── */
+.admin-page-header {
+  flex-wrap: wrap;
+}
+.admin-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+@media (max-width: 560px) {
+  /* Actions take the full width below the title so labels are never clipped. */
+  .admin-page-header-actions {
+    width: 100%;
+  }
+  .admin-page-header-actions > * {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
