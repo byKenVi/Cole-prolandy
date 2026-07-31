@@ -188,6 +188,21 @@ export async function creditTopUp(e: TopUpEvent): Promise<CreditResult> {
   if (!e.contractorId || !Number.isInteger(e.amountCents) || e.amountCents <= 0) {
     return { status: "ignored" };
   }
+
+  // The payment intent is the ONLY thing that dedupes across the two crediting
+  // paths: the webhook and the post-checkout verification record different
+  // ProcessedStripeEvent ids for the same payment, so they can never collide
+  // there. Postgres allows unlimited NULLs in a unique index, so crediting
+  // without a payment intent would silently bypass that guard and could double
+  // the balance. Refusing is the safe failure — a missing credit is visible and
+  // fixable, a duplicate one is neither.
+  if (!e.paymentIntentId) {
+    console.error(
+      "[stripe] refusing to credit a top-up with no payment intent —",
+      "event:", e.eventId, "type:", e.eventType, "contractor:", e.contractorId,
+    );
+    return { status: "ignored" };
+  }
   await persistSavedPaymentMethod(e);
   try {
     await prisma.$transaction(async (tx) => {

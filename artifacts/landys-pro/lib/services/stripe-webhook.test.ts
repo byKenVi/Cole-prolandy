@@ -68,21 +68,37 @@ describe("creditTopUp — webhook idempotency (money safety)", () => {
     expect(db.processedStripeEvent.rows).toHaveLength(1);
   });
 
-  it("ISOLATES the event-id guard: same event id, NULL payment intent, credits once", async () => {
-    // With paymentIntentId null the stripePaymentIntentId unique guard cannot
-    // fire (NULLs are distinct), so ONLY the ProcessedStripeEvent dedupe can
-    // prevent a double credit. This is the test that fails if that guard is
-    // removed — proving it's a real guard, not decoration.
+  it("refuses to credit at all when the payment intent is missing", async () => {
+    // The payment intent is the only guard shared by the two crediting paths:
+    // the webhook and the post-checkout verification derive different
+    // ProcessedStripeEvent ids for one payment, so they never collide there.
+    // NULLs are distinct in a unique index, so a null payment intent would let
+    // both paths credit the same money. Refusing is the safe failure.
     const db = seedContractor(0);
 
-    const first = await creditTopUp(topUpEvent({ paymentIntentId: null }));
-    const second = await creditTopUp(topUpEvent({ paymentIntentId: null })); // same event id
+    const res = await creditTopUp(topUpEvent({ paymentIntentId: null }));
 
-    expect(first.status).toBe("credited");
-    expect(second.status).toBe("duplicate");
+    expect(res.status).toBe("ignored");
+    expect(db.contractor.rows[0].walletBalanceCents).toBe(0);
+    expect(chargeCount(db)).toBe(0);
+    expect(db.processedStripeEvent.rows).toHaveLength(0);
+  });
+
+  it("credits once when the two crediting paths race on the same payment", async () => {
+    // Verification-on-return and the webhook, in either order: distinct event
+    // ids, same payment intent. Only the unique stripePaymentIntentId stops the
+    // second one, which is why a null intent must never reach here.
+    const db = seedContractor(0);
+
+    const verified = await creditTopUp(
+      topUpEvent({ eventId: "checkout_session_verified:cs_1", eventType: "checkout.session.verified" }),
+    );
+    const webhook = await creditTopUp(topUpEvent({ eventId: "evt_live" }));
+
+    expect(verified.status).toBe("credited");
+    expect(webhook.status).toBe("duplicate");
     expect(db.contractor.rows[0].walletBalanceCents).toBe(5000); // not 10000
     expect(chargeCount(db)).toBe(1);
-    expect(db.processedStripeEvent.rows).toHaveLength(1);
   });
 
   it("a different event id for the SAME payment intent still credits only once", async () => {
