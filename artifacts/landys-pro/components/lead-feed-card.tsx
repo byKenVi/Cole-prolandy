@@ -90,10 +90,16 @@ export function LeadFeedCard({ lead }: { lead: FeedLead }) {
 
   if (accepted) {
     return (
-      <div className="rounded-[16px] border border-[#EBE3D4] bg-white p-4 shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
-        {head}
+      <div className="relative rounded-[16px] border border-[#EBE3D4] bg-white p-4 shadow-[0_2px_8px_rgba(58,53,45,0.05)] transition-colors hover:bg-[#FBF6EC]">
+        {/* Full-card hit target — contact tel/mailto sit above it with z-10. */}
+        <Link
+          href={`/leads/${lead.matchId}`}
+          className="absolute inset-0 z-0 rounded-[16px]"
+          aria-label={`View ${lead.projectTypeName}`}
+        />
+        <div className="relative z-[1] pointer-events-none">{head}</div>
         {lead.contact && (
-          <div className="mt-3 rounded-[12px] bg-[#F5EEDF] p-3">
+          <div className="relative z-10 mt-3 rounded-[12px] bg-[#F5EEDF] p-3">
             <p className="truncate text-[14px] font-semibold text-[#3A352D]">{lead.contact.name}</p>
             <a
               href={`tel:${lead.contact.phone}`}
@@ -113,7 +119,7 @@ export function LeadFeedCard({ lead }: { lead: FeedLead }) {
             )}
           </div>
         )}
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#F2EBDD] pt-3">
+        <div className="relative z-[1] mt-3 flex items-center justify-between gap-3 border-t border-[#F2EBDD] pt-3 pointer-events-none">
           <TierPill tier={lead.tier} />
           <span className="text-[19px] font-semibold tabular-nums text-[#3A352D]">
             {formatMoney(lead.priceCents)}

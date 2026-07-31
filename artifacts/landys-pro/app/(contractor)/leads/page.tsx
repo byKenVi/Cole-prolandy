@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { MapPin, Phone, Mail, Hammer } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Phone, Mail, Hammer, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { iconSrcFor } from "@/lib/project-icons";
@@ -25,7 +26,7 @@ type Row = {
 };
 
 const GRID =
-  "grid-cols-[minmax(180px,2fr)_minmax(120px,1.2fr)_minmax(180px,1.8fr)_78px_100px]";
+  "grid-cols-[minmax(180px,2fr)_minmax(120px,1.2fr)_minmax(180px,1.8fr)_78px_100px_36px]";
 
 export default async function MyLeadsPage({
   searchParams,
@@ -135,13 +136,14 @@ function Shell({
             <div className="contractor-table-desktop overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
               <div className="overflow-x-auto">
                 <div
-                  className={`grid ${GRID} min-w-[780px] items-center gap-[14px] border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-[14px]`}
+                  className={`grid ${GRID} min-w-[820px] items-center gap-[14px] border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-[14px]`}
                 >
                   <Head>Job</Head>
                   <Head>Location</Head>
                   <Head>Contact</Head>
                   <Head>Tier</Head>
                   <Head className="text-right">Paid</Head>
+                  <span />
                 </div>
                 {rows.map((r) => (
                   <LeadRow key={r.matchId} row={r} />
@@ -180,8 +182,9 @@ function LeadRow({ row }: { row: Row }) {
   });
   const pill = tierPill(row.tier);
   return (
-    <div
-      className={`grid ${GRID} min-w-[780px] items-center gap-[14px] border-b border-[#F2EBDD] px-6 py-[15px] last:border-b-0`}
+    <Link
+      href={`/leads/${row.matchId}`}
+      className={`group grid ${GRID} min-w-[820px] items-center gap-[14px] border-b border-[#F2EBDD] px-6 py-[15px] last:border-b-0 transition-colors hover:bg-[#FBF6EC]`}
     >
       <div className="flex min-w-0 items-center gap-[14px]">
         <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-[13px] bg-[#F5EEDF]">
@@ -199,7 +202,7 @@ function LeadRow({ row }: { row: Row }) {
           )}
         </span>
         <div className="min-w-0">
-          <p className="truncate text-[16px] font-semibold leading-[1.25] text-[#3A352D]">
+          <p className="truncate text-[16px] font-semibold leading-[1.25] text-[#3A352D] transition-colors group-hover:text-[#C0803C]">
             {row.projectTypeName}
           </p>
           <p className="mt-0.5 truncate text-[13px] leading-[1.2] text-[#8A7E68]">{row.categoryName}</p>
@@ -213,21 +216,15 @@ function LeadRow({ row }: { row: Row }) {
       </div>
       <div className="min-w-0">
         <p className="truncate text-[14px] font-semibold text-[#3A352D]">{row.contactName}</p>
-        <a
-          href={`tel:${row.contactPhone}`}
-          className="mt-0.5 flex items-center gap-[5px] text-[13px] text-[#8A6B2E] hover:underline"
-        >
+        <p className="mt-0.5 flex items-center gap-[5px] text-[13px] text-[#8A6B2E]">
           <Phone className="h-[13px] w-[13px] flex-none" strokeWidth={1.7} aria-hidden />
           <span className="truncate">{row.contactPhone}</span>
-        </a>
+        </p>
         {row.contactEmail && (
-          <a
-            href={`mailto:${row.contactEmail}`}
-            className="mt-0.5 flex items-center gap-[5px] text-[13px] text-[#8A6B2E] hover:underline"
-          >
+          <p className="mt-0.5 flex items-center gap-[5px] text-[13px] text-[#8A6B2E]">
             <Mail className="h-[13px] w-[13px] flex-none" strokeWidth={1.7} aria-hidden />
             <span className="truncate">{row.contactEmail}</span>
-          </a>
+          </p>
         )}
       </div>
       <div>
@@ -241,7 +238,11 @@ function LeadRow({ row }: { row: Row }) {
       <div className="text-right text-[17px] font-semibold tabular-nums text-[#3A352D]">
         {formatMoney(row.priceCents)}
       </div>
-    </div>
+      <ChevronRight
+        className="h-4 w-4 justify-self-end text-[#B0A691] transition-colors group-hover:text-[#C0803C]"
+        aria-hidden
+      />
+    </Link>
   );
 }
 

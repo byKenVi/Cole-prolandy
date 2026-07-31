@@ -38,7 +38,7 @@ export default async function NewContractorPage() {
             name: "",
             email: "",
             phone: "",
-            projectIds: contractorTypes[0] ? [contractorTypes[0].id] : [],
+            projectIds: [],
             aboutSection: "",
             businessHours: "",
             isPro: false,
