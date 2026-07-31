@@ -8,7 +8,7 @@ import { PasswordChangeForm } from "@/components/password-change-form";
 export const dynamic = "force-dynamic";
 
 const cardClass =
-  "rounded-[18px] border border-[#EBE3D4] bg-white p-6 shadow-[0_2px_8px_rgba(58,53,45,0.05)]";
+  "rounded-[18px] border border-[#EBE3D4] bg-white p-5 shadow-[0_2px_8px_rgba(58,53,45,0.05)] sm:p-6";
 
 export default async function ProfilePage() {
   const session = await getSession();
@@ -33,9 +33,9 @@ export default async function ProfilePage() {
 
   if (!contractor) {
     return (
-      <div className="flex min-h-full flex-col">
-        <header className="border-b border-[#EDE4D3] px-5 pb-5 pt-6 md:px-[34px] md:pt-[26px]">
-          <h1 className="font-fraunces text-[30px] font-semibold tracking-[-0.01em] text-[#3A352D]">
+      <div className="contractor-page flex min-h-full flex-col">
+        <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-[26px]">
+          <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
             Set up your profile
           </h1>
           <p className="mt-[5px] text-[14px] text-[#8A7E68]">
@@ -43,7 +43,7 @@ export default async function ProfilePage() {
             Otherwise contact Landy’s to get set up.
           </p>
         </header>
-        <div className="flex-1 px-5 py-6 md:px-[34px]">
+        <div className="flex-1 px-4 py-6 sm:px-5 md:px-[34px]">
           <div className={`mx-auto max-w-2xl ${cardClass}`}>
             <OnboardingForm
               mode="claim"
@@ -70,9 +70,9 @@ export default async function ProfilePage() {
         : `${assignedProjects.length} projects`;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="border-b border-[#EDE4D3] px-5 pb-5 pt-6 md:px-[34px] md:pt-[26px]">
-        <h1 className="font-fraunces text-[30px] font-semibold tracking-[-0.01em] text-[#3A352D]">
+    <div className="contractor-page flex min-h-full flex-col">
+      <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-[26px]">
+        <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
           Profile
         </h1>
         <p className="mt-[5px] text-[14px] text-[#8A7E68]">
@@ -80,12 +80,12 @@ export default async function ProfilePage() {
         </p>
       </header>
 
-      <div className="flex-1 px-5 py-6 md:px-[34px]">
-        <div className="grid items-start gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
-          <div className={`flex flex-col items-center gap-3 text-center lg:sticky lg:top-6 ${cardClass}`}>
+      <div className="flex-1 px-4 py-6 sm:px-5 md:px-[34px]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+          <div className={`flex min-w-0 flex-col items-center gap-3 text-center lg:sticky lg:top-6 ${cardClass}`}>
             <ProfileLogoUpload logoUrl={contractor.logoUrl} initials={initial} />
-            <div>
-              <p className="font-fraunces text-[20px] font-semibold text-[#3A352D]">{contractor.name}</p>
+            <div className="min-w-0 w-full">
+              <p className="truncate font-fraunces text-[20px] font-semibold text-[#3A352D]">{contractor.name}</p>
               <p className="mt-0.5 text-sm text-[#8A7E68]">{projectLabel}</p>
             </div>
             {contractor.isPro ? (
@@ -98,8 +98,8 @@ export default async function ProfilePage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-6">
-            <div className={cardClass}>
+          <div className="flex min-w-0 flex-col gap-6">
+            <div className={`min-w-0 ${cardClass}`}>
               <OnboardingForm
                 assignedProjects={assignedProjects}
                 initial={{
@@ -112,7 +112,7 @@ export default async function ProfilePage() {
             </div>
 
             {authMode() === "clerk" && (
-              <div className={cardClass}>
+              <div className={`min-w-0 ${cardClass}`}>
                 <h2 className="mb-1 font-fraunces text-[18px] font-semibold text-[#3A352D]">
                   Security
                 </h2>

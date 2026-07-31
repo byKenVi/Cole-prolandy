@@ -57,7 +57,7 @@ export default async function LeadDetail({
   });
 
   return (
-    <div className="px-5 py-6 md:px-[34px] md:py-8">
+    <div className="contractor-page px-4 py-6 sm:px-5 md:px-[34px] md:py-8">
       <Link
         href="/home"
         className="mb-5 flex w-fit items-center gap-1.5 text-[14px] text-[#8A7E68] transition-colors hover:text-[#3A352D]"
@@ -74,10 +74,10 @@ export default async function LeadDetail({
         />
       )}
 
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)]">
         {/* LEFT — lead card */}
-        <div className="order-2 overflow-hidden rounded-[22px] border border-[#EBE3D4] bg-[#FFFDF9] shadow-[0_12px_32px_rgba(58,53,45,0.08)] lg:order-1">
-          <div className="px-5 pb-6 pt-5 md:px-8 md:pb-8 md:pt-7">
+        <div className="order-2 min-w-0 overflow-hidden rounded-[22px] border border-[#EBE3D4] bg-[#FFFDF9] shadow-[0_12px_32px_rgba(58,53,45,0.08)] lg:order-1">
+          <div className="px-4 pb-6 pt-5 sm:px-5 md:px-8 md:pb-8 md:pt-7">
             <div className="mb-2 flex items-center gap-[15px]">
               <span className="flex h-14 w-14 flex-none items-center justify-center rounded-[15px] bg-[#F5EEDF]">
                 {iconSrc ? (
@@ -163,7 +163,7 @@ export default async function LeadDetail({
         </div>
 
         {/* RIGHT — price + actions */}
-        <div className="order-1 rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-6 shadow-[0_12px_32px_rgba(58,53,45,0.10)] lg:order-2 lg:sticky lg:top-6">
+        <div className="order-1 min-w-0 rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-5 shadow-[0_12px_32px_rgba(58,53,45,0.10)] sm:p-6 lg:order-2 lg:sticky lg:top-6">
           <p className="text-[13px] font-medium uppercase tracking-[0.05em] text-[#6B6459]">Lead price</p>
           <p className="mb-5 mt-0.5 text-[42px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#3A352D]">
             {formatMoney(lead.priceCents)}

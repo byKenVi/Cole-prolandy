@@ -19,8 +19,9 @@ function initialsFrom(name?: string | null) {
 }
 
 /**
- * Contractor shell — full-bleed like admin (dark sidebar + cream main), no
- * inset rounded "app card".
+ * Contractor shell — phone-first. Layout widths / overflow live in
+ * `.contractor-*` CSS (globals.css) so a missing Tailwind variant can never
+ * leave the 266px sidebar in the flow on a phone.
  */
 export default async function ContractorLayout({ children }: { children: React.ReactNode }) {
   const clerk = authMode() === "clerk";
@@ -54,7 +55,7 @@ export default async function ContractorLayout({ children }: { children: React.R
   const walletCents = contractor?.walletBalanceCents ?? null;
 
   return (
-    <div className="flex min-h-screen bg-[#FEFBF6]">
+    <div className="contractor-shell">
       <ContractorSidebar
         walletCents={walletCents}
         name={contractor?.name}
@@ -65,22 +66,21 @@ export default async function ContractorLayout({ children }: { children: React.R
         viewingAs={session.viewingAs}
       />
 
-      <main className="flex min-w-0 flex-1 flex-col bg-[#FEFBF6]">
-        {/* Mobile header (sidebar is hidden below md) */}
-        <header className="flex items-center gap-2 border-b border-[#EDE4D3] px-4 py-2 md:hidden">
-          <Link href="/home" className="flex flex-none items-baseline gap-2">
+      <main className="contractor-main">
+        <header className="contractor-mobile-header">
+          <Link href="/home" className="flex min-w-0 flex-none items-baseline gap-2 pl-0.5">
             <span className="font-vibes text-[26px] leading-none text-[#5C5142]">Landys</span>
             <span className="rounded-full border border-[#C0803C] px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-[0.2em] text-[#C0803C]">
               Pro
             </span>
           </Link>
 
-          {/* Wallet balance chip — shrinks before the controls do so a long
-              balance never pushes the sign-out / avatar off screen. */}
+          {/* Wallet chip shrinks before the controls so a long balance never
+              pushes sign-out / avatar off the right edge. */}
           {typeof walletCents === "number" && (
             <Link
               href="/wallet"
-              className="ml-auto flex min-w-0 items-center gap-[6px] rounded-full bg-[#3B372F] px-[11px] py-2 text-[13px] font-semibold text-[#F6EEDF] transition-colors hover:bg-[#4A453C]"
+              className="ml-auto flex min-w-0 max-w-[42%] items-center gap-[6px] rounded-full bg-[#3B372F] px-[11px] py-2 text-[13px] font-semibold text-[#F6EEDF] transition-colors hover:bg-[#4A453C]"
             >
               <Wallet className="h-[13px] w-[13px] flex-none text-[#E0A95C]" strokeWidth={1.8} aria-hidden />
               <span className="truncate tabular-nums">{formatMoney(walletCents)}</span>
@@ -98,7 +98,7 @@ export default async function ContractorLayout({ children }: { children: React.R
           </div>
         </header>
 
-        <div className="flex-1 pb-24 md:pb-0">{children}</div>
+        <div className="contractor-page flex-1 pb-24 md:pb-0">{children}</div>
       </main>
 
       <ContractorTabs />

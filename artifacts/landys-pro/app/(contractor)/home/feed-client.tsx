@@ -79,18 +79,18 @@ export function ContractorFeed({
   }, [rows, query, tab, sort]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex flex-col gap-4 border-b border-[#EDE4D3] px-5 pb-5 pt-6 md:flex-row md:items-center md:justify-between md:px-[34px] md:pt-[26px]">
-        <div>
-          <h1 className="font-fraunces text-[30px] font-semibold tracking-[-0.01em] text-[#3A352D]">
+    <div className="contractor-page flex min-h-full flex-col">
+      <header className="flex flex-col gap-4 border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:flex-row md:items-center md:justify-between md:px-[34px] md:pt-[26px]">
+        <div className="min-w-0">
+          <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
             New leads
           </h1>
           <p className="mt-[5px] text-[14px] text-[#8A7E68]">
             {totalOpen} open {totalOpen === 1 ? "job" : "jobs"} matched to your trade
           </p>
         </div>
-        <div className="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
-          <label className="flex h-[42px] min-w-0 flex-1 items-center gap-[9px] rounded-[12px] border border-[#E6DFD1] bg-white px-[15px] md:w-[230px] md:flex-none">
+        <div className="flex min-w-0 w-full items-center gap-3 md:w-auto md:flex-none">
+          <label className="flex h-[44px] min-w-0 flex-1 items-center gap-[9px] rounded-[12px] border border-[#E6DFD1] bg-white px-[15px] md:w-[230px] md:flex-none">
             <Search className="h-[17px] w-[17px] flex-none text-[#8A7E68]" strokeWidth={1.8} aria-hidden />
             <input
               type="text"
@@ -98,11 +98,11 @@ export function ContractorFeed({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search jobs or towns"
               aria-label="Search jobs or towns"
-              className="min-w-0 flex-1 border-none bg-transparent text-[14px] text-[#3A352D] outline-none placeholder:text-[#8A7E68]"
+              className="min-w-0 flex-1 border-none bg-transparent text-[16px] text-[#3A352D] outline-none placeholder:text-[#8A7E68] md:text-[14px]"
             />
           </label>
           {totalOpen > 0 && (
-            <span className="inline-flex h-[42px] flex-none items-center gap-[7px] whitespace-nowrap rounded-[12px] bg-[#F4EAD3] px-[14px] text-[13px] font-semibold text-[#8A6B2E]">
+            <span className="inline-flex h-[44px] flex-none items-center gap-[7px] whitespace-nowrap rounded-[12px] bg-[#F4EAD3] px-[14px] text-[13px] font-semibold text-[#8A6B2E]">
               <span className="h-[7px] w-[7px] rounded-full bg-[#C0803C]" />
               {totalOpen} new
             </span>
@@ -110,15 +110,15 @@ export function ContractorFeed({
         </div>
       </header>
 
-      <div className="px-5 pt-5 md:hidden">
+      <div className="px-4 pt-5 sm:px-5 md:hidden">
         <WalletCard cents={walletCents} />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2.5 px-5 py-4 md:px-[34px]">
+      <div className="flex flex-col gap-3 px-4 py-4 sm:px-5 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-2.5 md:px-[34px]">
         <div
           role="tablist"
           aria-label="Filter leads by tier"
-          className="flex min-w-0 flex-1 gap-0.5 overflow-x-auto rounded-[12px] bg-[#F1E8D8] p-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-none [&::-webkit-scrollbar]:hidden"
+          className="flex w-full min-w-0 gap-0.5 overflow-x-auto rounded-[12px] bg-[#F1E8D8] p-1 [-ms-overflow-style:none] [scrollbar-width:none] md:w-auto md:flex-none [&::-webkit-scrollbar]:hidden"
         >
           <Tab label="New" count={countAll} active={tab === "all"} onSelect={() => setTab("all")} />
           <Tab label="Tier 1" count={countT1} active={tab === "t1"} onSelect={() => setTab("t1")} />
@@ -129,14 +129,14 @@ export function ContractorFeed({
           type="button"
           onClick={() => setSort((s) => (s === "newest" ? "oldest" : "newest"))}
           aria-label={`Sort by date received: ${sort === "newest" ? "newest first" : "oldest first"}. Tap to toggle.`}
-          className="flex h-11 flex-none items-center gap-[7px] rounded-[10px] border border-[#E6DFD1] bg-white px-[13px] text-[13px] font-medium text-[#5A4E3E] transition-colors hover:bg-[#F7F0E3]"
+          className="flex h-11 w-full flex-none items-center justify-center gap-[7px] rounded-[10px] border border-[#E6DFD1] bg-white px-[13px] text-[13px] font-medium text-[#5A4E3E] transition-colors hover:bg-[#F7F0E3] md:w-auto"
         >
           Sort: {sort === "newest" ? "Newest" : "Oldest"}
           <ChevronDown className="h-[15px] w-[15px]" strokeWidth={1.8} aria-hidden />
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col px-5 pb-8 md:px-[34px]">
+      <div className="flex flex-1 flex-col px-4 pb-8 sm:px-5 md:px-[34px]">
         {totalOpen === 0 ? (
           <EmptyFeed />
         ) : shown.length === 0 ? (
@@ -144,7 +144,7 @@ export function ContractorFeed({
         ) : (
           <>
             {/* Mobile cards */}
-            <div className="flex flex-col gap-3 md:hidden">
+            <div className="contractor-table-mobile gap-3">
               {shown.map((r) => (
                 <LeadFeedCard
                   key={r.matchId}
@@ -167,7 +167,7 @@ export function ContractorFeed({
             </div>
 
             {/* Desktop table */}
-            <div className="hidden overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)] md:block">
+            <div className="contractor-table-desktop overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
               <div className="overflow-x-auto">
                 <div
                   className={`grid ${GRID} min-w-[760px] items-center gap-[14px] border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-[14px]`}

@@ -92,10 +92,10 @@ function Shell({
   pageSize: number;
 }) {
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-[#EDE4D3] px-5 pb-5 pt-6 md:px-[34px] md:pt-[26px]">
-        <div>
-          <h1 className="font-fraunces text-[30px] font-semibold tracking-[-0.01em] text-[#3A352D]">
+    <div className="contractor-page flex min-h-full flex-col">
+      <header className="flex items-center justify-between gap-4 border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-[26px]">
+        <div className="min-w-0">
+          <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
             My leads
           </h1>
           <p className="mt-[5px] text-[14px] text-[#8A7E68]">
@@ -104,12 +104,12 @@ function Shell({
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col px-5 py-6 md:px-[34px]">
+      <div className="flex flex-1 flex-col px-4 py-6 sm:px-5 md:px-[34px]">
         {totalCount === 0 ? (
           <Empty />
         ) : (
           <>
-            <div className="flex flex-col gap-3 md:hidden">
+            <div className="contractor-table-mobile gap-3">
               {rows.map((r) => (
                 <LeadFeedCard
                   key={r.matchId}
@@ -132,7 +132,7 @@ function Shell({
               ))}
             </div>
 
-            <div className="hidden overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)] md:block">
+            <div className="contractor-table-desktop overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
               <div className="overflow-x-auto">
                 <div
                   className={`grid ${GRID} min-w-[780px] items-center gap-[14px] border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-[14px]`}

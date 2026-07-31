@@ -79,9 +79,9 @@ export default async function WalletPage({
       : false;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="border-b border-[#EDE4D3] px-5 pb-5 pt-6 md:px-[34px] md:pt-[26px]">
-        <h1 className="font-fraunces text-[30px] font-semibold tracking-[-0.01em] text-[#3A352D]">
+    <div className="contractor-page flex min-h-full flex-col">
+      <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-[26px]">
+        <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
           Wallet
         </h1>
         <p className="mt-[5px] text-[14px] text-[#8A7E68]">
@@ -89,25 +89,25 @@ export default async function WalletPage({
         </p>
       </header>
 
-      <div className="flex-1 px-5 py-6 md:px-[34px]">
+      <div className="flex-1 px-4 py-6 sm:px-5 md:px-[34px]">
         {topUpStatus && (
           <TopUpReturnBanner status={topUpStatus} sufficient={justCredited} context="wallet" />
         )}
 
         <div className="grid items-start gap-6 lg:grid-cols-2">
-          <div className="flex flex-col gap-6">
-            <div className="flex min-h-[200px] flex-col rounded-[18px] bg-[#3B372F] p-7 shadow-[0_10px_30px_rgba(58,53,45,0.18)]">
+          <div className="flex min-w-0 flex-col gap-6">
+            <div className="flex min-h-[200px] flex-col rounded-[18px] bg-[#3B372F] p-5 shadow-[0_10px_30px_rgba(58,53,45,0.18)] sm:p-7">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9A9084]">
                 Current balance
               </p>
               <div className="flex flex-1 items-center">
-                <p className="text-[52px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#F6EEDF]">
+                <p className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#F6EEDF] sm:text-[52px]">
                   {formatMoney(contractor?.walletBalanceCents ?? 0)}
                 </p>
               </div>
             </div>
 
-            <div className="rounded-[18px] border border-[#EBE3D4] bg-white p-6 shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
+            <div className="min-w-0 rounded-[18px] border border-[#EBE3D4] bg-white p-5 shadow-[0_2px_8px_rgba(58,53,45,0.05)] sm:p-6">
               <h2 className="mb-4 text-[17px] font-semibold text-[#3A352D]">Add funds</h2>
               <TopUp hasSavedCard={hasSavedCard} />
             </div>
@@ -118,7 +118,7 @@ export default async function WalletPage({
             />
           </div>
 
-          <div className="rounded-[18px] border border-[#EBE3D4] bg-white p-6 shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
+          <div className="min-w-0 rounded-[18px] border border-[#EBE3D4] bg-white p-5 shadow-[0_2px_8px_rgba(58,53,45,0.05)] sm:p-6">
             <h2 className="mb-4 text-[17px] font-semibold text-[#3A352D]">Transaction history</h2>
             {txns.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
