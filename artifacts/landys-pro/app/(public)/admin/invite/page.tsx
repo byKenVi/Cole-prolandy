@@ -100,23 +100,30 @@ function InvitePageInner() {
     );
   }
 
+  // Not signed in. Most invitees have no account yet, so lead with sign-up —
+  // sending them to sign-in first fails with "account not found". Either way the
+  // invitation is claimed from their verified email once they land on /post-auth.
   if (!signedIn) {
     const returnTo = encodeURIComponent(`/admin/invite?token=${token}`);
-    const signInUrl = `/sign-in?redirect_url=${returnTo}`;
     return (
       <InviteCard icon={<CheckCircle2 style={{ color: "#2F6B4A" }} />} title="You've been invited">
         <p style={bodyStyle}>
-          Sign in to accept your invitation and access the Landy&apos;s Pro admin dashboard.
-        </p>
-        <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--ink2)" }}>
-          Don&apos;t have an account yet? You&apos;ll be able to create one on the next screen.
+          Create your account to accept the invitation and reach the Landy&apos;s Pro admin
+          dashboard. Use the email address the invitation was sent to.
         </p>
         <Button
           variant="accent"
-          onClick={() => router.push(signInUrl)}
-          style={{ width: "100%" }}
+          onClick={() => router.push(`/sign-up?redirect_url=${returnTo}`)}
+          style={{ width: "100%", marginTop: 8 }}
         >
-          Sign in to accept →
+          Create my account →
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => router.push(`/sign-in?redirect_url=${returnTo}`)}
+          style={{ width: "100%", marginTop: 8 }}
+        >
+          I already have an account
         </Button>
       </InviteCard>
     );

@@ -34,14 +34,17 @@ export default function PostAuthPage() {
         redirected.current = true;
 
         const params = window.location.search;
-        // If a ticket is still on the URL, finish the flow on sign-in instead
-        // of dropping the one-time token.
+        // A ticket still on the URL means an invitation was never consumed, so
+        // finish there rather than dropping the one-time token. Sign-UP, not
+        // sign-in: we cannot tell whether the account exists, and <SignUp/>
+        // offers to sign in when it already does, whereas <SignIn/> hard-fails
+        // with "account not found" when it does not.
         if (
           params.includes("__clerk_ticket") ||
           params.includes("__clerk_status") ||
           params.includes("__clerk_db_jwt")
         ) {
-          router.replace(`/sign-in${params}`);
+          router.replace(`/sign-up${params}`);
           return;
         }
 

@@ -40,11 +40,20 @@ function isAlreadyKnownToClerk(error: unknown): boolean {
  * invitations use. Clerk owns the mailbox reputation, so this needs no verified
  * sending domain of our own.
  *
- * `redirectUrl` carries the acceptance token, but do not rely on it arriving:
- * in production the api-server short-circuits Clerk's ticket/accept endpoint to
- * dodge a Cloudflare bot challenge, and that discards the redirect. Acceptance
- * therefore also resolves from the invitee's Clerk-verified email — see
- * claimPendingAdminInvite in lib/admin-invites.ts.
+ * The invitee has no account yet, so the link MUST land on /sign-up: Clerk's
+ * <SignUp/> consumes the __clerk_ticket there, locks the invited address and
+ * asks only for a password. Pointing it at /admin/invite instead sent people
+ * who were not signed in to /sign-in, where signing in fails with "account not
+ * found" because the account does not exist yet.
+ *
+ * /sign-up is also exactly what the api-server's ticket/accept short-circuit
+ * redirects to (it cannot know the invitation's own redirectUrl), so the
+ * proxied and direct Clerk paths now land in the same place.
+ *
+ * Admin rights are not carried by this URL at all: they are claimed from the
+ * invitee's Clerk-verified email on first sign-in — see claimPendingAdminInvite
+ * in lib/admin-invites.ts. `inviteUrl` below is only the manual acceptance page,
+ * used for someone who already has an account.
  */
 export async function sendAdminInvitation({
   email: emailAddress,
@@ -66,7 +75,7 @@ export async function sendAdminInvitation({
     const client = await clerkClient();
     await client.invitations.createInvitation({
       emailAddress,
-      redirectUrl: inviteUrl,
+      redirectUrl: `${appUrl()}/sign-up`,
       ignoreExisting: true,
       publicMetadata: { role: "admin", adminName: name },
     });

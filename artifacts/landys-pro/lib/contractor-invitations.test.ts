@@ -25,7 +25,7 @@ describe("sendAdminInvitation", () => {
     mocks.authMode.mockReturnValue("clerk");
   });
 
-  it("delivers through Clerk, carrying the acceptance token in the redirect", async () => {
+  it("points the invitation at sign-up, where the ticket only asks for a password", async () => {
     mocks.createInvitation.mockResolvedValue({ id: "inv_1" });
 
     const result = await sendAdminInvitation({
@@ -35,9 +35,11 @@ describe("sendAdminInvitation", () => {
     });
 
     expect(result).toEqual({ ok: true, provider: "clerk" });
+    // Must NOT be /admin/invite: an invitee has no account yet, and that page
+    // sends unauthenticated visitors to /sign-in, which fails "account not found".
     expect(mocks.createInvitation).toHaveBeenCalledWith({
       emailAddress: "owner@example.com",
-      redirectUrl: "https://pro.landys.test/admin/invite?token=tok_abc",
+      redirectUrl: "https://pro.landys.test/sign-up",
       ignoreExisting: true,
       publicMetadata: { role: "admin", adminName: "New Owner" },
     });
