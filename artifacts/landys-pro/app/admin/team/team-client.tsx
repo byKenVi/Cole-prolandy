@@ -459,7 +459,7 @@ function MenuItem({
   );
 }
 
-// ─── Mobile card row (tables collapse to these below 768px) ────────────────────
+// ─── Mobile card row (tables collapse to these below 1025px — see globals.css) ─
 
 function MobileRow({
   name,

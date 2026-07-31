@@ -648,7 +648,15 @@ body:has(.admin-theme[data-theme="dark"]) {
 }
 
 /* ── Mobile / tablet: tables → stacked cards ─────────────────────────────── */
-@media (max-width: 768px) {
+/* Collapse at 1024, not 768. The widest desktop grid (leads) declares column
+   minimums totalling ~940px, and above 900px the 260px sidebar is back in the
+   flow, so a table needs roughly a 1250px window to fit. Between 769 and that,
+   the old breakpoint kept the desktop layout in a space too small for it — and
+   because the surrounding card is `overflow: hidden`, the surplus columns were
+   silently clipped instead of scrolling. A phone never saw it (always below
+   768, so always cards); resizing a desktop window or picking a tablet in the
+   device toolbar landed straight in the broken band. */
+@media (max-width: 1024px) {
   .admin-table-desktop {
     display: none !important;
   }
@@ -657,9 +665,14 @@ body:has(.admin-theme[data-theme="dark"]) {
     flex-direction: column;
   }
 }
-@media (min-width: 769px) {
+@media (min-width: 1025px) {
   .admin-table-mobile {
     display: none !important;
+  }
+  /* Between 1025 and ~1250 the grid still exceeds its container. Scroll it
+     rather than cropping it: a hidden column is invisible, a scrollbar is not. */
+  .admin-table-desktop {
+    overflow-x: auto;
   }
 }
 
