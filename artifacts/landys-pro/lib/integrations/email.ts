@@ -34,6 +34,24 @@ export class MockEmailProvider implements EmailProvider {
   }
 }
 
+/**
+ * Production stand-in for the mock. Reporting `ok: true` when nothing was sent
+ * is the worst outcome: callers record a successful notification and nobody
+ * finds out the mail never left. Stripe and SMS already refuse to run mocked in
+ * production; this does the same, but as a failed result rather than a throw so
+ * the existing per-send error handling reports it instead of breaking the
+ * request that triggered it.
+ */
+export class UnconfiguredEmailProvider implements EmailProvider {
+  async send({ to, subject }: SendEmailParams): Promise<SendEmailResult> {
+    const error =
+      "Email is not configured in production. Set RESEND_MOCK=false with a Resend " +
+      "connector or RESEND_API_KEY.";
+    console.error(`[email] REFUSED -> ${to} | ${subject} — ${error}`);
+    return { ok: false, error, mocked: false };
+  }
+}
+
 // ── Replit connector (preferred) ─────────────────────────────────────────────
 
 export class ReplitResendProvider implements EmailProvider {
@@ -130,7 +148,7 @@ function isMock(): boolean {
 function createEmailProvider(): EmailProvider {
   if (isMock()) {
     if (process.env.NODE_ENV === "production") {
-      console.warn("[email] No email credentials found in production — falling back to mock.");
+      return new UnconfiguredEmailProvider();
     }
     return new MockEmailProvider();
   }

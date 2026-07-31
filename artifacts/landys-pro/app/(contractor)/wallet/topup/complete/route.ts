@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { applyWalletTransaction } from "@/lib/domain/wallet";
 import { WalletTransactionType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 import { revalidateContractorShell } from "@/lib/revalidate";
 import {
   verifyAndCreditCheckoutSession,
@@ -128,7 +129,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Mock mode (never reached in production: isProd forces the branch above) ──
+  // Everything below credits from query parameters alone, so bind it to the
+  // caller's own session. Without this, `?contractorId=…&amountCents=…` tops up
+  // an arbitrary wallet, and on a deployment where NODE_ENV is not "production"
+  // the dev-auth middleware is a pass-through, making it unauthenticated.
   if (!contractorId) {
+    return NextResponse.redirect(makeRedirect("error"));
+  }
+  const session = await getSession();
+  if (session.contractorId !== contractorId) {
+    console.error(
+      "[topup-complete] mock credit refused — session contractor",
+      session.contractorId,
+      "does not own",
+      contractorId,
+    );
     return NextResponse.redirect(makeRedirect("error"));
   }
 

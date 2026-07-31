@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   constructStripeEvent,
@@ -8,8 +9,13 @@ import {
 import { getStripeWebhookSecret } from "@/lib/integrations/stripe-client";
 
 /**
- * Stripe webhook — the SOURCE OF TRUTH for real top-ups. The wallet is credited
- * ONLY here, after verifying the signature (never from the browser redirect).
+ * Stripe webhook — the primary path for real top-ups, crediting only after the
+ * signature verifies. It is no longer the only one: the post-checkout return
+ * also credits, by asking Stripe's API about the session (lib/services/
+ * topup-verify.ts), because a webhook that never arrives left contractors paid
+ * and un-credited. Both go through creditTopUp and dedupe on the payment
+ * intent, so whichever lands second is recorded as a duplicate.
+ * Neither path ever trusts a figure supplied by the browser.
  * This route stays OUTSIDE Clerk auth (see middleware public routes), exactly
  * like the tokenized SMS accept flow.
  *
@@ -39,15 +45,18 @@ export async function POST(req: NextRequest) {
     event = await constructStripeEvent(rawBody, signature);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Invalid signature";
-    // Log masked secret info to aid debugging without leaking credentials.
-    // Secret source: connector settings.webhook_secret (priority) or STRIPE_WEBHOOK_SECRET env var.
+    // Identify WHICH secret was used without putting any of it in the logs: a
+    // truncated digest is enough to compare against the endpoint's expected
+    // secret, and cannot be reversed the way a literal prefix could.
+    // Source: connector settings.webhook_secret (priority) or STRIPE_WEBHOOK_SECRET.
     let secretHint = "(unavailable)";
     try {
       const s = await getStripeWebhookSecret();
       const source = process.env.REPLIT_CONNECTORS_HOSTNAME
         ? "connector→env-fallback STRIPE_WEBHOOK_SECRET"
         : "env STRIPE_WEBHOOK_SECRET";
-      secretHint = `${s.slice(0, 8)}… len=${s.length} source=${source}`;
+      const digest = createHash("sha256").update(s).digest("hex").slice(0, 8);
+      secretHint = `sha256:${digest} len=${s.length} source=${source}`;
     } catch {
       // Don't shadow the original error.
     }
