@@ -4,16 +4,45 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOwner, getSession } from "@/lib/auth";
-import { sendAdminInvitation } from "@/lib/contractor-invitations";
+import { sendAdminInvitation, type InvitationResult } from "@/lib/contractor-invitations";
+import { INVITE_TTL_DAYS } from "@/lib/admin-invites";
 
 type Result<T = undefined> =
-  | { ok: true; data?: T; message?: string }
+  | { ok: true; data?: T; message?: string; severity?: "success" | "warning" }
   | { ok: false; message: string };
-
-const INVITE_TTL_DAYS = 7;
 
 function inviteToken(): string {
   return randomBytes(32).toString("hex");
+}
+
+/**
+ * Turn the delivery outcome into wording the inviter can act on. The invitation
+ * row exists either way, so a delivery hiccup is a warning, never a failure —
+ * but it must not be dressed up as a success.
+ */
+function deliveryFeedback(
+  result: InvitationResult,
+  email: string,
+): { message: string; severity: "success" | "warning" } {
+  if (!result.ok) {
+    return {
+      message: `Invitation saved, but the email could not be sent: ${result.error}`,
+      severity: "warning",
+    };
+  }
+  if (result.note === "existing-account") {
+    return {
+      message: `${email} already has an account. They get admin access the next time they sign in — no email needed.`,
+      severity: "warning",
+    };
+  }
+  if (result.note === "dev-no-email") {
+    return {
+      message: `Invitation created. No email in dev mode — accept it at ${result.inviteUrl}`,
+      severity: "warning",
+    };
+  }
+  return { message: `Invitation email sent to ${email}.`, severity: "success" };
 }
 
 // ── Invite ────────────────────────────────────────────────────────────────────
@@ -84,18 +113,14 @@ export async function inviteAdmin(data: {
         name: data.name.trim(),
         role: data.role,
         emailSent: sendResult.ok,
+        emailNote: sendResult.ok ? (sendResult.note ?? null) : undefined,
         emailError: sendResult.ok ? undefined : sendResult.error,
       },
     },
   });
 
   revalidatePath("/admin/team");
-  return {
-    ok: true,
-    message: sendResult.ok
-      ? `Invitation sent to ${normalizedEmail}`
-      : `Invite created but email failed: ${sendResult.error}`,
-  };
+  return { ok: true, ...deliveryFeedback(sendResult, normalizedEmail) };
 }
 
 // ── Resend invitation ─────────────────────────────────────────────────────────
@@ -138,7 +163,7 @@ export async function resendInvite(inviteId: string): Promise<Result> {
   });
 
   revalidatePath("/admin/team");
-  return { ok: true, message: sendResult.ok ? "Invitation resent." : `Resent but email failed: ${sendResult.error}` };
+  return { ok: true, ...deliveryFeedback(sendResult, invite.email) };
 }
 
 // ── Revoke invitation ─────────────────────────────────────────────────────────

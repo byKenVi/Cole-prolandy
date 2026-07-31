@@ -202,9 +202,17 @@ textarea:focus-visible,
   touches the contractor app (which uses the --color-* tokens above). The
   admin shell root carries `class="admin-theme"` + `data-theme="light|dark"`;
   the initial value is set server-side from a cookie to avoid a theme flash.
+
+  The tokens are ALSO declared on <body> whenever an admin shell is mounted.
+  Dialogs, dropdowns and toasts render through a React portal into
+  document.body, which sits outside `.admin-theme` — without this every
+  var(--*) inside a portal resolves to nothing, so modals lose their borders
+  and selected states become invisible. `:has()` keeps the contractor app
+  untouched because it only matches when an admin shell is actually present.
   ============================================================================
 */
-.admin-theme {
+.admin-theme,
+body:has(.admin-theme) {
   --bg: #fefbf6;
   --surface: #fbf6ec;
   --card: #ffffff;
@@ -243,7 +251,8 @@ textarea:focus-visible,
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.admin-theme[data-theme="dark"] {
+.admin-theme[data-theme="dark"],
+body:has(.admin-theme[data-theme="dark"]) {
   --bg: #17140f;
   --surface: #211d17;
   --card: #28241c;

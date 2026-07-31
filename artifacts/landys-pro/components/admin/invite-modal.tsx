@@ -10,6 +10,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { inviteAdmin } from "@/app/actions/team";
 
+/** Selected-state colours. Literal values: the dialog portals outside `.admin-theme`. */
+const ACCENT = "#2F5340";
+const ACCENT_SOFT = "rgba(47, 83, 64, 0.08)";
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 13,
+  fontWeight: 600,
+  marginBottom: 6,
+  color: "var(--ink, #3A352D)",
+};
+
+const fieldStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: 44,
+  padding: "10px 12px",
+  border: "1px solid var(--line, #EBE3D4)",
+  borderRadius: 10,
+  /* 16px keeps iOS Safari from zooming the viewport when the field is focused. */
+  fontSize: 16,
+  color: "var(--ink, #3A352D)",
+  background: "var(--surface, #FBF6EC)",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
 export function InviteAdminModal({
   open,
   onClose,
@@ -17,7 +43,7 @@ export function InviteAdminModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSuccess: (message: string) => void;
+  onSuccess: (message: string, severity: "success" | "warning") => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +71,7 @@ export function InviteAdminModal({
     startTransition(async () => {
       const res = await inviteAdmin({ name: name.trim(), email: email.trim(), role });
       if (res.ok) {
-        onSuccess(res.message ?? "Invitation sent.");
+        onSuccess(res.message ?? "Invitation sent.", res.severity ?? "success");
       } else {
         setError(res.message);
       }
@@ -64,7 +90,7 @@ export function InviteAdminModal({
           <div>
             <label
               htmlFor="invite-name"
-              style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--ink)" }}
+              style={labelStyle}
             >
               Full name
             </label>
@@ -76,17 +102,8 @@ export function InviteAdminModal({
               placeholder="Jane Smith"
               disabled={pending}
               autoComplete="name"
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid var(--line)",
-                borderRadius: 10,
-                fontSize: 14,
-                color: "var(--ink)",
-                background: "var(--surface)",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
+              autoFocus
+              style={fieldStyle}
             />
           </div>
 
@@ -94,7 +111,7 @@ export function InviteAdminModal({
           <div>
             <label
               htmlFor="invite-email"
-              style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--ink)" }}
+              style={labelStyle}
             >
               Email address
             </label>
@@ -106,60 +123,72 @@ export function InviteAdminModal({
               placeholder="jane@example.com"
               disabled={pending}
               autoComplete="email"
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid var(--line)",
-                borderRadius: 10,
-                fontSize: 14,
-                color: "var(--ink)",
-                background: "var(--surface)",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
+              inputMode="email"
+              style={fieldStyle}
             />
           </div>
 
-          {/* Role — uses label+radio so clicks always register inside Radix Dialog */}
-          <div>
-            <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+          {/* Role — a real radio group, so the whole card is a click target and
+              arrow keys work. The dialog renders in a portal outside
+              `.admin-theme`, so every colour needs a literal fallback. */}
+          <fieldset style={{ margin: 0, padding: 0, border: "none" }}>
+            <legend
+              style={{
+                padding: 0,
+                margin: "0 0 8px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--ink, #3A352D)",
+              }}
+            >
               Role
-            </p>
-            <div style={{ display: "flex", gap: 10 }}>
+            </legend>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {(["ADMIN", "OWNER"] as const).map((r) => {
                 const selected = role === r;
                 return (
                   <label
                     key={r}
+                    htmlFor={`invite-role-${r}`}
                     style={{
-                      flex: 1,
-                      padding: "12px 10px",
+                      position: "relative",
+                      flex: "1 1 140px",
+                      minWidth: 0,
+                      padding: "12px 12px 12px 34px",
                       borderRadius: 12,
-                      border: `2px solid ${selected ? "var(--green)" : "var(--line)"}`,
-                      background: selected
-                        ? "color-mix(in srgb, var(--green) 10%, transparent)"
-                        : "var(--surface)",
+                      border: `2px solid ${selected ? ACCENT : "var(--line, #EBE3D4)"}`,
+                      background: selected ? ACCENT_SOFT : "var(--surface, #FBF6EC)",
                       cursor: pending ? "not-allowed" : "pointer",
                       display: "block",
                       userSelect: "none",
+                      transition: "border-color .12s, background .12s",
                     }}
                   >
-                    {/* Hidden radio — fully reliable inside any form/dialog */}
                     <input
+                      id={`invite-role-${r}`}
                       type="radio"
-                      name="role"
+                      name="invite-role"
                       value={r}
                       checked={selected}
                       disabled={pending}
                       onChange={() => setRole(r)}
-                      style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
+                      style={{
+                        position: "absolute",
+                        top: 15,
+                        left: 12,
+                        width: 15,
+                        height: 15,
+                        margin: 0,
+                        accentColor: ACCENT,
+                        cursor: pending ? "not-allowed" : "pointer",
+                      }}
                     />
                     <p
                       style={{
                         margin: 0,
                         fontSize: 13,
                         fontWeight: 700,
-                        color: selected ? "var(--green)" : "var(--ink)",
+                        color: selected ? ACCENT : "var(--ink, #3A352D)",
                       }}
                     >
                       {r === "OWNER" ? "Owner" : "Admin"}
@@ -168,7 +197,7 @@ export function InviteAdminModal({
                       style={{
                         margin: "3px 0 0",
                         fontSize: 11,
-                        color: "var(--ink2)",
+                        color: "var(--ink2, #6B6459)",
                         lineHeight: 1.4,
                       }}
                     >
@@ -180,7 +209,7 @@ export function InviteAdminModal({
                 );
               })}
             </div>
-          </div>
+          </fieldset>
 
           {error && (
             <p

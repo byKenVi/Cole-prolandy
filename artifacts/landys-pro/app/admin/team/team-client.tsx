@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { UserPlus, MoreHorizontal, RefreshCw, Ban, CheckCircle2, Trash2, Crown, Shield } from "lucide-react";
@@ -40,11 +40,43 @@ export type PendingInvite = {
   expiresAt: Date;
 };
 
+// ─── Server action results ─────────────────────────────────────────────────────
+
+type ActionResult = {
+  ok: boolean;
+  message?: string;
+  severity?: "success" | "warning";
+};
+
+/** Report an outcome, keeping a partial success (e.g. saved but email failed)
+ *  visually distinct from a clean one. */
+function report(
+  toast: { success: (m: string) => void; warning: (m: string) => void; error: (m: string) => void },
+  res: ActionResult,
+  fallback: string,
+) {
+  if (!res.ok) {
+    toast.error(res.message ?? "Action failed.");
+    return;
+  }
+  const message = res.message ?? fallback;
+  if (res.severity === "warning") toast.warning(message);
+  else toast.success(message);
+}
+
 // ─── Portal dropdown coords ────────────────────────────────────────────────────
 
-function getMenuCoords(btn: HTMLButtonElement): { top: number; right: number } {
+type MenuCoords = {
+  /** Preferred position: just below the trigger. */
+  top: number;
+  /** Fallback anchor when the menu would overflow the viewport: just above it. */
+  above: number;
+  right: number;
+};
+
+function getMenuCoords(btn: HTMLButtonElement): MenuCoords {
   const r = btn.getBoundingClientRect();
-  return { top: r.bottom + 6, right: window.innerWidth - r.right };
+  return { top: r.bottom + 6, above: r.top - 6, right: window.innerWidth - r.right };
 }
 
 // ─── Shared card/table style values ───────────────────────────────────────────
@@ -122,7 +154,11 @@ function RoleBadge({ role }: { role: "OWNER" | "ADMIN" }) {
 // ─── Row action menu ───────────────────────────────────────────────────────────
 
 /** Shared portal dropdown — renders into document.body so table overflow never clips it.
- *  Coords are computed by the caller at click time so the menu never flashes at (0,0). */
+ *  Coords are computed by the caller at click time so the menu never flashes at (0,0).
+ *
+ *  Once rendered it measures itself and flips above the trigger when it would
+ *  run past the bottom of the viewport, which is what cut the last item off for
+ *  rows near the end of a table. */
 function ActionMenu({
   open,
   coords,
@@ -130,27 +166,58 @@ function ActionMenu({
   children,
 }: {
   open: boolean;
-  coords: { top: number; right: number };
+  coords: MenuCoords;
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState(coords.top);
+
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const height = ref.current.offsetHeight;
+    const fitsBelow = coords.top + height <= window.innerHeight - 8;
+    setTop(fitsBelow ? coords.top : Math.max(8, coords.above - height));
+  }, [open, coords]);
+
+  // Escape closes; scrolling or resizing invalidates the measured position.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onClose);
+    window.addEventListener("scroll", onClose, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onClose);
+      window.removeEventListener("scroll", onClose, true);
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return createPortal(
     <>
       <div style={{ position: "fixed", inset: 0, zIndex: 9998 }} onClick={onClose} />
       <div
+        ref={ref}
+        role="menu"
         style={{
           position: "fixed",
-          top: coords.top,
+          top,
           right: Math.max(coords.right, 8),
           zIndex: 9999,
-          minWidth: 200,
+          minWidth: 210,
           maxWidth: "calc(100vw - 16px)",
-          background: "var(--card)",
-          border: "1px solid var(--line)",
+          maxHeight: "calc(100vh - 16px)",
+          overflowY: "auto",
+          /* Literal fallbacks: the portal target sits outside `.admin-theme`. */
+          background: "var(--card, #ffffff)",
+          border: "1px solid var(--line, #EBE3D4)",
           borderRadius: 12,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.16)",
+          boxShadow: "0 12px 34px rgba(58,53,45,0.20)",
           padding: "4px 0",
         }}
       >
@@ -174,12 +241,13 @@ const triggerStyle = (open: boolean, pending: boolean): React.CSSProperties => (
   cursor: pending ? "wait" : "pointer",
   color: "var(--ink2)",
   flex: "none",
+  opacity: pending ? 0.6 : 1,
 });
 
 function MemberActions({ member, onDone }: { member: TeamMember; onDone: () => void }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, right: 0 });
+  const [coords, setCoords] = useState<MenuCoords>({ top: 0, above: 0, right: 0 });
   const [pending, startTransition] = useTransition();
   const [confirmRemove, setConfirmRemove] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -188,16 +256,12 @@ function MemberActions({ member, onDone }: { member: TeamMember; onDone: () => v
     return <span style={{ fontSize: 12, color: "var(--ink3)" }}>You</span>;
   }
 
-  function act(fn: () => Promise<{ ok: boolean; message?: string }>, successMessage: string) {
+  function act(fn: () => Promise<ActionResult>, successMessage: string) {
     setOpen(false);
     startTransition(async () => {
       const res = await fn();
-      if (!res.ok) {
-        toast.error(res.message ?? "Action failed.");
-        return;
-      }
-      toast.success(res.message ?? successMessage);
-      onDone();
+      report(toast, res, successMessage);
+      if (res.ok) onDone();
     });
   }
 
@@ -214,6 +278,8 @@ function MemberActions({ member, onDone }: { member: TeamMember; onDone: () => v
         onClick={toggle}
         disabled={pending}
         style={triggerStyle(open, pending)}
+        aria-haspopup="menu"
+        aria-expanded={open}
         aria-label={`Actions for ${member.name}`}
       >
         <MoreHorizontal style={{ width: 17, height: 17 }} />
@@ -283,21 +349,17 @@ function MemberActions({ member, onDone }: { member: TeamMember; onDone: () => v
 function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () => void }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, right: 0 });
+  const [coords, setCoords] = useState<MenuCoords>({ top: 0, above: 0, right: 0 });
   const [pending, startTransition] = useTransition();
   const [confirmRevoke, setConfirmRevoke] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  function act(fn: () => Promise<{ ok: boolean; message?: string }>, successMessage: string) {
+  function act(fn: () => Promise<ActionResult>, successMessage: string) {
     setOpen(false);
     startTransition(async () => {
       const res = await fn();
-      if (!res.ok) {
-        toast.error(res.message ?? "Action failed.");
-        return;
-      }
-      toast.success(res.message ?? successMessage);
-      onDone();
+      report(toast, res, successMessage);
+      if (res.ok) onDone();
     });
   }
 
@@ -314,6 +376,8 @@ function InviteActions({ invite, onDone }: { invite: PendingInvite; onDone: () =
         onClick={toggle}
         disabled={pending}
         style={triggerStyle(open, pending)}
+        aria-haspopup="menu"
+        aria-expanded={open}
         aria-label={`Actions for the invitation to ${invite.email}`}
       >
         <MoreHorizontal style={{ width: 17, height: 17 }} />
@@ -365,29 +429,31 @@ function MenuItem({
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 8,
+        gap: 9,
         width: "100%",
         minHeight: 44,
         padding: "8px 14px",
         background: "none",
         border: "none",
         cursor: "pointer",
-        fontSize: 13,
-        color: danger ? "#9A3B2E" : "var(--ink)",
+        fontSize: 13.5,
+        whiteSpace: "nowrap",
+        color: danger ? "#9A3B2E" : "var(--ink, #3A352D)",
         textAlign: "left",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "var(--surface)";
+        e.currentTarget.style.background = danger ? "#F9EEEB" : "#FBF6EC";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "none";
+        e.currentTarget.style.background = "none";
       }}
     >
-      {icon}
+      <span style={{ flex: "none", display: "inline-flex" }}>{icon}</span>
       {label}
     </button>
   );
@@ -622,9 +688,10 @@ export function TeamPageClient({
       <InviteAdminModal
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
-        onSuccess={(message) => {
+        onSuccess={(message, severity) => {
           setInviteOpen(false);
-          toast.success(message);
+          if (severity === "warning") toast.warning(message);
+          else toast.success(message);
           refresh();
         }}
       />

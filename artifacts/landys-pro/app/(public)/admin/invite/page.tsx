@@ -3,7 +3,7 @@
 import { Suspense, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { CheckCircle2, AlertTriangle, Clock, XCircle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { acceptInvitation } from "@/app/actions/team";
 
@@ -48,10 +48,23 @@ function InvitePageInner() {
   const { isLoaded, isSignedIn: clerkSignedIn } = useAuth();
   const signedIn = isLoaded ? (clerkSignedIn ?? false) : null;
 
+  // No token: not an error. Access is also granted from the pending invitation
+  // matching the signed-in user's verified email, so point them at sign-in
+  // rather than showing a dead end.
   if (!token) {
     return (
-      <InviteCard icon={<XCircle style={{ color: "#9A3B2E" }} />} title="Invalid link">
-        <p style={bodyStyle}>This invitation link is missing a token. Please check the email you received.</p>
+      <InviteCard icon={<CheckCircle2 style={{ color: "#2F6B4A" }} />} title="Accept your invitation">
+        <p style={bodyStyle}>
+          Sign in with the email address your invitation was sent to. Your admin access is applied
+          automatically the first time you sign in.
+        </p>
+        <Button
+          variant="accent"
+          onClick={() => router.push(signedIn ? "/admin" : "/sign-in")}
+          style={{ width: "100%", marginTop: 8 }}
+        >
+          {signedIn ? "Go to dashboard →" : "Sign in →"}
+        </Button>
       </InviteCard>
     );
   }

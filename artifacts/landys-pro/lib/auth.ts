@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { claimPendingAdminInvite } from "@/lib/admin-invites";
 
 /**
  * Auth abstraction.
@@ -162,6 +163,7 @@ async function getClerkSession(): Promise<Session> {
   // ── Admin resolution ──────────────────────────────────────────────────
   // Priority 1: ADMIN_EMAILS env var → bootstrap Owner in DB on first login.
   // Priority 2: AdminUser DB record (set by invitation flow).
+  // Priority 3: pending AdminInvite for a verified email → accepted on the spot.
   // A disabled AdminUser is not granted admin access.
   const allowed = adminEmails();
   const isEnvAdmin =
@@ -179,6 +181,14 @@ async function getClerkSession(): Promise<Session> {
       },
       select: { id: true, role: true, disabledAt: true },
     });
+
+    // Priority 3: an unexpired invitation addressed to one of the user's
+    // verified emails is accepted here, on first sign-in. The emailed token
+    // cannot be relied on — see claimPendingAdminInvite.
+    if (!dbAdmin) {
+      const claimed = await claimPendingAdminInvite({ clerkUserId: userId, verifiedEmails });
+      if (claimed) dbAdmin = { ...claimed, disabledAt: null };
+    }
   }
 
   if (isEnvAdmin || (dbAdmin && !dbAdmin.disabledAt)) {

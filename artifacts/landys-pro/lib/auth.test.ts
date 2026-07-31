@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 
 // lib/auth imports the prisma singleton and Clerk at module load; stub them so
 // the fail-closed config guard can be tested in isolation.
+vi.mock("server-only", () => ({}));
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn(),

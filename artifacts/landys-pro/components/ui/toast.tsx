@@ -4,7 +4,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, AlertTriangle, Info, X } from "lucide-react";
 
-export type ToastVariant = "success" | "error" | "info";
+export type ToastVariant = "success" | "warning" | "error" | "info";
 
 type Toast = {
   id: number;
@@ -15,6 +15,7 @@ type Toast = {
 type ToastContextValue = {
   toast: (message: string, variant?: ToastVariant) => void;
   success: (message: string) => void;
+  warning: (message: string) => void;
   error: (message: string) => void;
 };
 
@@ -52,6 +53,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     () => ({
       toast,
       success: (message: string) => toast(message, "success"),
+      warning: (message: string) => toast(message, "warning"),
       error: (message: string) => toast(message, "error"),
     }),
     [toast],
@@ -79,6 +81,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 const VARIANTS: Record<ToastVariant, { bg: string; border: string; fg: string; Icon: typeof Info }> = {
   success: { bg: "#E7F0E9", border: "#BED6C6", fg: "#2F6B4A", Icon: CheckCircle2 },
+  warning: { bg: "#F4EAD3", border: "#DFCBA0", fg: "#8A6B2E", Icon: AlertTriangle },
   error: { bg: "#F6E4E1", border: "#E4BFB8", fg: "#9A3B2E", Icon: AlertTriangle },
   info: { bg: "#FFFDF9", border: "#EBE3D4", fg: "#3A352D", Icon: Info },
 };
@@ -116,5 +119,5 @@ export function useToast(): ToastContextValue {
   const ctx = React.useContext(ToastContext);
   if (ctx) return ctx;
   const noop = () => {};
-  return { toast: noop, success: noop, error: noop };
+  return { toast: noop, success: noop, warning: noop, error: noop };
 }
