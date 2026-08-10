@@ -119,12 +119,30 @@ model Contractor {
   contractorType     ContractorType      @relation(fields: [contractorTypeId], references: [id])
   contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
   projects           ContractorProject[]
+  externalIdentities ExternalContractorIdentity[]
   leadMatches        LeadMatch[]
   walletTransactions WalletTransaction[]
 
   @@index([contractorTypeId])
   @@index([contractorCategoryId])
   @@index([deactivatedAt])
+}
+
+/// Provider-neutral mapping used by isolated contractor import adapters.
+model ExternalContractorIdentity {
+  id              String   @id @default(cuid())
+  source          String
+  externalId      String
+  contractorId    String
+  lastPayloadHash String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contractor Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+
+  @@unique([source, externalId])
+  @@index([contractorId])
 }
 
 /**
