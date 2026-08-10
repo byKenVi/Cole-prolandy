@@ -11,6 +11,7 @@ import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteLead } from "@/app/actions/admin";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
+import { LeadReviewForm } from "@/components/admin/lead-review-form";
 
 export const dynamic = "force-dynamic";
 
@@ -167,7 +168,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             Client
           </p>
           <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
-            {lead.landownerName}
+            {lead.landownerName ?? "Name not provided"}
           </h1>
           <p className="mt-1 text-base font-medium" style={{ color: "var(--ink)" }}>
             {lead.projectType.name}
@@ -176,7 +177,13 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             {lead.projectType.contractorType.name} · {lead.propertyLocation}
           </p>
           <div className="mt-2 flex items-center gap-2">
-            <TierBadge tier={lead.tier} />
+            {lead.tier === null ? (
+              <span className="rounded-full bg-warning/10 px-2 py-1 text-xs font-semibold text-warning">
+                Tier review
+              </span>
+            ) : (
+              <TierBadge tier={lead.tier} />
+            )}
             <LeadStatusBadge status={lead.status} />
           </div>
         </div>
@@ -190,30 +197,41 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             label="Delete"
             confirmLabel="Delete lead"
             title="Delete this lead?"
-            description={`“${lead.projectType.name}” for ${lead.landownerName} will be removed permanently. This cannot be undone.`}
+            description={`“${lead.projectType.name}” for ${lead.landownerName ?? lead.landownerEmail} will be removed permanently. This cannot be undone.`}
             successMessage="Lead deleted."
           />
         </div>
       </header>
 
+      {lead.reviewStatus !== "ROUTED" && (
+        <LeadReviewForm
+          leadId={lead.id}
+          currentTier={lead.tier}
+          contractorReviewRequired={lead.contractorReviewRequired}
+        />
+      )}
+
       <Card className="flex flex-col gap-5 p-6">
         <div>
           <p className="text-xs uppercase tracking-wide text-text-muted">Lead price</p>
           <p className="mt-1 text-3xl font-semibold leading-tight tabular-nums text-text">
-            {formatMoney(lead.priceCents)}
+            {lead.priceCents === null ? "Pending review" : formatMoney(lead.priceCents)}
           </p>
         </div>
         <dl className="grid gap-5 sm:grid-cols-2">
-          <Field label="Landowner name" value={lead.landownerName} />
-          <Field label="Landowner phone" value={lead.landownerPhone} />
+          <Field label="Landowner name" value={lead.landownerName ?? "Not provided"} />
+          <Field label="Landowner phone" value={lead.landownerPhone ?? "Not provided"} />
           <Field label="Landowner email" value={lead.landownerEmail} />
           <Field label="Property location" value={lead.propertyLocation} />
           <Field label="Project details" value={lead.description ?? "—"} />
           <Field label="Project type" value={lead.projectType.name} />
           <Field label="Land type" value={lead.landType?.name ?? "—"} />
+          <Field label="Budget" value={lead.budget ?? "—"} />
+          <Field label="Urgency" value={lead.urgency ?? "—"} />
+          <Field label="Timeline" value={lead.timeline ? formatDate(lead.timeline) : "—"} />
           <Field label="Source" value={lead.source} />
           <Field label="Created" value={formatDate(lead.createdAt)} />
-          <Field label="Expires" value={formatDate(lead.expiresAt)} />
+          <Field label="Expires" value={lead.expiresAt ? formatDate(lead.expiresAt) : "Not started"} />
         </dl>
       </Card>
 

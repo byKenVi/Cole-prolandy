@@ -6,6 +6,7 @@ import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import { timeUntil } from "@/lib/format";
+import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ function Notice({ text }: { text: string }) {
 export default async function AcceptPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
-  const match = await prisma.leadMatch.findUnique({
+  const rawMatch = await prisma.leadMatch.findUnique({
     where: { acceptToken: token },
     include: {
       contractor: { select: { name: true, walletBalanceCents: true } },
@@ -40,6 +41,10 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
       },
     },
   });
+  const match =
+    rawMatch && hasResolvedLeadSnapshot(rawMatch.lead)
+      ? { ...rawMatch, lead: rawMatch.lead }
+      : null;
 
   const expired =
     !!match &&
@@ -77,10 +82,14 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
               <CheckCircle2 className="h-5 w-5" /> You&apos;re on this job
             </p>
             <p className="mt-3 text-sm text-[#8A7E68]">Landowner contact</p>
-            <p className="text-[18px] font-semibold text-[#3A352D]">{match.lead.landownerName}</p>
-            <a href={`tel:${match.lead.landownerPhone}`} className="mt-1 flex items-center gap-2 text-[16px] text-[#3A352D]">
-              <Phone className="h-5 w-5 text-[#C0803C]" /> {match.lead.landownerPhone}
-            </a>
+            <p className="text-[18px] font-semibold text-[#3A352D]">
+              {match.lead.landownerName ?? "Name not provided"}
+            </p>
+            {match.lead.landownerPhone && (
+              <a href={`tel:${match.lead.landownerPhone}`} className="mt-1 flex items-center gap-2 text-[16px] text-[#3A352D]">
+                <Phone className="h-5 w-5 text-[#C0803C]" /> {match.lead.landownerPhone}
+              </a>
+            )}
             <a
               href={`mailto:${match.lead.landownerEmail}`}
               className="flex items-center gap-2 text-[16px] text-[#3A352D]"

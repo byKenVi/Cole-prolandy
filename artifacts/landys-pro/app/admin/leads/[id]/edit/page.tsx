@@ -46,9 +46,9 @@ export default async function EditLeadPage({ params }: { params: Promise<{ id: s
         <LeadEditForm
           leadId={lead.id}
           initial={{
-            landownerName: lead.landownerName,
+            landownerName: lead.landownerName ?? "",
             landownerEmail: lead.landownerEmail,
-            landownerPhone: lead.landownerPhone,
+            landownerPhone: lead.landownerPhone ?? "",
             propertyLocation: lead.propertyLocation,
           }}
         />

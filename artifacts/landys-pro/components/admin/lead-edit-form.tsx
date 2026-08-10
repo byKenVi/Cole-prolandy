@@ -52,11 +52,11 @@ export function LeadEditForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <Label htmlFor="ln">Landowner name</Label>
-          <Input id="ln" value={form.landownerName} onChange={(e) => set("landownerName", e.target.value)} required />
+          <Input id="ln" value={form.landownerName} onChange={(e) => set("landownerName", e.target.value)} />
         </div>
         <div>
           <Label htmlFor="lp">Landowner phone</Label>
-          <Input id="lp" type="tel" value={form.landownerPhone} onChange={(e) => set("landownerPhone", e.target.value)} required />
+          <Input id="lp" type="tel" value={form.landownerPhone} onChange={(e) => set("landownerPhone", e.target.value)} />
         </div>
       </div>
 

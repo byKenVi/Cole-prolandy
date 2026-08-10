@@ -6,7 +6,10 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { refundLeadMatch } from "@/lib/domain/leads";
 import { chargeContractorSavedCard } from "@/lib/services/recharge";
-import { createAndDistributeLead } from "@/lib/services/lead-intake";
+import {
+  createAndDistributeLead,
+  finalizeLeadForRouting,
+} from "@/lib/services/lead-intake";
 import { requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
 import { normalizePhoneForStorage } from "@/lib/phone";
@@ -265,9 +268,17 @@ export async function deleteContractor(id: string): Promise<Result> {
 
 // ── Lead edit / delete ──
 const LeadEditSchema = z.object({
-  landownerName: z.string().min(2, "Landowner name is required"),
+  landownerName: z
+    .string()
+    .trim()
+    .max(120)
+    .transform((value) => value || null),
   landownerEmail: z.string().email("A valid email is required"),
-  landownerPhone: z.string().min(7, "A valid phone number is required"),
+  landownerPhone: z
+    .string()
+    .trim()
+    .max(40)
+    .transform((value) => value || null),
   propertyLocation: z.string().min(2, "Property location is required"),
 });
 
@@ -1086,7 +1097,31 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
   return { ok: true, message: "Contractor updated" };
 }
 
-// ── Manual lead creation ──
+// ── Lead review + manual lead creation ──
+export async function finalizeLeadReview(leadId: string, tier: number): Promise<Result> {
+  const admin = await requireAdmin();
+  try {
+    const result = await finalizeLeadForRouting({
+      leadId,
+      tier,
+      actorId: admin.email,
+    });
+    revalidatePath("/admin/leads");
+    revalidatePath(`/admin/leads/${leadId}`);
+    return {
+      ok: true,
+      message: result.heldForContractorReview
+        ? "Price snapshotted; direct contractor still requires review."
+        : `Lead routed to ${result.recipients} contractor${result.recipients === 1 ? "" : "s"}.`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Could not finalize this lead.",
+    };
+  }
+}
+
 const ManualLeadSchema = z.object({
   landownerName: z.string().min(2),
   landownerEmail: z.string().email(),

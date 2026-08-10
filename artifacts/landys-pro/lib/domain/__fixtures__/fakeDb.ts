@@ -46,7 +46,8 @@ function matchWhere(row: Row, where: Row | undefined): boolean {
       typeof cond === "object" &&
       "lt" in cond
     ) {
-      if ((row.expiresAt as Date).getTime() >= (cond as { lt: Date }).lt.getTime())
+      if (!(row.expiresAt instanceof Date)) return false;
+      if (row.expiresAt.getTime() >= (cond as { lt: Date }).lt.getTime())
         return false;
       continue;
     }

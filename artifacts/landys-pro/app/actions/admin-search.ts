@@ -75,7 +75,9 @@ export async function adminSearchSuggest(query: string): Promise<SearchHit[]> {
     id: l.id,
     href: `/admin/leads/${l.id}`,
     title: l.projectType.name,
-    subtitle: `${l.projectType.contractorType.name} · ${l.propertyLocation} · ${formatMoney(l.priceCents)}`,
+    subtitle: `${l.projectType.contractorType.name} · ${l.propertyLocation} · ${
+      l.priceCents === null ? "Pending review" : formatMoney(l.priceCents)
+    }`,
   }));
 
   const contractorHits: SearchHit[] = contractors.map((c) => ({

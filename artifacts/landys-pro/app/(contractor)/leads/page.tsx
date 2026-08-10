@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/money";
 import { LeadFeedCard } from "@/components/lead-feed-card";
 import { PaginationControls } from "@/components/pagination-controls";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
+import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
 
 export const dynamic = "force-dynamic";
 
@@ -55,18 +56,24 @@ export default async function MyLeadsPage({
     include: { lead: { include: { projectType: { include: { contractorType: true } } } } },
   });
 
-  const rows: Row[] = matches.map((m) => ({
-    matchId: m.id,
-    projectTypeName: m.lead.projectType.name,
-    categoryName: m.lead.projectType.contractorType.name,
-    categoryIcon: m.lead.projectType.contractorType.icon,
-    location: m.lead.propertyLocation,
-    tier: m.lead.tier,
-    priceCents: m.lead.priceCents,
-    contactName: m.lead.landownerName,
-    contactPhone: m.lead.landownerPhone,
-    contactEmail: m.lead.landownerEmail,
-  }));
+  const rows: Row[] = matches.flatMap((m) =>
+    hasResolvedLeadSnapshot(m.lead)
+      ? [
+          {
+            matchId: m.id,
+            projectTypeName: m.lead.projectType.name,
+            categoryName: m.lead.projectType.contractorType.name,
+            categoryIcon: m.lead.projectType.contractorType.icon,
+            location: m.lead.propertyLocation,
+            tier: m.lead.tier,
+            priceCents: m.lead.priceCents,
+            contactName: m.lead.landownerName ?? "Not provided",
+            contactPhone: m.lead.landownerPhone ?? "Not provided",
+            contactEmail: m.lead.landownerEmail,
+          },
+        ]
+      : [],
+  );
 
   return (
     <Shell

@@ -172,6 +172,17 @@ enum LeadStatus {
   CLOSED
 }
 
+enum LeadReviewStatus {
+  PENDING_REVIEW
+  READY
+  ROUTED
+}
+
+enum LeadRoutingMode {
+  GENERAL
+  DIRECT
+}
+
 enum LeadMatchStatus {
   PENDING
   ACCEPTED
@@ -190,20 +201,36 @@ enum WalletTransactionType {
 
 model Lead {
   id               String     @id @default(cuid())
-  landownerName    String
+  landownerName    String?
+  firstName        String?
+  lastName         String?
   landownerEmail   String
-  landownerPhone   String
+  landownerPhone   String?
   propertyLocation String
+  propertyZip      String?
   description      String?
+  budget           String?
+  timeline         DateTime?
+  urgency          String?
   landTypeId       String?
   contractorCategoryId String?
   projectTypeId    String
-  tier             Int // 1 / 2 / 3
-  priceCents       Int // snapshotted from PriceTier at creation
+  tier             Int? // 1 / 2 / 3 after explicit review
+  priceCents       Int? // snapshotted from PriceTier exactly once
   status           LeadStatus @default(NEW)
+  reviewStatus     LeadReviewStatus @default(PENDING_REVIEW)
+  tierReviewRequired Boolean @default(true)
+  contractorReviewRequired Boolean @default(false)
+  routingMode      LeadRoutingMode @default(GENERAL)
+  directContractorSource String?
+  directContractorExternalId String?
   source           String     @default("wix_form")
+  externalRequestId String?
+  payloadHash      String?
   createdAt        DateTime   @default(now())
-  expiresAt        DateTime
+  updatedAt        DateTime   @updatedAt
+  routedAt         DateTime?
+  expiresAt        DateTime?
 
   landType    LandType?   @relation(fields: [landTypeId], references: [id])
   contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
@@ -213,6 +240,8 @@ model Lead {
   @@index([status])
   @@index([projectTypeId])
   @@index([contractorCategoryId])
+  @@index([reviewStatus])
+  @@unique([source, externalRequestId])
 }
 
 // This join row lets multiple contractors independently accept the SAME lead;

@@ -21,12 +21,14 @@ export function leadStatusChip(status: string): ChipStyle {
 }
 
 /** Tier chip colours (hardcoded warm tones, as in the design model). */
-export function tierChip(tier: number): ChipStyle {
+export function tierChip(tier: number | null): ChipStyle {
   switch (tier) {
     case 2:
       return { label: "Tier 2", bg: "#F4E6CE", fg: "#8A5A1E" };
     case 3:
       return { label: "Tier 3", bg: "#EFD8C4", fg: "#7A3E1E" };
+    case null:
+      return { label: "Tier review", bg: "var(--warningBg)", fg: "var(--warning)" };
     default:
       return { label: "Tier 1", bg: "var(--chipBg)", fg: "var(--chipFg)" };
   }

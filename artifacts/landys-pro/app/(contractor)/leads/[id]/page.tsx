@@ -11,6 +11,7 @@ import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
+import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function LeadDetail({
   }
 
   const { lead, contractor } = match;
+  if (!hasResolvedLeadSnapshot(lead)) notFound();
   const topUpStatus = parseTopUpStatus(topup);
   const expired =
     match.status === "EXPIRED" ||
@@ -135,10 +137,14 @@ export default async function LeadDetail({
                 <p className="flex items-center gap-2 text-[14px] font-semibold text-[#8A6B2E]">
                   <CheckCircle2 className="h-4 w-4" /> Contact unlocked
                 </p>
-                <p className="mt-2 text-[16px] font-semibold text-[#3A352D]">{lead.landownerName}</p>
-                <a href={`tel:${lead.landownerPhone}`} className="mt-1 flex items-center gap-2 text-[16px] text-[#3A352D]">
-                  <Phone className="h-[17px] w-[17px]" strokeWidth={1.7} /> {lead.landownerPhone}
-                </a>
+                <p className="mt-2 text-[16px] font-semibold text-[#3A352D]">
+                  {lead.landownerName ?? "Name not provided"}
+                </p>
+                {lead.landownerPhone && (
+                  <a href={`tel:${lead.landownerPhone}`} className="mt-1 flex items-center gap-2 text-[16px] text-[#3A352D]">
+                    <Phone className="h-[17px] w-[17px]" strokeWidth={1.7} /> {lead.landownerPhone}
+                  </a>
+                )}
                 <a
                   href={`mailto:${lead.landownerEmail}`}
                   className="flex items-center gap-2 text-[16px] text-[#3A352D]"

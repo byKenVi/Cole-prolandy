@@ -16,10 +16,10 @@ export type LeadRow = {
   /** ISO date for sorting (server already sorted; kept for client display). */
   sentAtIso: string;
   price: string;
-  priceCents: number;
+  priceCents: number | null;
   iconSrc: string | null;
   tier: ChipStyle;
-  tierNum: number;
+  tierNum: number | null;
   status: ChipStyle;
   filter: "distributed" | "expired" | "other";
 };

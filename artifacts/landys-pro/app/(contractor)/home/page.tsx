@@ -5,6 +5,7 @@ import { expireLeads } from "@/lib/domain/leads";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
+import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
 import { ContractorFeed, type FeedRow } from "./feed-client";
 
 export const dynamic = "force-dynamic";
@@ -44,17 +45,23 @@ export default async function ContractorHome({
 
   const hasSavedCard = Boolean(contractor.stripeDefaultPaymentMethodId);
 
-  const rows: FeedRow[] = matches.map((m) => ({
-    matchId: m.id,
-    projectTypeName: m.lead.projectType.name,
-    categoryName: m.lead.projectType.contractorType.name,
-    categoryIcon: m.lead.projectType.contractorType.icon,
-    location: m.lead.propertyLocation,
-    tier: m.lead.tier,
-    priceCents: m.lead.priceCents,
-    receivedAt: m.createdAt,
-    expiresAt: m.lead.expiresAt,
-  }));
+  const rows: FeedRow[] = matches.flatMap((m) =>
+    hasResolvedLeadSnapshot(m.lead)
+      ? [
+          {
+            matchId: m.id,
+            projectTypeName: m.lead.projectType.name,
+            categoryName: m.lead.projectType.contractorType.name,
+            categoryIcon: m.lead.projectType.contractorType.icon,
+            location: m.lead.propertyLocation,
+            tier: m.lead.tier,
+            priceCents: m.lead.priceCents,
+            receivedAt: m.createdAt,
+            expiresAt: m.lead.expiresAt,
+          },
+        ]
+      : [],
+  );
 
   return (
     <ContractorFeed

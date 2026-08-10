@@ -45,6 +45,15 @@ export async function distributeLead(
     include: { projectType: true, matches: true },
   });
   if (!lead) throw new NotFoundError("Lead");
+  if (
+    lead.tier === null ||
+    lead.priceCents === null ||
+    lead.expiresAt === null ||
+    lead.tierReviewRequired ||
+    lead.contractorReviewRequired
+  ) {
+    throw new InvalidStateError("This lead is still awaiting intake review.");
+  }
 
   const maxRecipients = await getMaxLeadRecipients(db);
   const projectId = lead.projectType.contractorTypeId;
@@ -126,9 +135,9 @@ export type AcceptLeadMatchResult = {
   leadMatchId: string;
   newBalanceCents: number;
   contact: {
-    landownerName: string;
+    landownerName: string | null;
     landownerEmail: string;
-    landownerPhone: string;
+    landownerPhone: string | null;
     propertyLocation: string;
   };
 };
@@ -176,6 +185,7 @@ export async function acceptLeadMatch(
     const isExpired =
       match.status === LeadMatchStatus.EXPIRED ||
       lead.status === LeadStatus.EXPIRED ||
+      lead.expiresAt === null ||
       lead.expiresAt.getTime() <= Date.now();
     if (isExpired) {
       if (match.status === LeadMatchStatus.PENDING) {
@@ -214,6 +224,9 @@ export async function acceptLeadMatch(
     }
 
     // Winner only: charge (throws InsufficientBalanceError → rolls back claim).
+    if (lead.priceCents === null) {
+      throw new InvalidStateError("This lead has no resolved price snapshot.");
+    }
     const charge = await chargeForLead(tx, {
       contractorId: match.contractorId,
       leadMatchId: match.id,
@@ -321,6 +334,9 @@ export async function refundLeadMatch(params: {
       (t) => t.type === WalletTransactionType.LEAD_CHARGE,
     );
     const refundCents = charge ? Math.abs(charge.amountCents) : match.lead.priceCents;
+    if (refundCents === null) {
+      throw new InvalidStateError("This lead has no price snapshot to refund.");
+    }
 
     let res;
     try {

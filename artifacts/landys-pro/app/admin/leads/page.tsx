@@ -95,7 +95,7 @@ export default async function AdminLeads({
     recipients: l._count.matches,
     sent: formatDate(l.createdAt),
     sentAtIso: l.createdAt.toISOString(),
-    price: formatMoney(l.priceCents),
+    price: l.priceCents === null ? "Pending" : formatMoney(l.priceCents),
     priceCents: l.priceCents,
     iconSrc: iconSrcFor({
       icon: l.projectType.contractorType.icon,

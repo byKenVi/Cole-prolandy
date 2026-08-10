@@ -392,7 +392,7 @@ export default async function AdminDashboard({
                         textAlign: "right",
                       }}
                     >
-                      {formatMoney(lead.priceCents)}
+                      {lead.priceCents === null ? "Pending review" : formatMoney(lead.priceCents)}
                     </span>
                   </div>
                 </div>

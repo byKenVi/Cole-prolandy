@@ -19,6 +19,7 @@ import { formatDate } from "@/lib/format";
 import { formatCardLabel } from "@/lib/card-display";
 import { cn } from "@/lib/utils";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
+import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
 
 export const dynamic = "force-dynamic";
 
@@ -103,13 +104,19 @@ export default async function ContractorDetail({
   const hasSavedCard = Boolean(contractor.stripeDefaultPaymentMethodId);
   const cardLabel = formatCardLabel(contractor.cardBrand, contractor.cardLast4);
 
-  const acceptedLeads = acceptedMatches.map((m) => ({
-    matchId: m.id,
-    projectName: m.lead.projectType.name,
-    location: m.lead.propertyLocation,
-    priceCents: m.lead.priceCents,
-    alreadyRefunded: m.walletTransactions.some((t) => t.type === "REFUND"),
-  }));
+  const acceptedLeads = acceptedMatches.flatMap((m) =>
+    hasResolvedLeadSnapshot(m.lead)
+      ? [
+          {
+            matchId: m.id,
+            projectName: m.lead.projectType.name,
+            location: m.lead.propertyLocation,
+            priceCents: m.lead.priceCents,
+            alreadyRefunded: m.walletTransactions.some((t) => t.type === "REFUND"),
+          },
+        ]
+      : [],
+  );
 
   const listParams = {
     matchesPage: matchesMeta.page > 1 ? matchesMeta.page : undefined,
@@ -253,7 +260,7 @@ export default async function ContractorDetail({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="tabular-nums text-sm text-text-muted">
-                    {formatMoney(m.lead.priceCents)}
+                    {m.lead.priceCents === null ? "Pending review" : formatMoney(m.lead.priceCents)}
                   </span>
                   <LeadMatchStatusBadge status={m.status} />
                 </div>

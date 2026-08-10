@@ -21,6 +21,7 @@ import {
   declineLeadMatch,
   refundLeadMatch,
   expireLeads,
+  distributeLead,
 } from "./leads";
 
 const asDb = (db: FakeDb) => db as unknown as PrismaClient;
@@ -154,6 +155,40 @@ describe("acceptLeadMatch — shared lead, multi-accept", () => {
     expect(
       db.walletTransaction.rows.filter((t) => t.type === WalletTransactionType.LEAD_CHARGE),
     ).toHaveLength(1);
+  });
+});
+
+describe("safe intake distribution gate", () => {
+  it("creates no matches while tier, price, and expiry are unresolved", async () => {
+    const db = createFakeDb();
+    db.projectType.seed([{ id: "pt-review", contractorTypeId: "ct-review" }]);
+    db.lead.seed([
+      {
+        id: "lead-review",
+        projectTypeId: "pt-review",
+        tier: null,
+        priceCents: null,
+        expiresAt: null,
+        tierReviewRequired: true,
+        contractorReviewRequired: false,
+        status: LeadStatus.NEW,
+      },
+    ]);
+    db.contractor.seed([
+      {
+        id: "contractor-review",
+        name: "Should Not Receive",
+        email: "hold@example.com",
+        phone: "+15125550100",
+        createdAt: new Date(),
+        deactivatedAt: null,
+      },
+    ]);
+
+    await expect(distributeLead(asDb(db), "lead-review")).rejects.toBeInstanceOf(
+      InvalidStateError,
+    );
+    expect(db.leadMatch.rows).toHaveLength(0);
   });
 });
 
