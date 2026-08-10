@@ -30,6 +30,13 @@ function matchWhere(row: Row, where: Row | undefined): boolean {
       if (!(cond as { in: unknown[] }).in.includes(row.status)) return false;
       continue;
     }
+    if (key === "projects" && cond && typeof cond === "object" && "some" in cond) {
+      const projects = (row.projects as Row[] | undefined) ?? [];
+      if (!projects.some((project) => matchWhere(project, (cond as { some: Row }).some))) {
+        return false;
+      }
+      continue;
+    }
     if (
       key === "walletBalanceCents" &&
       cond &&
@@ -86,6 +93,16 @@ class Table {
 
   async create({ data, select }: { data: Row; select?: Row }) {
     const row: Row = { id: data.id ?? id(this.prefix), ...data };
+    if (this.prefix === "lead") {
+      for (const [relation, foreignKey] of [
+        ["projectType", "projectTypeId"],
+        ["landType", "landTypeId"],
+        ["contractorCategory", "contractorCategoryId"],
+      ] as const) {
+        const value = row[relation] as { connect?: { id?: unknown } } | undefined;
+        if (value?.connect?.id) row[foreignKey] = value.connect.id;
+      }
+    }
     if (row.acceptToken === undefined && this.prefix === "leadmatch") {
       row.acceptToken = id("tok");
     }
@@ -100,6 +117,22 @@ class Table {
         err.code = "P2002";
         throw err;
       }
+    }
+    if (
+      this.prefix === "lead" &&
+      row.externalRequestId !== null &&
+      row.externalRequestId !== undefined &&
+      this.rows.some(
+        (existing) =>
+          existing.source === row.source &&
+          existing.externalRequestId === row.externalRequestId,
+      )
+    ) {
+      const err = new Error(
+        "Unique constraint failed on the fields: (`source`,`externalRequestId`)",
+      ) as Error & { code?: string };
+      err.code = "P2002";
+      throw err;
     }
 
     this.rows.push(row);
@@ -150,17 +183,46 @@ class Table {
     return out.map((r) => project(r, select));
   }
 
-  async update({ where, data }: { where: Row; data: Row }) {
+  async update({
+    where,
+    data,
+    select,
+    include,
+  }: {
+    where: Row;
+    data: Row;
+    select?: Row;
+    include?: Row;
+  }) {
     const row = this.rows.find((r) => matchesUnique(r, where));
     if (!row) throw new Error("Record to update not found");
     applyData(row, data);
-    return { ...row };
+    return hydrate(project(row, select), row, include);
   }
 
   async updateMany({ where, data }: { where?: Row; data: Row }) {
     const matched = this.rows.filter((r) => matchWhere(r, where));
     matched.forEach((r) => applyData(r, data));
     return { count: matched.length };
+  }
+
+  async upsert({
+    where,
+    update,
+    create,
+    select,
+  }: {
+    where: Row;
+    update: Row;
+    create: Row;
+    select?: Row;
+  }) {
+    const existing = this.rows.find((row) => matchesUnique(row, where));
+    if (existing) {
+      applyData(existing, update);
+      return project(existing, select);
+    }
+    return this.create({ data: create, select });
   }
 }
 
@@ -173,6 +235,21 @@ function matchesUnique(row: Row, where: Row): boolean {
       row.projectTypeId === c.projectTypeId &&
       row.tier === c.tier
     );
+  }
+  if ("source_externalRequestId" in where) {
+    const composite = where.source_externalRequestId as Row;
+    return (
+      row.source === composite.source &&
+      row.externalRequestId === composite.externalRequestId
+    );
+  }
+  if ("source_externalId" in where) {
+    const composite = where.source_externalId as Row;
+    return row.source === composite.source && row.externalId === composite.externalId;
+  }
+  if ("leadId_contractorId" in where) {
+    const composite = where.leadId_contractorId as Row;
+    return row.leadId === composite.leadId && row.contractorId === composite.contractorId;
   }
   return Object.entries(where).every(([k, v]) => row[k] === v);
 }
@@ -212,6 +289,9 @@ export class FakeDb {
   contractor = new Table("contractor");
   contractorType = new Table("contractortype");
   projectType = new Table("projecttype");
+  landType = new Table("landtype");
+  contractorCategory = new Table("contractorcategory");
+  externalContractorIdentity = new Table("externalcontractoridentity");
   lead = new Table("lead");
   leadMatch = new Table("leadmatch");
   walletTransaction = new Table("wallettx");
@@ -234,6 +314,9 @@ export class FakeDb {
       this.contractor,
       this.contractorType,
       this.projectType,
+      this.landType,
+      this.contractorCategory,
+      this.externalContractorIdentity,
       this.lead,
       this.leadMatch,
       this.walletTransaction,

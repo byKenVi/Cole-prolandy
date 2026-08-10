@@ -12,6 +12,7 @@ import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
+import { canRevealLeadContact } from "@/lib/lead-contact";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function LeadDetail({
     match.status === "EXPIRED" ||
     lead.status === "EXPIRED" ||
     lead.expiresAt.getTime() <= Date.now();
-  const accepted = match.status === "ACCEPTED";
+  const accepted = canRevealLeadContact(match.status);
   const declined = match.status === "DECLINED";
   const actionable = !accepted && !declined && !expired;
   const hasSavedCard = Boolean(contractor.stripeDefaultPaymentMethodId);

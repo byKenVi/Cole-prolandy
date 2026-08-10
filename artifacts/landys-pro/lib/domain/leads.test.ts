@@ -190,6 +190,42 @@ describe("safe intake distribution gate", () => {
     );
     expect(db.leadMatch.rows).toHaveLength(0);
   });
+
+  it("honors the configured maximum recipient limit", async () => {
+    const db = createFakeDb();
+    const setting = db.appSetting.rows.find((row) => row.key === "maxLeadRecipients");
+    if (!setting) throw new Error("maxLeadRecipients fixture is missing");
+    setting.value = "2";
+    db.projectType.seed([{ id: "pt-limit", contractorTypeId: "ct-limit" }]);
+    db.lead.seed([
+      {
+        id: "lead-limit",
+        projectTypeId: "pt-limit",
+        tier: 1,
+        priceCents: 2500,
+        expiresAt: new Date(Date.now() + HOUR),
+        tierReviewRequired: false,
+        contractorReviewRequired: false,
+        status: LeadStatus.NEW,
+      },
+    ]);
+    db.contractor.seed(
+      Array.from({ length: 5 }, (_, index) => ({
+        id: `contractor-${index}`,
+        name: `Contractor ${index}`,
+        email: `contractor-${index}@example.com`,
+        phone: `+1512555010${index}`,
+        createdAt: new Date(index),
+        deactivatedAt: null,
+        projects: [{ contractorTypeId: "ct-limit" }],
+      })),
+    );
+
+    const result = await distributeLead(asDb(db), "lead-limit");
+
+    expect(result.matches).toHaveLength(2);
+    expect(db.leadMatch.rows).toHaveLength(2);
+  });
 });
 
 describe("declineLeadMatch", () => {
