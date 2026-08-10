@@ -493,58 +493,6 @@ export async function updateContractorType(id: string, name: string, icon?: stri
   return { ok: true, message: "Project saved" };
 }
 
-export async function deleteContractorType(id: string): Promise<Result> {
-  const admin = await requireAdmin();
-  const ct = await prisma.contractorType.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      _count: {
-        select: {
-          contractors: true,
-          assignedContractors: true,
-        },
-      },
-      projectType: {
-        select: { id: true, _count: { select: { leads: true } } },
-      },
-    },
-  });
-  if (!ct) return { ok: false, message: "Project not found." };
-
-  const leadCount = ct.projectType?._count.leads ?? 0;
-  const assigned = ct._count.assignedContractors + ct._count.contractors;
-  // Block while in use so we never orphan contractors or leads.
-  if (assigned > 0 || leadCount > 0) {
-    return {
-      ok: false,
-      message: `Can't delete "${ct.name}" — it still has ${ct._count.assignedContractors || ct._count.contractors} contractor assignment(s) and ${leadCount} lead(s). Reassign those first.`,
-    };
-  }
-
-  await prisma.$transaction(async (tx) => {
-    // Price tiers reference both records, so remove them before the project.
-    await tx.priceTier.deleteMany({ where: { contractorTypeId: id } });
-    await tx.projectType.deleteMany({ where: { contractorTypeId: id } });
-    await tx.contractorType.delete({ where: { id } });
-    await tx.auditLog.create({
-      data: {
-        actorType: "admin",
-        actorId: admin.email,
-        action: "project.deleted.admin",
-        targetType: "ContractorType",
-        targetId: id,
-        metadata: { name: ct.name },
-      },
-    });
-  });
-  revalidatePath("/admin/settings");
-  revalidatePath("/admin/pricing");
-  revalidatePath("/admin/leads/new");
-  return { ok: true, message: "Project deleted" };
-}
-
 export async function setProjectArchived(id: string, archived: boolean): Promise<Result> {
   const admin = await requireAdmin();
   const project = await prisma.projectType.findUnique({
@@ -655,36 +603,6 @@ export async function updateLandType(id: string, name: string): Promise<Result> 
   return { ok: true, message: "Land type saved" };
 }
 
-export async function deleteLandType(id: string): Promise<Result> {
-  const admin = await requireAdmin();
-  const lt = await prisma.landType.findUnique({
-    where: { id },
-    select: { id: true, name: true, _count: { select: { leads: true } } },
-  });
-  if (!lt) return { ok: false, message: "Land type not found." };
-  if (lt._count.leads > 0) {
-    return {
-      ok: false,
-      message: `Can't delete "${lt.name}" — ${lt._count.leads} lead(s) still reference it.`,
-    };
-  }
-
-  await prisma.landType.delete({ where: { id } });
-  await prisma.auditLog.create({
-    data: {
-      actorType: "admin",
-      actorId: admin.email,
-      action: "landType.deleted.admin",
-      targetType: "LandType",
-      targetId: id,
-      metadata: { name: lt.name },
-    },
-  });
-  revalidatePath("/admin/settings");
-  revalidatePath("/admin/leads/new");
-  return { ok: true, message: "Land type deleted" };
-}
-
 export async function setLandTypeArchived(id: string, archived: boolean): Promise<Result> {
   const admin = await requireAdmin();
   const landType = await prisma.landType.findUnique({
@@ -764,6 +682,13 @@ export async function updateContractorCategory(id: string, name: string): Promis
   }
   const before = await prisma.contractorCategory.findUnique({ where: { id } });
   if (!before) return { ok: false, message: "Contractor category not found." };
+  const owner = await prisma.contractorCategory.findUnique({
+    where: { name: parsed.data.name },
+    select: { id: true },
+  });
+  if (owner && owner.id !== id) {
+    return { ok: false, message: "Another contractor category already uses this name." };
+  }
   await prisma.$transaction([
     prisma.contractorCategory.update({ where: { id }, data: { name: parsed.data.name } }),
     prisma.auditLog.create({

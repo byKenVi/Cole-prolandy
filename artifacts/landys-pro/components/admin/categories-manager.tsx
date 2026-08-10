@@ -7,7 +7,6 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import {
   createContractorType,
   updateContractorType,
-  deleteContractorType,
   setProjectArchived,
 } from "@/app/actions/admin";
 import {
@@ -18,9 +17,6 @@ import {
   iconSrcForKey,
   type IconKey,
 } from "@/lib/project-icons";
-import { TrashIcon } from "@/components/admin/trash-icon";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/components/ui/toast";
 import { dollarsToCents } from "@/lib/money";
 
 type Category = {
@@ -150,8 +146,6 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
-  const toast = useToast();
   const deferredQuery = useDeferredValue(query);
   const validNewPrices = newPrices.every((price) => dollarsToCents(price) >= 100);
 
@@ -424,28 +418,6 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
                   >
                     Rename
                   </button>
-                  <button
-                    type="button"
-                    aria-label={`Delete ${c.name}`}
-                    className="a-dangerbtn"
-                    disabled={pending}
-                    onClick={() => setPendingDelete(c)}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      flex: "none",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "var(--field)",
-                      border: "1px solid var(--dangerLine)",
-                      borderRadius: 10,
-                      color: "var(--danger)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <TrashIcon size={16} />
-                  </button>
                 </div>
               </div>
             )}
@@ -506,32 +478,6 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
           </div>
         )}
       </div>
-
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
-        title="Delete this project?"
-        description={
-          pendingDelete
-            ? `“${pendingDelete.name}” and its three price tiers will be removed. ${
-                pendingDelete.contractors > 0
-                  ? `${pendingDelete.contractors} contractor${pendingDelete.contractors === 1 ? "" : "s"} currently assigned to it will lose the assignment.`
-                  : "No contractors are assigned to it."
-              }`
-            : undefined
-        }
-        confirmLabel="Delete project"
-        onConfirm={async () =>
-          pendingDelete
-            ? deleteContractorType(pendingDelete.id)
-            : { ok: false, message: "Nothing selected." }
-        }
-        onSuccess={() => {
-          toast.success(`“${pendingDelete?.name}” deleted.`);
-          setPendingDelete(null);
-          router.refresh();
-        }}
-      />
     </div>
   );
 }

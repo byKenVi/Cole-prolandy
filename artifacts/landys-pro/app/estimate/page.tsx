@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { EstimateForm } from "@/components/estimate-form";
 import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
+import { getActiveEstimateTaxonomies } from "@/lib/services/estimate-taxonomies";
 
 export const dynamic = "force-dynamic";
 
@@ -18,23 +19,8 @@ export default async function EstimatePage({
   const { embed } = await searchParams;
   const isEmbed = embed === "1" || embed === "true";
 
-  const [projectTypes, landTypes, contractorCategories] = await Promise.all([
-    prisma.projectType.findMany({
-      where: { archivedAt: null },
-      orderBy: { name: "asc" },
-      select: { code: true, name: true },
-    }),
-    prisma.landType.findMany({
-      where: { archivedAt: null },
-      orderBy: { name: "asc" },
-      select: { code: true, name: true },
-    }),
-    prisma.contractorCategory.findMany({
-      where: { archivedAt: null },
-      orderBy: { name: "asc" },
-      select: { code: true, name: true },
-    }),
-  ]);
+  const { projectTypes, landTypes, contractorCategories } =
+    await getActiveEstimateTaxonomies(prisma);
 
   return (
     <main

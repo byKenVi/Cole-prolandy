@@ -236,12 +236,32 @@ model Lead {
   contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
   projectType ProjectType @relation(fields: [projectTypeId], references: [id])
   matches     LeadMatch[]
+  attachments LeadAttachment[]
 
   @@index([status])
   @@index([projectTypeId])
   @@index([contractorCategoryId])
   @@index([reviewStatus])
   @@unique([source, externalRequestId])
+}
+
+/// Private-object metadata only. No Wix or public upload transport is enabled.
+/// Future ingestion must create the private object before registering this row.
+model LeadAttachment {
+  id               String   @id @default(cuid())
+  leadId           String
+  storageProvider  String
+  storageKey       String
+  originalFilename String
+  contentType      String
+  sizeBytes        Int
+  checksumSha256   String?
+  createdAt        DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Restrict)
+
+  @@unique([storageProvider, storageKey])
+  @@index([leadId])
 }
 
 // This join row lets multiple contractors independently accept the SAME lead;
