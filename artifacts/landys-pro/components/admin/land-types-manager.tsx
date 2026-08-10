@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createLandType, updateLandType, deleteLandType } from "@/app/actions/admin";
+import {
+  createLandType,
+  updateLandType,
+  deleteLandType,
+  setLandTypeArchived,
+} from "@/app/actions/admin";
 import { TrashIcon } from "@/components/admin/trash-icon";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
@@ -10,6 +15,8 @@ import { useToast } from "@/components/ui/toast";
 type LandTypeRow = {
   id: string;
   name: string;
+  code: string;
+  archived: boolean;
   leads: number;
 };
 
@@ -104,11 +111,22 @@ export function LandTypesManager({ landTypes }: { landTypes: LandTypeRow[] }) {
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ margin: 0, font: "600 14px/1.2 'Inter'", color: "var(--ink)" }}>{lt.name}</p>
+                  <p style={{ margin: 0, font: "600 14px/1.2 'Inter'", color: "var(--ink)" }}>
+                    {lt.name}
+                    {lt.archived ? " · Archived" : ""}
+                  </p>
                   <p style={{ margin: "4px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                    {lt.leads} lead{lt.leads === 1 ? "" : "s"}
+                    {lt.code} · {lt.leads} lead{lt.leads === 1 ? "" : "s"}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => run(() => setLandTypeArchived(lt.id, !lt.archived))}
+                  style={smallBtn}
+                >
+                  {lt.archived ? "Activate" : "Archive"}
+                </button>
                 <button
                   type="button"
                   disabled={pending}

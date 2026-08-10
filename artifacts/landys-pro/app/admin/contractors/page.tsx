@@ -61,7 +61,10 @@ export default async function AdminContractors({
     orderBy: { name: "asc" },
     skip,
     take,
-    include: { contractorType: { select: { name: true } } },
+    include: {
+      contractorType: { select: { name: true } },
+      contractorCategory: { select: { name: true } },
+    },
   });
 
   // Build the export URL — mirrors the current search/filter so the CSV matches the view.
@@ -192,7 +195,8 @@ export default async function AdminContractors({
                     )}
                   </div>
                   <p style={{ margin: "5px 0 0", font: "400 13px/1 'Inter'", color: "var(--ink2)" }}>
-                    {c.contractorType.name} · <span style={{ color: "var(--ink3)" }}>{c.email}</span>
+                    {c.contractorCategory?.name ?? "No category"} · {c.contractorType.name} ·{" "}
+                    <span style={{ color: "var(--ink3)" }}>{c.email}</span>
                   </p>
                 </div>
               </div>

@@ -44,6 +44,7 @@ export default async function ContractorDetail({
   const contractor = await prisma.contractor.findUnique({
     where: { id },
     include: {
+      contractorCategory: { select: { name: true } },
       projects: {
         include: { contractorType: { select: { id: true, name: true } } },
         orderBy: { contractorType: { name: "asc" } },
@@ -140,7 +141,9 @@ export default async function ContractorDetail({
             {contractor.deactivatedAt && <Badge variant="danger">Deactivated</Badge>}
           </div>
           <p className="text-sm" style={{ color: "var(--ink2)" }}>
-            {assignedProjects.map((p) => p.name).join(" · ")} · {contractor.email} · {contractor.phone}
+            {contractor.contractorCategory?.name ?? "No contractor category"} ·{" "}
+            {assignedProjects.map((p) => p.name).join(" · ")} · {contractor.email} ·{" "}
+            {contractor.phone}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

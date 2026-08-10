@@ -13,6 +13,7 @@ import { normalizePhoneForStorage } from "@/lib/phone";
 import { ICON_KEYS, ICON_AUTO, ICON_NONE } from "@/lib/project-icons";
 import { revalidateAdminShell, revalidateContractorShell } from "@/lib/revalidate";
 import { sendContractorAccountInvitation } from "@/lib/contractor-invitations";
+import { availableIntegrationCode } from "@/lib/taxonomy";
 
 type Result = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -393,6 +394,9 @@ export async function createContractorType(
   const iconValue = parsed.data.icon ?? ICON_AUTO;
   const existing = await prisma.contractorType.findUnique({ where: { name: clean }, select: { id: true } });
   if (existing) return { ok: false, message: "A project with this name already exists." };
+  const code = await availableIntegrationCode(clean, async (candidate) =>
+    Boolean(await prisma.projectType.findUnique({ where: { code: candidate }, select: { id: true } })),
+  );
 
   const created = await prisma.$transaction(async (tx) => {
     const project = await tx.contractorType.create({
@@ -400,7 +404,7 @@ export async function createContractorType(
       select: { id: true },
     });
     const pt = await tx.projectType.create({
-      data: { name: clean, contractorTypeId: project.id },
+      data: { name: clean, code, contractorTypeId: project.id },
       select: { id: true },
     });
     for (let tier = 1; tier <= 3; tier++) {
@@ -422,6 +426,7 @@ export async function createContractorType(
         targetId: project.id,
         metadata: {
           name: clean,
+          code,
           icon: iconValue,
           tierPricesCents: parsed.data.tierPricesCents,
         },
@@ -529,6 +534,48 @@ export async function deleteContractorType(id: string): Promise<Result> {
   return { ok: true, message: "Project deleted" };
 }
 
+export async function setProjectArchived(id: string, archived: boolean): Promise<Result> {
+  const admin = await requireAdmin();
+  const project = await prisma.projectType.findUnique({
+    where: { contractorTypeId: id },
+    include: { priceTiers: { select: { tier: true, priceCents: true } } },
+  });
+  if (!project) return { ok: false, message: "Project not found." };
+
+  if (!archived) {
+    const validTiers = new Set(
+      project.priceTiers.filter((row) => row.priceCents >= 100).map((row) => row.tier),
+    );
+    if (![1, 2, 3].every((tier) => validTiers.has(tier))) {
+      return {
+        ok: false,
+        message: "Set approved prices of at least $1 for all three tiers before activating.",
+      };
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.projectType.update({
+      where: { id: project.id },
+      data: { archivedAt: archived ? new Date() : null },
+    }),
+    prisma.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: archived ? "project.archived.admin" : "project.activated.admin",
+        targetType: "ProjectType",
+        targetId: project.id,
+        metadata: { code: project.code },
+      },
+    }),
+  ]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/pricing");
+  revalidatePath("/estimate");
+  return { ok: true, message: archived ? "Project archived" : "Project activated" };
+}
+
 // ── Land types CRUD ──
 const LandTypeSchema = z.object({
   name: z.string().trim().min(2, "Name is required").max(80),
@@ -543,8 +590,14 @@ export async function createLandType(name: string): Promise<Result & { id?: stri
   const clean = parsed.data.name;
   const existing = await prisma.landType.findUnique({ where: { name: clean }, select: { id: true } });
   if (existing) return { ok: false, message: "A land type with this name already exists." };
+  const code = await availableIntegrationCode(clean, async (candidate) =>
+    Boolean(await prisma.landType.findUnique({ where: { code: candidate }, select: { id: true } })),
+  );
 
-  const created = await prisma.landType.create({ data: { name: clean }, select: { id: true } });
+  const created = await prisma.landType.create({
+    data: { name: clean, code },
+    select: { id: true },
+  });
   await prisma.auditLog.create({
     data: {
       actorType: "admin",
@@ -552,7 +605,7 @@ export async function createLandType(name: string): Promise<Result & { id?: stri
       action: "landType.created.admin",
       targetType: "LandType",
       targetId: created.id,
-      metadata: { name: clean },
+      metadata: { name: clean, code },
     },
   });
   revalidatePath("/admin/settings");
@@ -621,6 +674,138 @@ export async function deleteLandType(id: string): Promise<Result> {
   return { ok: true, message: "Land type deleted" };
 }
 
+export async function setLandTypeArchived(id: string, archived: boolean): Promise<Result> {
+  const admin = await requireAdmin();
+  const landType = await prisma.landType.findUnique({
+    where: { id },
+    select: { id: true, code: true },
+  });
+  if (!landType) return { ok: false, message: "Land type not found." };
+
+  await prisma.$transaction([
+    prisma.landType.update({
+      where: { id },
+      data: { archivedAt: archived ? new Date() : null },
+    }),
+    prisma.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: archived ? "landType.archived.admin" : "landType.activated.admin",
+        targetType: "LandType",
+        targetId: id,
+        metadata: { code: landType.code },
+      },
+    }),
+  ]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/estimate");
+  return { ok: true, message: archived ? "Land type archived" : "Land type activated" };
+}
+
+// ── Contractor categories (separate from ContractorType routing projects) ──
+const ContractorCategorySchema = z.object({
+  name: z.string().trim().min(2, "Name is required").max(80),
+});
+
+export async function createContractorCategory(
+  name: string,
+): Promise<Result & { id?: string }> {
+  const admin = await requireAdmin();
+  const parsed = ContractorCategorySchema.safeParse({ name });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
+  }
+  const clean = parsed.data.name;
+  const code = await availableIntegrationCode(clean, async (candidate) =>
+    Boolean(
+      await prisma.contractorCategory.findUnique({
+        where: { code: candidate },
+        select: { id: true },
+      }),
+    ),
+  );
+  const created = await prisma.contractorCategory.create({
+    data: { name: clean, code },
+    select: { id: true },
+  });
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      actorId: admin.email,
+      action: "contractorCategory.created.admin",
+      targetType: "ContractorCategory",
+      targetId: created.id,
+      metadata: { name: clean, code },
+    },
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/contractors");
+  revalidatePath("/estimate");
+  return { ok: true, message: "Contractor category added", id: created.id };
+}
+
+export async function updateContractorCategory(id: string, name: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const parsed = ContractorCategorySchema.safeParse({ name });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid name" };
+  }
+  const before = await prisma.contractorCategory.findUnique({ where: { id } });
+  if (!before) return { ok: false, message: "Contractor category not found." };
+  await prisma.$transaction([
+    prisma.contractorCategory.update({ where: { id }, data: { name: parsed.data.name } }),
+    prisma.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: "contractorCategory.updated.admin",
+        targetType: "ContractorCategory",
+        targetId: id,
+        metadata: { from: before.name, to: parsed.data.name, code: before.code },
+      },
+    }),
+  ]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/contractors");
+  revalidatePath("/estimate");
+  return { ok: true, message: "Contractor category saved" };
+}
+
+export async function setContractorCategoryArchived(
+  id: string,
+  archived: boolean,
+): Promise<Result> {
+  const admin = await requireAdmin();
+  const category = await prisma.contractorCategory.findUnique({
+    where: { id },
+    select: { id: true, code: true },
+  });
+  if (!category) return { ok: false, message: "Contractor category not found." };
+  await prisma.$transaction([
+    prisma.contractorCategory.update({
+      where: { id },
+      data: { archivedAt: archived ? new Date() : null },
+    }),
+    prisma.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: archived
+          ? "contractorCategory.archived.admin"
+          : "contractorCategory.activated.admin",
+        targetType: "ContractorCategory",
+        targetId: id,
+        metadata: { code: category.code },
+      },
+    }),
+  ]);
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/contractors");
+  revalidatePath("/estimate");
+  return { ok: true, message: archived ? "Category archived" : "Category activated" };
+}
+
 // ── Contractor creation / editing (admin-driven, no Clerk account required) ──
 // Contractors may have multiple projects; assignment is admin-controlled.
 // Default: multi-project, admin-only.
@@ -630,6 +815,7 @@ const ContractorSchema = z.object({
   phone: z.string().min(7, "A valid phone number is required"),
   /** Assigned projects (ContractorType ids). At least one required. */
   projectIds: z.array(z.string().min(1)).min(1, "Assign at least one project"),
+  contractorCategoryId: z.string().min(1, "Choose one contractor category"),
   aboutSection: z.string().max(1000).optional().or(z.literal("")),
   businessHours: z.string().max(280).optional().or(z.literal("")),
   isPro: z.boolean().default(false),
@@ -641,7 +827,10 @@ async function validProjectIds(projectIds: string[]): Promise<string[]> {
   const unique = Array.from(new Set(projectIds.filter(Boolean)));
   if (unique.length === 0) return [];
   const rows = await prisma.contractorType.findMany({
-    where: { id: { in: unique } },
+    where: {
+      id: { in: unique },
+      projectType: { archivedAt: null },
+    },
     select: { id: true },
   });
   return rows.map((r) => r.id);
@@ -688,6 +877,11 @@ export async function createContractor(
     return { ok: false, message: "Assign at least one valid project." };
   }
   const primaryProjectId = projectIds[0]!;
+  const category = await prisma.contractorCategory.findFirst({
+    where: { id: data.contractorCategoryId, archivedAt: null },
+    select: { id: true },
+  });
+  if (!category) return { ok: false, message: "Choose one active contractor category." };
 
   try {
     const contractor = await prisma.$transaction(async (tx) => {
@@ -699,6 +893,7 @@ export async function createContractor(
           name: data.name,
           phone,
           contractorTypeId: primaryProjectId,
+          contractorCategoryId: category.id,
           aboutSection: data.aboutSection || null,
           businessHours: data.businessHours || null,
           isPro: data.isPro,
@@ -715,7 +910,12 @@ export async function createContractor(
           action: "contractor.created.admin",
           targetType: "Contractor",
           targetId: created.id,
-          metadata: { email, name: data.name, projectIds },
+          metadata: {
+            email,
+            name: data.name,
+            projectIds,
+            contractorCategoryId: category.id,
+          },
         },
       });
       return created;
@@ -844,6 +1044,11 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
     return { ok: false, message: "Assign at least one valid project." };
   }
   const primaryProjectId = projectIds[0]!;
+  const category = await prisma.contractorCategory.findFirst({
+    where: { id: data.contractorCategoryId, archivedAt: null },
+    select: { id: true },
+  });
+  if (!category) return { ok: false, message: "Choose one active contractor category." };
 
   await prisma.$transaction(async (tx) => {
     await tx.contractor.update({
@@ -852,6 +1057,7 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
         email,
         name: data.name,
         phone,
+        contractorCategoryId: category.id,
         aboutSection: data.aboutSection || null,
         businessHours: data.businessHours || null,
         isPro: data.isPro,
@@ -865,7 +1071,12 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
         action: "contractor.updated.admin",
         targetType: "Contractor",
         targetId: id,
-        metadata: { email, name: data.name, projectIds },
+        metadata: {
+          email,
+          name: data.name,
+          projectIds,
+          contractorCategoryId: category.id,
+        },
       },
     });
   });

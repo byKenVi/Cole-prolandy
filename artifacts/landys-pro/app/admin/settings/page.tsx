@@ -10,6 +10,7 @@ import { SettingsForm } from "@/components/admin/settings-form";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { LandTypesManager } from "@/components/admin/land-types-manager";
 import { AppearancePicker } from "@/components/admin/appearance-picker";
+import { ContractorCategoriesManager } from "@/components/admin/contractor-categories-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,15 @@ const descStyle: React.CSSProperties = {
 };
 
 export default async function SettingsPage() {
-  const [session, maxLeadRecipients, leadExpiryHours, defaultLeadTier, categories, landTypes] =
+  const [
+    session,
+    maxLeadRecipients,
+    leadExpiryHours,
+    defaultLeadTier,
+    projects,
+    landTypes,
+    contractorCategories,
+  ] =
     await Promise.all([
     getSession(),
     getMaxLeadRecipients(prisma),
@@ -45,12 +54,34 @@ export default async function SettingsPage() {
         name: true,
         icon: true,
         _count: { select: { contractors: true } },
-        projectType: { select: { _count: { select: { leads: true } } } },
+        projectType: {
+          select: {
+            code: true,
+            archivedAt: true,
+            _count: { select: { leads: true } },
+          },
+        },
       },
     }),
     prisma.landType.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true, _count: { select: { leads: true } } },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        archivedAt: true,
+        _count: { select: { leads: true } },
+      },
+    }),
+    prisma.contractorCategory.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        archivedAt: true,
+        _count: { select: { contractors: true, leads: true } },
+      },
     }),
     ]);
 
@@ -127,6 +158,24 @@ export default async function SettingsPage() {
           </div>
 
           <div style={cardStyle}>
+            <p style={titleStyle}>Contractor categories</p>
+            <p style={{ ...descStyle, marginBottom: 18 }}>
+              One business category per contractor. Categories do not determine project-service
+              eligibility.
+            </p>
+            <ContractorCategoriesManager
+              categories={contractorCategories.map((category) => ({
+                id: category.id,
+                name: category.name,
+                code: category.code,
+                archived: Boolean(category.archivedAt),
+                contractors: category._count.contractors,
+                leads: category._count.leads,
+              }))}
+            />
+          </div>
+
+          <div style={cardStyle}>
             <p style={titleStyle}>Land types</p>
             <p style={{ ...descStyle, marginBottom: 18 }}>
               Property classifications for leads. Renaming is safe; delete only when no leads use the
@@ -136,6 +185,8 @@ export default async function SettingsPage() {
               landTypes={landTypes.map((t) => ({
                 id: t.id,
                 name: t.name,
+                code: t.code,
+                archived: Boolean(t.archivedAt),
                 leads: t._count.leads,
               }))}
             />
@@ -152,10 +203,12 @@ export default async function SettingsPage() {
             Rename anytime and delete only when unused.
           </p>
           <CategoriesManager
-            categories={categories.map((c) => ({
+            categories={projects.map((c) => ({
               id: c.id,
               name: c.name,
               icon: c.icon,
+              code: c.projectType?.code ?? "",
+              archived: Boolean(c.projectType?.archivedAt),
               contractors: c._count.contractors,
               leads: c.projectType?._count.leads ?? 0,
             }))}

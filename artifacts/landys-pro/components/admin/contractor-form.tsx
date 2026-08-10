@@ -21,11 +21,13 @@ export function ContractorForm({
   contractorId,
   initial,
   contractorTypes,
+  contractorCategories,
 }: {
   mode: "create" | "edit";
   contractorId?: string;
   initial: ContractorInput;
   contractorTypes: { id: string; name: string }[];
+  contractorCategories: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -35,6 +37,9 @@ export function ContractorForm({
   const [name, setName] = useState(initial.name);
   const [email, setEmail] = useState(initial.email);
   const [phone, setPhone] = useState(initial.phone);
+  const [contractorCategoryId, setContractorCategoryId] = useState(
+    initial.contractorCategoryId,
+  );
   const [projectIds, setProjectIds] = useState<string[]>(initial.projectIds);
   const [about, setAbout] = useState(initial.aboutSection ?? "");
   const [hours, setHours] = useState(initial.businessHours ?? "");
@@ -51,6 +56,7 @@ export function ContractorForm({
       if (!name.trim()) return "Business name is required.";
       if (!email.trim()) return "Email is required.";
       if (!phone.trim()) return "Phone is required.";
+      if (!contractorCategoryId) return "Choose one contractor category.";
     }
     if (s === 1) {
       if (projectIds.length === 0) return "Assign at least one project.";
@@ -85,6 +91,7 @@ export function ContractorForm({
       name,
       email,
       phone,
+      contractorCategoryId,
       projectIds,
       aboutSection: about,
       businessHours: hours,
@@ -148,6 +155,26 @@ export function ContractorForm({
               onChange={(e) => setPhone(e.target.value)}
               required={!isCreate}
             />
+          </div>
+          <div>
+            <Label htmlFor="contractor-category">Contractor category</Label>
+            <Select
+              id="contractor-category"
+              className="h-14 text-lg"
+              value={contractorCategoryId}
+              onChange={(event) => setContractorCategoryId(event.target.value)}
+              required
+            >
+              <option value="">Choose one category</option>
+              {contractorCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
+              Business classification only. Project eligibility is managed separately below.
+            </p>
           </div>
         </section>
       )}

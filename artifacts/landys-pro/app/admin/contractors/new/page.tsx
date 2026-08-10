@@ -7,7 +7,16 @@ import { ContractorForm } from "@/components/admin/contractor-form";
 export const dynamic = "force-dynamic";
 
 export default async function NewContractorPage() {
-  const contractorTypes = await prisma.contractorType.findMany({ orderBy: { name: "asc" } });
+  const [contractorTypes, contractorCategories] = await Promise.all([
+    prisma.contractorType.findMany({
+      where: { projectType: { archivedAt: null } },
+      orderBy: { name: "asc" },
+    }),
+    prisma.contractorCategory.findMany({
+      where: { archivedAt: null },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   return (
     <div className="admin-fade-up flex w-full flex-col gap-6">
@@ -34,11 +43,13 @@ export default async function NewContractorPage() {
         <ContractorForm
           mode="create"
           contractorTypes={contractorTypes}
+          contractorCategories={contractorCategories}
           initial={{
             name: "",
             email: "",
             phone: "",
             projectIds: [],
+            contractorCategoryId: "",
             aboutSection: "",
             businessHours: "",
             isPro: false,

@@ -8,6 +8,7 @@ import {
   createContractorType,
   updateContractorType,
   deleteContractorType,
+  setProjectArchived,
 } from "@/app/actions/admin";
 import {
   ICON_KEYS,
@@ -26,6 +27,8 @@ type Category = {
   id: string;
   name: string;
   icon: string | null;
+  code: string;
+  archived: boolean;
   contractors: number;
   leads: number;
 };
@@ -389,15 +392,25 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, font: "600 14px/1.2 'Inter'", color: "var(--ink)" }}>
                       {c.name}
+                      {c.archived ? " · Archived" : ""}
                     </p>
                     <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                      {c.contractors} contractor{c.contractors === 1 ? "" : "s"}
+                      {c.code} · {c.contractors} contractor{c.contractors === 1 ? "" : "s"}
                       {typeof c.leads === "number" ? ` · ${c.leads} lead${c.leads === 1 ? "" : "s"}` : ""}
                       {" · 3 tiers"}
                     </p>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flex: "none" }}>
+                  <button
+                    type="button"
+                    className="a-ghostbtn"
+                    disabled={pending}
+                    onClick={() => run(() => setProjectArchived(c.id, !c.archived))}
+                    style={smallBtn}
+                  >
+                    {c.archived ? "Activate" : "Archive"}
+                  </button>
                   <button
                     type="button"
                     className="a-ghostbtn"

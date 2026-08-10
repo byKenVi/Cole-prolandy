@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function NewLeadPage() {
   const [projectTypes, landTypes] = await Promise.all([
     prisma.projectType.findMany({
+      where: { archivedAt: null },
       orderBy: { name: "asc" },
       include: { contractorType: { select: { name: true, icon: true } } },
     }),
-    prisma.landType.findMany({ orderBy: { name: "asc" } }),
+    prisma.landType.findMany({ where: { archivedAt: null }, orderBy: { name: "asc" } }),
   ]);
 
   return (

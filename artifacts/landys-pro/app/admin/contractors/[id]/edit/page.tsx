@@ -14,12 +14,19 @@ export default async function EditContractorPage({
 }) {
   const { id } = await params;
 
-  const [contractor, contractorTypes] = await Promise.all([
+  const [contractor, contractorTypes, contractorCategories] = await Promise.all([
     prisma.contractor.findUnique({
       where: { id },
       include: { projects: { select: { contractorTypeId: true } } },
     }),
-    prisma.contractorType.findMany({ orderBy: { name: "asc" } }),
+    prisma.contractorType.findMany({
+      where: { projectType: { archivedAt: null } },
+      orderBy: { name: "asc" },
+    }),
+    prisma.contractorCategory.findMany({
+      where: { archivedAt: null },
+      orderBy: { name: "asc" },
+    }),
   ]);
   if (!contractor) notFound();
 
@@ -56,11 +63,13 @@ export default async function EditContractorPage({
           mode="edit"
           contractorId={contractor.id}
           contractorTypes={contractorTypes}
+          contractorCategories={contractorCategories}
           initial={{
             name: contractor.name,
             email: contractor.email,
             phone: contractor.phone,
             projectIds,
+            contractorCategoryId: contractor.contractorCategoryId ?? "",
             aboutSection: contractor.aboutSection ?? "",
             businessHours: contractor.businessHours ?? "",
             isPro: contractor.isPro,

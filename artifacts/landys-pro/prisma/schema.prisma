@@ -40,20 +40,45 @@ model ContractorType {
 model ProjectType {
   id               String   @id @default(cuid())
   name             String
+  /// Immutable integration identifier. Display names may be edited.
+  code             String   @unique
   contractorTypeId String   @unique
   createdAt        DateTime @default(now())
+  archivedAt       DateTime?
 
   contractorType ContractorType @relation(fields: [contractorTypeId], references: [id], onDelete: Cascade)
   priceTiers     PriceTier[]
   leads          Lead[]
 
   @@unique([name, contractorTypeId])
+  @@index([archivedAt])
 }
 
 model LandType {
-  id    String @id @default(cuid())
-  name  String @unique
-  leads Lead[]
+  id         String    @id @default(cuid())
+  name       String    @unique
+  /// Immutable integration identifier. Display names may be edited.
+  code       String    @unique
+  archivedAt DateTime?
+  leads      Lead[]
+
+  @@index([archivedAt])
+}
+
+/// Business directory category. This is intentionally separate from the
+/// legacy ContractorType project-routing compatibility entity.
+model ContractorCategory {
+  id         String    @id @default(cuid())
+  name       String    @unique
+  code       String    @unique
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  contractors Contractor[]
+  leads       Lead[]
+
+  @@index([archivedAt])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -70,6 +95,7 @@ model Contractor {
   // Explicit primary project used for display. Eligibility uses `projects`;
   // assignment is multi-project and admin-controlled.
   contractorTypeId             String
+  contractorCategoryId         String?
   isPro                        Boolean   @default(false)
   walletBalanceCents           Int       @default(0)
   stripeCustomerId             String?
@@ -91,11 +117,13 @@ model Contractor {
   updatedAt                    DateTime  @updatedAt
 
   contractorType     ContractorType      @relation(fields: [contractorTypeId], references: [id])
+  contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
   projects           ContractorProject[]
   leadMatches        LeadMatch[]
   walletTransactions WalletTransaction[]
 
   @@index([contractorTypeId])
+  @@index([contractorCategoryId])
   @@index([deactivatedAt])
 }
 
@@ -150,6 +178,7 @@ model Lead {
   propertyLocation String
   description      String?
   landTypeId       String?
+  contractorCategoryId String?
   projectTypeId    String
   tier             Int // 1 / 2 / 3
   priceCents       Int // snapshotted from PriceTier at creation
@@ -159,11 +188,13 @@ model Lead {
   expiresAt        DateTime
 
   landType    LandType?   @relation(fields: [landTypeId], references: [id])
+  contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
   projectType ProjectType @relation(fields: [projectTypeId], references: [id])
   matches     LeadMatch[]
 
   @@index([status])
   @@index([projectTypeId])
+  @@index([contractorCategoryId])
 }
 
 // This join row lets multiple contractors independently accept the SAME lead;
