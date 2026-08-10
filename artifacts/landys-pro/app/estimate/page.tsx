@@ -18,12 +18,22 @@ export default async function EstimatePage({
   const { embed } = await searchParams;
   const isEmbed = embed === "1" || embed === "true";
 
-  const [projectTypes, landTypes] = await Promise.all([
+  const [projectTypes, landTypes, contractorCategories] = await Promise.all([
     prisma.projectType.findMany({
+      where: { archivedAt: null },
       orderBy: { name: "asc" },
-      include: { contractorType: { select: { name: true, icon: true } } },
+      select: { code: true, name: true },
     }),
-    prisma.landType.findMany({ orderBy: { name: "asc" } }),
+    prisma.landType.findMany({
+      where: { archivedAt: null },
+      orderBy: { name: "asc" },
+      select: { code: true, name: true },
+    }),
+    prisma.contractorCategory.findMany({
+      where: { archivedAt: null },
+      orderBy: { name: "asc" },
+      select: { code: true, name: true },
+    }),
   ]);
 
   return (
@@ -51,13 +61,9 @@ export default async function EstimatePage({
       )}
 
       <EstimateForm
-        projectTypes={projectTypes.map((p) => ({
-          id: p.id,
-          name: p.name,
-          contractorTypeName: p.contractorType.name,
-          icon: p.contractorType.icon,
-        }))}
+        projectTypes={projectTypes}
         landTypes={landTypes}
+        contractorCategories={contractorCategories}
       />
     </main>
   );
