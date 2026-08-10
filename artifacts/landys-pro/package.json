@@ -13,7 +13,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "postinstall": "prisma generate",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "preflight:taxonomy": "tsx ./scripts/export-taxonomy-preflight.ts"
   },
   "engines": {
     "node": ">=22 <23"
