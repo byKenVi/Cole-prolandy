@@ -1,7 +1,7 @@
 # Wix integration verification report
 
-Date: 2026-08-10  
-Automated tester: Cursor agent  
+Date: 2026-08-10
+Automated tester: Cursor agent
 Environment: Windows 11 workspace, Node 22.17.0
 
 ## Automated verification
@@ -54,8 +54,8 @@ execution remains gated by:
 
 ## Manual contractor portal regression
 
-Tester: not assigned  
-Execution environment: not available  
+Tester: not assigned
+Execution environment: not available
 Setup/input: requires a migrated test database, Clerk test users, Stripe test
 configuration, and optional Twilio test configuration.
 
@@ -63,82 +63,82 @@ No item below was executed, so none is marked passed.
 
 ### Contractor login
 
-Status: `MANUAL QA REQUIRED`  
-Expected: an active contractor signs in and reaches the contractor portal.  
+Status: `MANUAL QA REQUIRED`
+Expected: an active contractor signs in and reaches the contractor portal.
 Actual: not executed; no migrated test environment and Clerk test user were
 available.
 
 ### Dashboard
 
-Status: `MANUAL QA REQUIRED`  
+Status: `MANUAL QA REQUIRED`
 Expected: dashboard loads wallet and resolved lead data without unresolved
-requests appearing.  
+requests appearing.
 Actual: not executed; required test data was unavailable.
 
 ### Lead feed
 
-Status: `MANUAL QA REQUIRED`  
-Expected: only matched, resolved, unexpired leads appear.  
+Status: `MANUAL QA REQUIRED`
+Expected: only matched, resolved, unexpired leads appear.
 Actual: not executed; required test data was unavailable.
 
 ### Masked contact before purchase
 
-Status: `MANUAL QA REQUIRED`  
-Expected: landowner name, phone, and email remain hidden before acceptance.  
+Status: `MANUAL QA REQUIRED`
+Expected: landowner name, phone, and email remain hidden before acceptance.
 Actual: not executed; required matched lead was unavailable.
 
 ### Insufficient wallet behavior
 
-Status: `MANUAL QA REQUIRED`  
-Expected: acceptance is blocked without a charge and the top-up path is shown.  
+Status: `MANUAL QA REQUIRED`
+Expected: acceptance is blocked without a charge and the top-up path is shown.
 Actual: not executed; Stripe test setup and contractor wallet fixture were
 unavailable.
 
 ### Wallet top-up
 
-Status: `MANUAL QA REQUIRED`  
-Expected: Stripe test payment credits the wallet exactly once.  
+Status: `MANUAL QA REQUIRED`
+Expected: Stripe test payment credits the wallet exactly once.
 Actual: not executed; Stripe test credentials and webhook delivery were
 unavailable.
 
 ### Lead acceptance
 
-Status: `MANUAL QA REQUIRED`  
-Expected: a pending match becomes accepted and contact is revealed.  
+Status: `MANUAL QA REQUIRED`
+Expected: a pending match becomes accepted and contact is revealed.
 Actual: not executed; required contractor session and lead fixture were
 unavailable.
 
 ### Exact snapshot-price deduction
 
-Status: `MANUAL QA REQUIRED`  
-Expected: the wallet deduction equals the lead's immutable price snapshot.  
+Status: `MANUAL QA REQUIRED`
+Expected: the wallet deduction equals the lead's immutable price snapshot.
 Actual: not executed; required accepted lead fixture was unavailable.
 
 ### Duplicate acceptance prevention
 
-Status: `MANUAL QA REQUIRED`  
+Status: `MANUAL QA REQUIRED`
 Expected: repeated acceptance returns the accepted result without another
-charge.  
+charge.
 Actual: not executed manually; automated idempotency tests passed.
 
 ### Contact reveal after purchase
 
-Status: `MANUAL QA REQUIRED`  
+Status: `MANUAL QA REQUIRED`
 Expected: supplied contact fields are visible after valid acceptance, while
-optional missing fields display as unavailable.  
+optional missing fields display as unavailable.
 Actual: not executed; required accepted lead fixture was unavailable.
 
 ### Accepted lead history
 
-Status: `MANUAL QA REQUIRED`  
-Expected: accepted leads remain visible with their snapshot price and contact.  
+Status: `MANUAL QA REQUIRED`
+Expected: accepted leads remain visible with their snapshot price and contact.
 Actual: not executed; required contractor history fixture was unavailable.
 
 ### SMS magic-link path
 
-Status: `MANUAL QA REQUIRED`  
+Status: `MANUAL QA REQUIRED`
 Expected: a valid token opens a resolved lead and duplicate acceptance remains
-idempotent.  
+idempotent.
 Actual: not executed; no usable Twilio test provider/configuration was
 available.
 
