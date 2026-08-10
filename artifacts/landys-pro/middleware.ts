@@ -38,6 +38,7 @@ const isPublicRoute = createRouteMatcher([
   // forwarded to Next (proxy no-op / misroute), auth.protect() must not 403 it.
   "/api/__clerk(.*)",
   "/api/estimate",
+  "/api/integrations/wix/estimate-requests",
   "/api/stripe/webhook",
   "/api/cron/expire-leads",
 ]);
