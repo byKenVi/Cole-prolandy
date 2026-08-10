@@ -6,7 +6,7 @@ Environment: Windows 11 workspace, Node 22.17.0
 
 ## Automated verification
 
-- `VERIFIED` — unit suite: 19 files, 131 tests passed.
+- `VERIFIED` — unit suite: 25 files, 152 tests passed.
 - `VERIFIED` — TypeScript: `tsc --noEmit` passed.
 - `VERIFIED` — ESLint: completed with no errors or warnings.
 - `VERIFIED` — production build: Next.js 15.5.20 compiled, typechecked,
@@ -16,9 +16,12 @@ Environment: Windows 11 workspace, Node 22.17.0
 - `VERIFIED` — OpenAPI YAML parsed and contains the implemented
   `/api/integrations/wix/estimate-requests` path.
 - `VERIFIED` — tests cover wallet charging/idempotency, Stripe event
-  idempotency, contact reveal behavior, expiry, safe unresolved distribution
-  gating, sync dry-run/idempotency/protected writes, Wix request validation,
-  bearer authentication, direct-request requirements, and payload hashing.
+  idempotency, contact masking/reveal, expiry, safe unresolved distribution
+  gating, configured recipient limits, immutable pricing snapshots, shared
+  Landy's Pro/Wix intake, inactive taxonomy rejection, exact and conflicting
+  external-request replay, unresolved and mapped direct routing, sync
+  dry-run/idempotency/protected writes, Wix request validation, bearer
+  authentication, approved source values, and payload hashing.
 
 The local dependency tree exposed an esbuild host/binary mismatch after the
 workspace package manager attempted automatic dependency repair. Verification
@@ -37,7 +40,9 @@ Status: `MANUAL QA REQUIRED`
 The migrations were not executed against production. No production database
 connection or migration approval was available.
 
-The Prisma schema is valid, and migration files are additive. Production
+The Prisma schema is valid, and migration files are additive. The attachment
+metadata migration uses `ON DELETE RESTRICT`; it does not enable file upload or
+Wix transport. Production
 execution remains gated by:
 
 - read-only production taxonomy export and row-by-row identity review;
@@ -139,7 +144,8 @@ available.
 
 ## Deferred capabilities
 
-- Attachments: `BLOCKED BY WIX` and `NOT IMPLEMENTED`.
+- Internal lead attachment metadata: `IMPLEMENTED`.
+- Wix attachment transport: `BLOCKED BY WIX` and `NOT IMPLEMENTED`.
 - Live Wix contractor synchronization: `BLOCKED BY WIX` and `NOT IMPLEMENTED`.
 - Automated tier assignment: `BLOCKED BY BUSINESS RULE` and `NOT IMPLEMENTED`.
 - Production deployment and production migration: `MANUAL QA REQUIRED`.
