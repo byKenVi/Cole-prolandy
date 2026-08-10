@@ -1,0 +1,254 @@
+openapi: 3.1.0
+info:
+  title: Landy's Pro Wix Estimate Intake
+  version: 1.0.0
+  description: >
+    Implemented server-to-server estimate request endpoint. Attachments and
+    contractor synchronization endpoints are not implemented.
+servers:
+  - url: https://{landysProHost}
+    variables:
+      landysProHost:
+        default: example.invalid
+        description: Environment-specific Landy's Pro host supplied by the operator.
+paths:
+  /api/integrations/wix/estimate-requests:
+    post:
+      operationId: createWixEstimateRequest
+      summary: Persist a Wix estimate request for safe review
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WixEstimateRequest"
+      responses:
+        "202":
+          description: Request persisted or identical request replayed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EstimateAccepted"
+        "400":
+          description: Invalid JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid bearer credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: External request ID reused with a different payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Content-Type is not application/json.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation failed or an active taxonomy code was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server failure.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Wix estimate integration is disabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    WixEstimateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - source
+        - externalRequestId
+        - email
+        - propertyZip
+        - landTypeCode
+        - projectTypeCode
+        - budget
+        - timeline
+        - urgency
+        - description
+        - routingMode
+      properties:
+        source:
+          type: string
+          const: wix
+        externalRequestId:
+          type: string
+          minLength: 1
+          maxLength: 160
+        firstName:
+          type:
+            - string
+            - "null"
+          maxLength: 80
+        lastName:
+          type:
+            - string
+            - "null"
+          maxLength: 80
+        phone:
+          type:
+            - string
+            - "null"
+          maxLength: 40
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        propertyZip:
+          type: string
+          pattern: '^\d{5}(?:-\d{4})?$'
+        contractorCategoryCode:
+          type:
+            - string
+            - "null"
+          minLength: 1
+          maxLength: 80
+        landTypeCode:
+          type: string
+          minLength: 1
+          maxLength: 80
+        projectTypeCode:
+          type: string
+          minLength: 1
+          maxLength: 80
+        budget:
+          type: string
+          minLength: 1
+          maxLength: 280
+        timeline:
+          type: string
+          format: date
+        urgency:
+          type: string
+          minLength: 1
+          maxLength: 280
+        description:
+          type: string
+          minLength: 10
+          maxLength: 4000
+        routingMode:
+          type: string
+          enum:
+            - general
+            - direct
+        directContractorExternalId:
+          type: string
+          minLength: 1
+          maxLength: 160
+      allOf:
+        - if:
+            properties:
+              routingMode:
+                const: direct
+          then:
+            required:
+              - directContractorExternalId
+        - if:
+            properties:
+              routingMode:
+                const: general
+          then:
+            not:
+              required:
+                - directContractorExternalId
+    EstimateAccepted:
+      type: object
+      additionalProperties: false
+      required:
+        - ok
+        - data
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - leadId
+            - replay
+            - reviewStatus
+            - blockers
+          properties:
+            leadId:
+              type: string
+            replay:
+              type: boolean
+            reviewStatus:
+              type: string
+              const: pending_review
+            blockers:
+              type: array
+              items:
+                type: string
+                enum:
+                  - tier_review
+                  - contractor_review
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - ok
+        - error
+      properties:
+        ok:
+          type: boolean
+          const: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              enum:
+                - integration_disabled
+                - unauthorized
+                - unsupported_media_type
+                - invalid_json
+                - validation_error
+                - invalid_reference
+                - idempotency_conflict
+                - internal_error
+            message:
+              type: string
+            issues:
+              type: array
+              items:
+                type: object
+                required:
+                  - path
+                  - message
+                properties:
+                  path:
+                    type: string
+                  message:
+                    type: string
