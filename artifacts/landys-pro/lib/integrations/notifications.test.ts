@@ -11,7 +11,9 @@ vi.mock("twilio", () => ({ default: twilioFactory }));
 
 const { resendSend, ResendCtor } = vi.hoisted(() => {
   const resendSend = vi.fn();
-  const ResendCtor = vi.fn(() => ({ emails: { send: resendSend } }));
+  const ResendCtor = vi.fn(function ResendMock() {
+    return { emails: { send: resendSend } };
+  });
   return { resendSend, ResendCtor };
 });
 vi.mock("resend", () => ({ Resend: ResendCtor }));
