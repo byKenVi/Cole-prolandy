@@ -23,6 +23,11 @@ export async function getLeadExpiryHours(db: DbClient): Promise<number> {
   return Math.max(1, n);
 }
 
+/**
+ * Legacy compatibility for callers that historically created already-resolved
+ * leads. New official estimate/Wix intake must create a tier-review blocker
+ * instead of calling this function.
+ */
 export async function getDefaultLeadTier(db: DbClient): Promise<number> {
   const n = await getIntSetting(db, APP_SETTING_KEYS.defaultLeadTier);
   return Math.min(3, Math.max(1, n));
