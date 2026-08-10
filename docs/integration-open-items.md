@@ -48,10 +48,12 @@ Required decision:
 
 Status: `BLOCKED BY WIX`
 
-Implementation status: `NOT IMPLEMENTED`
+Transport implementation status: `NOT IMPLEMENTED`
 
-No LeadAttachment model, upload UI, upload endpoint, request property, multipart
-support, base64 support, or attachment-URL support exists.
+An internal `LeadAttachment` private-object metadata relationship is
+`IMPLEMENTED`. It supports zero-to-many metadata rows and restricts lead
+deletion while metadata exists. No upload UI, upload endpoint, Wix request
+property, multipart support, base64 support, or attachment-URL support exists.
 
 Required decisions:
 

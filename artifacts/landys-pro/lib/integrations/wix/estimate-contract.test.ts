@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   hasValidBearerSecret,
+  WIX_ESTIMATE_REQUEST_SOURCE,
   WixEstimateRequestSchema,
   wixEstimatePayloadHash,
 } from "./estimate-contract";
 
 const VALID_REQUEST = {
-  source: "wix",
+  source: WIX_ESTIMATE_REQUEST_SOURCE.GENERAL,
   externalRequestId: "request-123",
   firstName: null,
   lastName: null,
@@ -20,7 +21,6 @@ const VALID_REQUEST = {
   timeline: "2026-10-01",
   urgency: "Within 30 days",
   description: "Install a new culvert at the property entrance.",
-  routingMode: "general",
 } as const;
 
 describe("Wix estimate contract", () => {
@@ -32,16 +32,22 @@ describe("Wix estimate contract", () => {
     expect(
       WixEstimateRequestSchema.safeParse({
         ...VALID_REQUEST,
-        routingMode: "direct",
+        source: WIX_ESTIMATE_REQUEST_SOURCE.DIRECT,
       }).success,
     ).toBe(false);
     expect(
       WixEstimateRequestSchema.safeParse({
         ...VALID_REQUEST,
-        routingMode: "direct",
-        directContractorExternalId: "contractor-7",
+        source: WIX_ESTIMATE_REQUEST_SOURCE.DIRECT,
+        externalContractorId: "contractor-7",
       }).success,
     ).toBe(true);
+    expect(
+      WixEstimateRequestSchema.safeParse({
+        ...VALID_REQUEST,
+        externalContractorId: "contractor-7",
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects attachment and other undocumented fields", () => {

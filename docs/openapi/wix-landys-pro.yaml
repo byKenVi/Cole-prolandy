@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Landy's Pro Wix Estimate Intake
-  version: 1.0.0
+  version: 1.1.0
   description: >
     Implemented server-to-server estimate request endpoint. Attachments and
     contractor synchronization endpoints are not implemented.
@@ -93,11 +93,12 @@ components:
         - timeline
         - urgency
         - description
-        - routingMode
       properties:
         source:
           type: string
-          const: wix
+          enum:
+            - general/get-three-estimates
+            - direct-contractor-profile-request
         externalRequestId:
           type: string
           minLength: 1
@@ -153,31 +154,26 @@ components:
           type: string
           minLength: 10
           maxLength: 4000
-        routingMode:
-          type: string
-          enum:
-            - general
-            - direct
-        directContractorExternalId:
+        externalContractorId:
           type: string
           minLength: 1
           maxLength: 160
       allOf:
         - if:
             properties:
-              routingMode:
-                const: direct
+              source:
+                const: direct-contractor-profile-request
           then:
             required:
-              - directContractorExternalId
+              - externalContractorId
         - if:
             properties:
-              routingMode:
-                const: general
+              source:
+                const: general/get-three-estimates
           then:
             not:
               required:
-                - directContractorExternalId
+                - externalContractorId
     EstimateAccepted:
       type: object
       additionalProperties: false

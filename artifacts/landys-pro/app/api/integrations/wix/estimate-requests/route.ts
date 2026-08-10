@@ -6,6 +6,8 @@ import {
 } from "@/lib/services/lead-intake";
 import {
   hasValidBearerSecret,
+  WIX_ESTIMATE_REQUEST_SOURCE,
+  WIX_ESTIMATE_SOURCE,
   WixEstimateRequestSchema,
   wixEstimatePayloadHash,
 } from "@/lib/integrations/wix/estimate-contract";
@@ -84,15 +86,15 @@ export async function POST(request: NextRequest) {
       timeline: new Date(`${payload.timeline}T00:00:00.000Z`),
       urgency: payload.urgency,
       description: payload.description,
-      source: payload.source,
+      source: WIX_ESTIMATE_SOURCE,
       externalRequestId: payload.externalRequestId,
       payloadHash: wixEstimatePayloadHash(payload),
       routing:
-        payload.routingMode === "direct"
+        payload.source === WIX_ESTIMATE_REQUEST_SOURCE.DIRECT
           ? {
               mode: "direct",
-              contractorSource: payload.source,
-              contractorExternalId: payload.directContractorExternalId!,
+              contractorSource: WIX_ESTIMATE_SOURCE,
+              contractorExternalId: payload.externalContractorId!,
             }
           : { mode: "general" },
     });

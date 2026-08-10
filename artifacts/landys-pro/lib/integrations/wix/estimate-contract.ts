@@ -2,10 +2,17 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
 export const WIX_ESTIMATE_SOURCE = "wix" as const;
+export const WIX_ESTIMATE_REQUEST_SOURCE = {
+  GENERAL: "general/get-three-estimates",
+  DIRECT: "direct-contractor-profile-request",
+} as const;
 
 export const WixEstimateRequestSchema = z
   .object({
-    source: z.literal(WIX_ESTIMATE_SOURCE),
+    source: z.enum([
+      WIX_ESTIMATE_REQUEST_SOURCE.GENERAL,
+      WIX_ESTIMATE_REQUEST_SOURCE.DIRECT,
+    ]),
     externalRequestId: z.string().trim().min(1).max(160),
     firstName: z.string().trim().max(80).optional().nullable(),
     lastName: z.string().trim().max(80).optional().nullable(),
@@ -25,22 +32,27 @@ export const WixEstimateRequestSchema = z
       ),
     urgency: z.string().trim().min(1).max(280),
     description: z.string().trim().min(10).max(4000),
-    routingMode: z.enum(["general", "direct"]),
-    directContractorExternalId: z.string().trim().min(1).max(160).optional(),
+    externalContractorId: z.string().trim().min(1).max(160).optional(),
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.routingMode === "direct" && !value.directContractorExternalId) {
+    if (
+      value.source === WIX_ESTIMATE_REQUEST_SOURCE.DIRECT &&
+      !value.externalContractorId
+    ) {
       context.addIssue({
         code: "custom",
-        path: ["directContractorExternalId"],
-        message: "Direct requests require directContractorExternalId.",
+        path: ["externalContractorId"],
+        message: "Direct contractor requests require externalContractorId.",
       });
     }
-    if (value.routingMode === "general" && value.directContractorExternalId) {
+    if (
+      value.source === WIX_ESTIMATE_REQUEST_SOURCE.GENERAL &&
+      value.externalContractorId
+    ) {
       context.addIssue({
         code: "custom",
-        path: ["directContractorExternalId"],
+        path: ["externalContractorId"],
         message: "General requests cannot specify a direct contractor.",
       });
     }

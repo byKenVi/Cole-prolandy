@@ -3,6 +3,10 @@
 Status: `IMPLEMENTED` in Landy's Pro. Production use remains disabled until
 credentials, active taxonomy codes, and an end-to-end Wix test are verified.
 
+Contract version: `1.1.0`
+
+Contract date: `2026-08-10`
+
 ## Endpoint
 
 - Method: `POST`
@@ -24,7 +28,8 @@ upload property, are rejected.
 
 Required fields:
 
-- `source`: exactly `"wix"`
+- `source`: `"general/get-three-estimates"` or
+  `"direct-contractor-profile-request"`
 - `externalRequestId`: stable unique Wix-side request identifier, 1–160 chars
 - `email`: valid email address
 - `propertyZip`: US five-digit ZIP or ZIP+4
@@ -34,7 +39,6 @@ Required fields:
 - `timeline`: calendar date in `YYYY-MM-DD`
 - `urgency`: free text, 1–280 chars
 - `description`: project description, 10–4000 chars
-- `routingMode`: `"general"` or `"direct"`
 
 Optional fields:
 
@@ -43,14 +47,15 @@ Optional fields:
 - `phone`: string or `null`, maximum 40 chars
 - `contractorCategoryCode`: active Landy's Pro contractor-category code or
   `null`
-- `directContractorExternalId`: required only when `routingMode` is `"direct"`;
-  prohibited for `"general"`
+- `externalContractorId`: required only when `source` is
+  `"direct-contractor-profile-request"`; prohibited for
+  `"general/get-three-estimates"`
 
 Example:
 
 ```json
 {
-  "source": "wix",
+  "source": "general/get-three-estimates",
   "externalRequestId": "estimate-2026-000123",
   "firstName": "Jordan",
   "lastName": "Lee",
@@ -63,8 +68,7 @@ Example:
   "budget": "$10,000-$20,000",
   "timeline": "2026-10-01",
   "urgency": "Within 30 days",
-  "description": "Install a new culvert at the main property entrance.",
-  "routingMode": "general"
+  "description": "Install a new culvert at the main property entrance."
 }
 ```
 
@@ -124,15 +128,22 @@ Every accepted request is persisted for review with a tier blocker. Landy's Pro
 does not infer a tier from budget, urgency, description, keywords, or AI.
 Unresolved requests have no price, match, notification, charge, or expiry.
 
-General requests are routed through the existing shared matching logic only
-after an admin chooses a tier. Direct requests resolve
-`directContractorExternalId` against the provider-neutral external identity
-whose source is `"wix"`. An unknown or deactivated contractor is held for
-review; it never falls through to general matching.
+`general/get-three-estimates` requests are routed through the existing shared
+matching logic only after an admin chooses a tier.
+`direct-contractor-profile-request` requests resolve `externalContractorId`
+against the provider-neutral external identity whose internal provider source
+is `"wix"`. An unknown or deactivated contractor is held for review; it never
+falls through to general matching.
 
 ## Idempotency and retries
 
-Idempotency is keyed by `(source, externalRequestId)`.
+Idempotency is keyed by the persisted integration source and
+`externalRequestId`, which is `("wix", externalRequestId)` for this endpoint.
+
+For this endpoint, the persisted integration source is always `"wix"`; the
+request's business `source` value is included in the payload hash. Therefore
+changing a request from general to direct while reusing an ID is a conflict,
+not a second lead.
 
 - The first valid request returns HTTP `202`.
 - An identical retry returns the original `leadId` with `replay: true`.
@@ -156,6 +167,20 @@ Successful response:
 }
 ```
 
+An identical replay uses the same HTTP `202` response and original lead ID:
+
+```json
+{
+  "ok": true,
+  "data": {
+    "leadId": "internal-lead-id",
+    "replay": true,
+    "reviewStatus": "pending_review",
+    "blockers": ["tier_review"]
+  }
+}
+```
+
 Error response:
 
 ```json
@@ -170,6 +195,30 @@ Error response:
         "message": "Invalid string: must match pattern"
       }
     ]
+  }
+}
+```
+
+Authentication failure example (`401`):
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "unauthorized",
+    "message": "Invalid bearer credentials."
+  }
+}
+```
+
+Conflicting retry example (`409`):
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "idempotency_conflict",
+    "message": "The external request ID was already used with a different payload."
   }
 }
 ```
@@ -195,8 +244,10 @@ contract.
 
 ## Attachments
 
-Status: `BLOCKED BY WIX` and `NOT IMPLEMENTED`.
+Transport status: `BLOCKED BY WIX` and `NOT IMPLEMENTED`.
 
 The endpoint accepts JSON only and advertises no file, multipart, base64, or URL
-attachment field. Transport, private storage, retention, authorization, failure,
-and cleanup rules must be approved before this contract changes.
+attachment field. Landy's Pro has an internal private-object metadata model for
+zero-to-many lead attachments, but no Wix request can create those records.
+Transport, private storage, retention, authorization, failure, and cleanup rules
+must be approved before this API contract changes.
