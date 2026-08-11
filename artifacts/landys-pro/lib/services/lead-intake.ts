@@ -80,11 +80,19 @@ function clean(value: string | null | undefined): string | null {
 export async function createAndDistributeLead(
   input: LeadIntakeInput,
 ): Promise<LeadIntakeResult> {
-  const projectType = await prisma.projectType.findUnique({
-    where: { id: input.projectTypeId },
+  const projectType = await prisma.projectType.findFirst({
+    where: { id: input.projectTypeId, archivedAt: null },
     select: { id: true, name: true, contractorTypeId: true },
   });
-  if (!projectType) throw new NotFoundError("Project type");
+  if (!projectType) throw new NotFoundError("Active project type");
+
+  if (input.landTypeId) {
+    const landType = await prisma.landType.findFirst({
+      where: { id: input.landTypeId, archivedAt: null },
+      select: { id: true },
+    });
+    if (!landType) throw new NotFoundError("Active land type");
+  }
 
   const priceCents = await resolvePrice(prisma, {
     contractorTypeId: projectType.contractorTypeId,

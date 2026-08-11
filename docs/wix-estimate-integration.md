@@ -21,6 +21,13 @@ Contract date: `2026-08-10`
 The shared secret is server-only. It must never be placed in browser code, a
 public Wix page, URL parameters, logs, or analytics.
 
+## Related public endpoint
+
+The browser form at `/estimate` submits to `POST /api/estimate` with
+`schemaVersion: 2` and the same unresolved-tier intake behavior as this Wix
+endpoint (without `externalRequestId`). Requests without `schemaVersion: 2`
+receive `422` / `schema_version_required`.
+
 ## Request
 
 The JSON object is strict. Undocumented properties, including any attachment or

@@ -4,18 +4,11 @@ import { NotFoundError } from "@/lib/domain/errors";
 
 const mocks = vi.hoisted(() => ({
   createOfficialEstimateRequest: vi.fn(),
-  createAndDistributeLead: vi.fn(),
-  getDefaultLeadTier: vi.fn(),
 }));
 
 vi.mock("@/lib/services/lead-intake", () => ({
   createOfficialEstimateRequest: mocks.createOfficialEstimateRequest,
-  createAndDistributeLead: mocks.createAndDistributeLead,
 }));
-vi.mock("@/lib/domain/settings", () => ({
-  getDefaultLeadTier: mocks.getDefaultLeadTier,
-}));
-vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: vi.fn(() => true) }));
 
 import { POST } from "./route";
@@ -48,8 +41,6 @@ describe("POST public estimate", () => {
   beforeEach(() => {
     vi.stubEnv("FORM_SPAM_PROTECTION", "false");
     mocks.createOfficialEstimateRequest.mockReset();
-    mocks.createAndDistributeLead.mockReset();
-    mocks.getDefaultLeadTier.mockReset();
     mocks.createOfficialEstimateRequest.mockResolvedValue({
       leadId: "lead-1",
       replay: false,
@@ -73,18 +64,9 @@ describe("POST public estimate", () => {
         routing: { mode: "general" },
       }),
     );
-    expect(mocks.getDefaultLeadTier).not.toHaveBeenCalled();
-    expect(mocks.createAndDistributeLead).not.toHaveBeenCalled();
   });
 
-  it("preserves the explicitly isolated legacy compatibility path", async () => {
-    mocks.getDefaultLeadTier.mockResolvedValue(2);
-    mocks.createAndDistributeLead.mockResolvedValue({
-      leadId: "legacy-lead",
-      priceCents: 4000,
-      recipients: 3,
-    });
-
+  it("rejects schema v1 requests", async () => {
     const response = await POST(
       request({
         name: "Jordan Lee",
@@ -95,21 +77,21 @@ describe("POST public estimate", () => {
       }),
     );
 
-    expect(response.status).toBe(200);
-    expect(mocks.getDefaultLeadTier).toHaveBeenCalledTimes(1);
-    expect(mocks.createAndDistributeLead).toHaveBeenCalledWith(
-      expect.objectContaining({ tier: 2, source: "wix_form" }),
-    );
+    expect(response.status).toBe(422);
+    expect((await response.json()).error.code).toBe("schema_version_required");
     expect(mocks.createOfficialEstimateRequest).not.toHaveBeenCalled();
   });
 
-  it("returns a safe client error when an active taxonomy cannot be resolved", async () => {
+  it("returns a structured client error when an active taxonomy cannot be resolved", async () => {
     mocks.createOfficialEstimateRequest.mockRejectedValue(
       new NotFoundError("Active project type"),
     );
 
     const response = await POST(request(OFFICIAL_REQUEST));
-    expect(response.status).toBe(400);
-    expect((await response.json()).error).toBe("Active project type not found.");
+    expect(response.status).toBe(422);
+    expect((await response.json()).error).toEqual({
+      code: "invalid_reference",
+      message: "Active project type not found.",
+    });
   });
 });

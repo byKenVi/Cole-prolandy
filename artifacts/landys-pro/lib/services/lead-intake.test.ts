@@ -29,6 +29,7 @@ vi.mock("@/lib/notifications", () => ({
 }));
 
 import {
+  createAndDistributeLead,
   createOfficialEstimateRequest,
   finalizeLeadForRouting,
   LeadIntakeConflictError,
@@ -269,5 +270,29 @@ describe("official estimate intake", () => {
     ]);
     expect(h.db.lead.rows[0].reviewStatus).toBe(LeadReviewStatus.ROUTED);
     expect(h.notifyNewLead).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects archived project types on the admin compatibility path", async () => {
+    h.db.projectType.seed([
+      {
+        id: "archived-project",
+        code: "legacy-project",
+        name: "Legacy",
+        contractorTypeId: "trade-1",
+        archivedAt: new Date(),
+      },
+    ]);
+
+    await expect(
+      createAndDistributeLead({
+        landownerName: "Jordan Lee",
+        landownerEmail: "jordan@example.com",
+        landownerPhone: "+15125550100",
+        propertyLocation: "78701",
+        projectTypeId: "archived-project",
+        tier: 1,
+        source: "admin_manual",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

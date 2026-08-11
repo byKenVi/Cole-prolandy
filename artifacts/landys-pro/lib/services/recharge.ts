@@ -16,6 +16,7 @@
  * UI-safe result with `fallbackToCheckout: true` so the caller can send the user
  * to the interactive Checkout. Raw Stripe errors are never surfaced.
  */
+import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { payments } from "@/lib/integrations/payments";
 import { validateTopUpAmountCents } from "@/lib/domain/topup";
@@ -97,6 +98,16 @@ export async function chargeContractorSavedCard(input: {
     stripeCustomerId: contractor.stripeCustomerId,
     paymentMethodId: contractor.stripeDefaultPaymentMethodId,
     metadata,
+    idempotencyKey: createHash("sha256")
+      .update(
+        [
+          "wallet-recharge",
+          contractorId,
+          String(check.amountCents),
+          contractor.stripeDefaultPaymentMethodId,
+        ].join("|"),
+      )
+      .digest("hex"),
   });
 
   if (!charge.ok) {

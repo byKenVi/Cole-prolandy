@@ -42,6 +42,8 @@ export type ChargeSavedCardParams = {
   paymentMethodId: string;
   /** Metadata the webhook reads to credit the wallet — { contractorId, amountCents, purpose }. */
   metadata?: Record<string, string>;
+  /** Stripe idempotency key to prevent duplicate off-session charges on double-submit. */
+  idempotencyKey?: string;
 };
 
 export type ChargeSavedCardResult =
@@ -295,15 +297,18 @@ class StripePaymentsProvider implements PaymentsProvider {
   async chargeSavedCard(params: ChargeSavedCardParams): Promise<ChargeSavedCardResult> {
     const stripe = await getStripe();
     try {
-      const pi = await stripe.paymentIntents.create({
-        amount: params.amountCents, // integer cents
-        currency: "usd",
-        customer: params.stripeCustomerId,
-        payment_method: params.paymentMethodId,
-        off_session: true,
-        confirm: true,
-        metadata: params.metadata,
-      });
+      const pi = await stripe.paymentIntents.create(
+        {
+          amount: params.amountCents, // integer cents
+          currency: "usd",
+          customer: params.stripeCustomerId,
+          payment_method: params.paymentMethodId,
+          off_session: true,
+          confirm: true,
+          metadata: params.metadata,
+        },
+        params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : undefined,
+      );
       // A successful off-session PI fires payment_intent.succeeded → the webhook
       // credits the wallet. We NEVER credit inline here.
       return {
