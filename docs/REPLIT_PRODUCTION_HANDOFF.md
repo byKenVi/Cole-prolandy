@@ -10,7 +10,7 @@
 |---|---|
 | GitHub repository | `https://github.com/byKenVi/Cole-prolandy.git` |
 | Branch | `main` |
-| Deploy commit SHA | `DEPLOY_COMMIT_SHA` |
+| Deploy commit SHA | `3819f0a24b050cd0e1d093e141284cfe3fe44c02` |
 | Active application directory | `artifacts/landys-pro/` |
 | Package name | `@workspace/landys-pro` |
 | Package manager | `pnpm` (workspace monorepo) |
@@ -36,7 +36,7 @@ git pull origin main
 git rev-parse HEAD
 ```
 
-**STOP** if `git rev-parse HEAD` does not equal `DEPLOY_COMMIT_SHA`. Do not deploy from an ambiguous branch state.
+**STOP** if `git rev-parse HEAD` does not equal `3819f0a24b050cd0e1d093e141284cfe3fe44c02`. Do not deploy from an ambiguous branch state.
 
 ---
 
@@ -586,7 +586,7 @@ End your deployment work with:
 ```
 DEPLOYED COMMIT
 - branch: main
-- SHA: DEPLOY_COMMIT_SHA
+- SHA: 3819f0a24b050cd0e1d093e141284cfe3fe44c02
 
 CONFIGURATION
 - configured: [list]
