@@ -1,0 +1,183 @@
+Run a final production smoke test of the Wix Estimate API before we send the
+documentation to the Wix developer.
+
+IMPORTANT:
+- Use the WIX_ESTIMATE_API_SECRET already configured in Replit Secrets.
+- NEVER print or reveal the secret in your response, command output, logs, or files.
+- Do not modify migrations, schema, application code, or configuration.
+- Do not assign a tier to the test lead.
+- Do not route the test lead to contractors.
+- Do not trigger notifications or wallet charges.
+- Use the deployed production URL:
+  https://cole-prolandy-project.replit.app
+
+Endpoint:
+POST /api/integrations/wix/estimate-requests
+
+First verify:
+1. WIX_ESTIMATE_INTEGRATION_ENABLED is true
+2. WIX_ESTIMATE_API_SECRET is present
+3. NEXT_PUBLIC_APP_URL is correct
+4. production deployment is healthy
+
+Then perform these API tests against PRODUCTION.
+
+TEST 1 — Missing authentication
+Send a valid-shaped JSON request with NO Authorization header.
+
+Expected:
+HTTP 401
+error.code = "unauthorized"
+
+TEST 2 — Invalid authentication
+Send the request with a deliberately incorrect Bearer token.
+
+Expected:
+HTTP 401
+error.code = "unauthorized"
+
+TEST 3 — Invalid taxonomy
+Use the REAL configured API secret but:
+landTypeCode = "invalid-test-land-type"
+
+Expected:
+HTTP 422
+error.code = "invalid_reference"
+
+Make sure this request does NOT create a lead.
+
+TEST 4 — Valid general request
+
+Use this payload:
+
+{
+  "source": "general/get-three-estimates",
+  "externalRequestId": "techma-prelaunch-smoke-20260811-001",
+  "firstName": "API",
+  "lastName": "Smoke Test",
+  "phone": "+15125550100",
+  "email": "api-smoke-test@techma.example",
+  "propertyZip": "78701",
+  "contractorCategoryCode": "land-clearing",
+  "landTypeCode": "development",
+  "projectTypeCode": "pond-building",
+  "budget": "TEST REQUEST - DO NOT ROUTE",
+  "timeline": "2026-10-01",
+  "urgency": "TEST ONLY",
+  "description": "TECHMA production API smoke test. Do not assign a tier or route this lead."
+}
+
+Expected:
+HTTP 202
+
+Response must contain:
+ok = true
+replay = false
+reviewStatus = "pending_review"
+blockers contains "tier_review"
+leadId is present
+
+Afterward verify in the database/admin application that:
+- exactly ONE lead exists for this externalRequestId
+- tier is null
+- priceCents is null
+- reviewStatus is pending_review
+- tierReviewRequired is true
+- no LeadMatch was created
+- no contractor notification was sent
+- no wallet transaction occurred
+- no expiry/distribution started
+
+TEST 5 — Idempotent replay
+
+Send EXACTLY the same payload again with the same externalRequestId.
+
+Expected:
+HTTP 202
+same leadId as Test 4
+replay = true
+
+Verify the database still contains exactly ONE lead for this externalRequestId.
+
+TEST 6 — Idempotency conflict
+
+Send the same externalRequestId again but change only:
+
+"description": "DIFFERENT PAYLOAD FOR IDEMPOTENCY CONFLICT TEST"
+
+Expected:
+HTTP 409
+error.code = "idempotency_conflict"
+
+Verify:
+- original lead was NOT modified
+- no second lead was created
+
+TEST 7 — Wrong content type
+
+Send Content-Type: text/plain.
+
+Expected:
+HTTP 415
+error.code = "unsupported_media_type"
+
+FINAL SAFETY CHECK
+
+For the successful test lead confirm:
+
+- no LeadMatch
+- no SMS
+- no email notification
+- no wallet mutation
+- no pricing snapshot
+- no contractor routing
+
+Do not delete the test lead directly from the database.
+
+If the existing admin application has a SAFE documented archive/delete workflow
+that preserves audit/history, tell me how to clean up the smoke-test lead.
+Otherwise leave it in pending review and identify it clearly by externalRequestId.
+
+FINAL REPORT — DO NOT INCLUDE THE API SECRET
+
+Return exactly:
+
+PRODUCTION URL:
+DEPLOYED STATUS:
+
+AUTH TEST:
+PASS / FAIL
+
+INVALID TAXONOMY TEST:
+PASS / FAIL
+
+VALID REQUEST:
+PASS / FAIL
+HTTP:
+leadId:
+
+IDEMPOTENCY REPLAY:
+PASS / FAIL
+same leadId: YES / NO
+duplicate database rows: 0 / number
+
+IDEMPOTENCY CONFLICT:
+PASS / FAIL
+
+CONTENT-TYPE TEST:
+PASS / FAIL
+
+SAFETY:
+LeadMatch created: YES / NO
+Notification sent: YES / NO
+Wallet transaction created: YES / NO
+Tier assigned: YES / NO
+Price assigned: YES / NO
+
+OVERALL:
+SAFE TO SEND API DOCUMENTATION TO WIX
+or
+DO NOT SEND YET
+
+If anything fails, give the exact failure and likely code/configuration cause.
+Never reveal any secret values.

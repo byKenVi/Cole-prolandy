@@ -55,4 +55,4 @@ RESEND_MOCK = "false"
 TWILIO_MOCK = "false"
 
 [userenv.shared]
-WIX_ESTIMATE_INTEGRATION_ENABLED = "false"
+WIX_ESTIMATE_INTEGRATION_ENABLED = "true"
