@@ -1,0 +1,429 @@
+openapi: "3.1.0"
+info:
+  title: "Landy's Pro — Wix Estimate Submission API"
+  version: "1.1.0"
+  description: >
+    Receives landowner estimate requests submitted from the landys.co Wix site
+    and persists them for manual tier review in the Landy's Pro admin dashboard.
+    All requests enter a pending_review state — no automatic tier assignment or
+    contractor matching occurs at intake.
+
+    The endpoint is implemented and deployed. Production traffic is controlled
+    by the WIX_ESTIMATE_INTEGRATION_ENABLED feature flag set by the operator.
+    Until that flag is active, all requests return 503 integration_disabled.
+
+servers:
+  - url: "https://cole-prolandy-project.replit.app"
+    description: "Production"
+
+paths:
+  /api/integrations/wix/estimate-requests:
+    post:
+      operationId: createWixEstimateRequest
+      summary: Submit a landowner estimate request from Wix
+      description: >
+        Creates a new estimate request lead in Landy's Pro.
+        Supports idempotent retries via externalRequestId.
+        Supports two routing modes: general (get-three-estimates) and
+        direct (contractor-profile-request).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WixEstimateRequest"
+            examples:
+              general:
+                summary: General estimate request
+                value:
+                  source: "general/get-three-estimates"
+                  externalRequestId: "estimate-2026-000123"
+                  firstName: "Jordan"
+                  lastName: "Lee"
+                  phone: "+15125550100"
+                  email: "jordan@example.com"
+                  propertyZip: "78701"
+                  contractorCategoryCode: "land-clearing"
+                  landTypeCode: "development"
+                  projectTypeCode: "pond-building"
+                  budget: "$10,000–$20,000"
+                  timeline: "2026-10-01"
+                  urgency: "Within 30 days"
+                  description: "Install a retention pond at the main parcel entrance."
+              direct:
+                summary: Direct contractor profile request
+                value:
+                  source: "direct-contractor-profile-request"
+                  externalRequestId: "direct-2026-000456"
+                  firstName: "Jordan"
+                  lastName: "Lee"
+                  phone: "+15125550100"
+                  email: "jordan@example.com"
+                  propertyZip: "78701"
+                  landTypeCode: "development"
+                  projectTypeCode: "pond-building"
+                  budget: "$10,000–$20,000"
+                  timeline: "2026-10-01"
+                  urgency: "Within 30 days"
+                  description: "Direct request for a specific contractor to build a retention pond."
+                  externalContractorId: "CONFIRMED_WIX_CONTRACTOR_ID"
+      responses:
+        "202":
+          description: Request accepted and persisted for admin review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+              examples:
+                newLead:
+                  summary: New lead created
+                  value:
+                    ok: true
+                    data:
+                      leadId: "cm..."
+                      replay: false
+                      reviewStatus: "pending_review"
+                      blockers: ["tier_review"]
+                replay:
+                  summary: Idempotent replay
+                  value:
+                    ok: true
+                    data:
+                      leadId: "cm..."
+                      replay: true
+                      reviewStatus: "pending_review"
+                      blockers: ["tier_review"]
+                directHeld:
+                  summary: Direct request — contractor unresolved, held for review
+                  value:
+                    ok: true
+                    data:
+                      leadId: "cm..."
+                      replay: false
+                      reviewStatus: "pending_review"
+                      blockers: ["tier_review", "contractor_review"]
+        "400":
+          description: Request body is not valid JSON
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                ok: false
+                error:
+                  code: "invalid_json"
+                  message: "Request body is not valid JSON."
+        "401":
+          description: Authorization header missing, malformed, or secret incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                ok: false
+                error:
+                  code: "unauthorized"
+                  message: "Invalid bearer credentials."
+        "409":
+          description: Same externalRequestId used with a different payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                ok: false
+                error:
+                  code: "idempotency_conflict"
+                  message: "The external request ID was already used with a different payload."
+        "415":
+          description: Content-Type is not application/json
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                ok: false
+                error:
+                  code: "unsupported_media_type"
+                  message: "Content-Type must be application/json."
+        "422":
+          description: Validation failure or unknown/archived taxonomy code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationErrorResponse"
+              examples:
+                validationError:
+                  summary: Zod schema failure
+                  value:
+                    ok: false
+                    error:
+                      code: "validation_error"
+                      message: "Request validation failed."
+                      issues:
+                        - path: "timeline"
+                          message: "Please choose a valid timeline date"
+                invalidReference:
+                  summary: Unknown or archived taxonomy code
+                  value:
+                    ok: false
+                    error:
+                      code: "invalid_reference"
+                      message: "Active land type not found"
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                ok: false
+                error:
+                  code: "internal_error"
+                  message: "The request could not be processed."
+        "503":
+          description: Integration feature flag not enabled by operator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                ok: false
+                error:
+                  code: "integration_disabled"
+                  message: "Integration disabled."
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: >
+        Shared secret provided privately by Landy's / TECHMA.
+        Verified with timing-safe comparison (SHA-256).
+
+  schemas:
+    WixEstimateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - source
+        - externalRequestId
+        - email
+        - propertyZip
+        - landTypeCode
+        - projectTypeCode
+        - budget
+        - timeline
+        - urgency
+        - description
+      properties:
+        source:
+          type: string
+          enum:
+            - "general/get-three-estimates"
+            - "direct-contractor-profile-request"
+          description: >
+            Routing mode. Use general/get-three-estimates for standard intake.
+            Use direct-contractor-profile-request when a landowner requests a
+            specific contractor by profile — externalContractorId is then required.
+        externalRequestId:
+          type: string
+          minLength: 1
+          maxLength: 160
+          description: Your stable unique identifier for this request. Used for idempotency.
+        email:
+          type: string
+          format: email
+          maxLength: 320
+          description: Landowner email address.
+        propertyZip:
+          type: string
+          pattern: '^\d{5}(?:-\d{4})?$'
+          description: Property ZIP code. Accepts 5-digit or ZIP+4 format.
+          example: "78701"
+        landTypeCode:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: >
+            Active land type code. Must match a non-archived code in Landy's database.
+            See contractor category table in the integration guide.
+          enum:
+            - development
+            - farmland
+            - homestead
+            - hunting
+            - ranching
+            - timberland
+        projectTypeCode:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: >
+            Active project type code. Must match a non-archived code in Landy's database.
+          enum:
+            - barndominium-building
+            - brush-hogging
+            - cabin-construction
+            - culvert-install
+            - drainage-improvement
+            - driveway-construction
+            - gated-entrance
+            - irrigation-system-installation
+            - land-grading-leveling
+            - pond-building
+            - retaining-wall-construction
+            - tree-removal-stump-grinding
+            - utility-trenching
+            - water-well-drilling
+        budget:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: >
+            Free-text budget description. Stored verbatim for admin reference.
+            Not parsed or used for tier assignment.
+          example: "$10,000–$20,000"
+        timeline:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+          description: >
+            Requested project start date in YYYY-MM-DD format only.
+            Free text (e.g. "Q4 2026") is rejected.
+          example: "2026-10-01"
+        urgency:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Urgency description.
+          example: "Within 30 days"
+        description:
+          type: string
+          minLength: 10
+          maxLength: 4000
+          description: Project description.
+        firstName:
+          type: string
+          maxLength: 80
+          nullable: true
+          description: Landowner first name.
+        lastName:
+          type: string
+          maxLength: 80
+          nullable: true
+          description: Landowner last name.
+        phone:
+          type: string
+          maxLength: 40
+          nullable: true
+          description: Landowner phone number.
+        contractorCategoryCode:
+          type: string
+          minLength: 1
+          maxLength: 80
+          nullable: true
+          description: >
+            Optional preferred contractor category code.
+            Must match an active code if provided.
+          enum:
+            - builders
+            - dirt-work-excavation
+            - farm-agriculture
+            - fencing-entrances
+            - forestry-timber
+            - land-clearing
+            - land-lenders
+            - land-realtors
+            - property-maintenance
+            - surveyors
+            - water-well-septic
+            - wildlife-management
+        externalContractorId:
+          type: string
+          minLength: 1
+          maxLength: 160
+          description: >
+            Required when source is direct-contractor-profile-request.
+            Prohibited when source is general/get-three-estimates.
+            Must match a pre-registered ExternalContractorIdentity mapping
+            (source="wix") in Landy's database.
+
+    SuccessResponse:
+      type: object
+      required: [ok, data]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+          required: [leadId, replay, reviewStatus, blockers]
+          properties:
+            leadId:
+              type: string
+              description: Landy's Pro internal lead identifier.
+            replay:
+              type: boolean
+              description: True when this response is an idempotent replay of a prior successful request.
+            reviewStatus:
+              type: string
+              enum: ["pending_review"]
+              description: Always pending_review at intake — no automatic routing occurs.
+            blockers:
+              type: array
+              items:
+                type: string
+                enum: ["tier_review", "contractor_review"]
+              description: >
+                tier_review is always present — admin must assign a tier before routing.
+                contractor_review is present for direct requests where the contractor
+                mapping could not be resolved at intake.
+
+    ErrorResponse:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - invalid_json
+                - unauthorized
+                - idempotency_conflict
+                - unsupported_media_type
+                - validation_error
+                - invalid_reference
+                - internal_error
+                - integration_disabled
+            message:
+              type: string
+
+    ValidationErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/ErrorResponse"
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                issues:
+                  type: array
+                  description: Field-level validation issues. Only present for validation_error.
+                  items:
+                    type: object
+                    required: [path, message]
+                    properties:
+                      path:
+                        type: string
+                        description: Dot-separated field path (e.g. "timeline", "externalContractorId").
+                      message:
+                        type: string
