@@ -1,0 +1,159 @@
+URGENT — DOCUMENTATION DELIVERY ONLY.
+
+We have less than 30 minutes to send the Wix API documentation to the landys.co developer.
+
+DO NOT run migrations.
+DO NOT modify production data.
+DO NOT deploy.
+DO NOT refactor application code.
+DO NOT spend time on unrelated smoke tests.
+
+Your ONLY task now is to finalize and output the Wix developer documentation from the ACTUAL IMPLEMENTED CODE.
+
+The current documentation file is:
+
+artifacts/landys-pro/docs/wix-estimate-integration.md
+
+The current production application URL is:
+
+https://cole-prolandy-project.replit.app
+
+Do the following immediately:
+
+1. Open and review:
+   - artifacts/landys-pro/docs/wix-estimate-integration.md
+   - the actual implemented Wix API route
+   - its Zod/request validation schema
+   - authentication helper
+   - idempotency implementation
+   - taxonomy code resolution
+   - direct-contractor logic
+   - pending-tier/review behavior
+
+2. Verify that EVERY field, header, status code, example and behavior in the
+   documentation matches the ACTUAL CODE.
+
+3. Replace any `{PRODUCTION_BASE_URL}` placeholder with:
+
+   https://cole-prolandy-project.replit.app
+
+4. DO NOT enable the API.
+   Documentation can be delivered before production activation.
+
+5. The documentation must clearly distinguish:
+
+   IMPLEMENTED CONTRACT
+   from
+   CURRENT ACTIVATION STATUS.
+
+   State that the endpoint contract is implemented but production traffic may
+   remain disabled until Landy's activates the integration secret/feature
+   flag.
+
+6. NEVER include the real WIX_ESTIMATE_API_SECRET.
+
+   Authentication documentation must use a placeholder such as:
+
+   Authorization: Bearer <WIX_ESTIMATE_API_SECRET>
+
+   State that the actual credential will be provided privately by Landy's /
+   TECHMA.
+
+7. Verify that the documentation includes, from the ACTUAL code:
+
+   - production base URL
+   - exact endpoint path
+   - exact HTTP method
+   - exact Content-Type
+   - exact Authorization syntax
+   - exact request payload
+   - exact field names
+   - exact nesting
+   - exact types
+   - required vs optional fields
+   - exact allowed source values
+   - exact taxonomy code values
+   - externalRequestId
+   - idempotency behavior
+   - duplicate replay behavior
+   - conflicting duplicate behavior
+   - general "Get 3 Estimates" flow
+   - direct contractor profile request flow
+   - externalContractorId behavior
+   - unresolved contractor behavior
+   - current tier/manual-review behavior
+   - success response
+   - validation errors
+   - authentication errors
+   - conflict errors
+   - server errors
+   - exact HTTP status codes
+   - retry rules
+   - complete curl example for general request
+   - complete curl example for direct contractor request
+   - testing instructions
+
+8. FILE UPLOAD:
+
+   Do NOT invent an upload mechanism.
+
+   If attachment transport from Wix has not been finalized, explicitly write:
+
+   "Attachment transport is not yet part of the production integration
+   contract. Please do not send file data until Landy's confirms the agreed
+   transfer mechanism."
+
+9. TIER / PRICING:
+
+   Do NOT imply automatic Tier 1 / Tier 2 / Tier 3 classification exists if it
+   does not.
+
+   Explain the actual current implemented behavior.
+
+10. At the end add a short section:
+
+    "Information Required From Wix Developer"
+
+    containing only the contractor synchronization information Landy's still
+    needs:
+
+    - contractor API/base endpoint
+    - authentication method
+    - stable contractor external ID
+    - list/retrieval mechanism
+    - pagination
+    - actual response schema and field names
+    - active/deactivated status if available
+    - update/change mechanism
+    - webhook or updated-since mechanism if available
+    - contractor category information
+    - project/service information
+    - service-area/geographic information if available
+    - relevant profile/media fields
+
+    Make clear these are REQUESTED capabilities/information, not assumptions
+    that Wix already provides them.
+
+11. Produce TWO outputs immediately:
+
+    A. Update:
+       artifacts/landys-pro/docs/wix-estimate-integration.md
+
+    B. Print the ENTIRE final documentation in your response so I can
+       copy/paste it immediately into an email or document.
+
+12. Also provide a very short email message addressed to the Wix developer,
+    saying:
+
+    - attached/below is the Landy's Pro estimate submission API contract
+    - they should implement the POST when the landys.co estimate form is
+      submitted
+    - they should include the contractor external ID for contractor-profile
+      requests
+    - Landy's/TECHMA will provide the bearer credential privately
+    - we are also awaiting their contractor API documentation
+
+Do not respond with a summary first.
+Do the verification and give me the final API documentation immediately.
+
+Time is critical.

@@ -1,236 +1,214 @@
-# Wix → Landy's Pro Estimate Integration
+# Landy's Pro — Wix Estimate Submission API
 
 **Version:** 1.1.0  
-**Endpoint path:** `/api/integrations/wix/estimate-requests`  
-**OpenAPI spec:** `docs/openapi/wix-landys-pro.yaml`  
-**Status:** Production-ready; feature flag must be enabled by operator before go-live.
+**Production base URL:** `https://cole-prolandy-project.replit.app`  
+**Endpoint:** `POST /api/integrations/wix/estimate-requests`
+
+> **Implementation vs activation status**
+>
+> The full endpoint contract described in this document is implemented and deployed.
+> Production traffic is controlled by a feature flag set by Landy's / TECHMA.
+> Until that flag is activated, all requests return **503 integration_disabled**.
+> The contract itself will not change when the flag is enabled.
 
 ---
 
-## 1. Production base URL
+## 1. Authentication
+
+All requests must carry a `Bearer` token:
 
 ```
-{PRODUCTION_BASE_URL}
+Authorization: Bearer <WIX_ESTIMATE_API_SECRET>
 ```
 
-Replace with the confirmed production URL provided by the Landy's Pro operator (e.g. `https://cole-prolandy-project.replit.app`). Do not construct the URL yourself — ask the operator.
+The actual credential will be provided **privately** by Landy's / TECHMA.
+**Do not put the secret in source code, logs, or this document.**
+
+Authentication is verified with a timing-safe comparison.
+Any request with a missing, malformed, or incorrect token receives:
+
+```
+HTTP 401
+{ "ok": false, "error": { "code": "unauthorized", "message": "Invalid bearer credentials." } }
+```
 
 ---
 
-## 2. Estimate request endpoint
-
-| Property | Value |
-|---|---|
-| Method | `POST` |
-| URL | `{PRODUCTION_BASE_URL}/api/integrations/wix/estimate-requests` |
-| Purpose | Persist a landowner estimate request for admin tier review before routing to contractors |
-| Content-Type | `application/json` (required — any other value returns 415) |
-| Feature flag | `WIX_ESTIMATE_INTEGRATION_ENABLED=true` must be set by operator |
-| Auth header | `Authorization: Bearer <shared-secret>` |
-
----
-
-## 3. Authentication
-
-All requests must include a `Bearer` token in the `Authorization` header:
-
-```
-Authorization: Bearer <shared-secret>
-```
-
-The production secret is provided privately by the Landy's Pro operator. **Never publish the secret in documentation, logs, or source code.**
-
-Requests with a missing or invalid secret return `401 unauthorized`.
-
----
-
-## 4. Required headers
+## 2. Required headers
 
 ```
 Content-Type: application/json
-Authorization: Bearer <shared-secret>
+Authorization: Bearer <WIX_ESTIMATE_API_SECRET>
 ```
 
----
-
-## 5. Request schema
-
-### Required fields
-
-| Field | Type | Notes |
-|---|---|---|
-| `source` | string | `"general/get-three-estimates"` or `"direct-contractor-profile-request"` |
-| `externalRequestId` | string | Your stable unique identifier for this request — used for idempotency |
-| `email` | string | Landowner email address |
-| `propertyZip` | string | 5-digit US ZIP code |
-| `landTypeCode` | string | Active land type code (see section 7) |
-| `projectTypeCode` | string | Active project type code (see section 7) |
-| `budget` | string | Free-text budget range (e.g. `"$10,000-$20,000"`) — stored only, not used for tier assignment |
-| `timeline` | string | Requested timeline (e.g. `"2026-10-01"` or `"Q4 2026"`) |
-| `urgency` | string | Urgency description (e.g. `"Within 30 days"`) |
-| `description` | string | Project description |
-
-### Optional fields
-
-| Field | Type | Notes |
-|---|---|---|
-| `firstName` | string | Landowner first name |
-| `lastName` | string | Landowner last name |
-| `phone` | string | Landowner phone number |
-| `contractorCategoryCode` | string \| null | Preferred contractor category (see section 7) |
-
-### Conditional fields
-
-| Field | Type | Condition |
-|---|---|---|
-| `externalContractorId` | string | **Required** when `source` is `direct-contractor-profile-request`. **Prohibited** when `source` is `general/get-three-estimates`. |
-
-Extra/unknown fields are rejected with `422 validation_error`.
+Any `Content-Type` other than `application/json` returns **415 unsupported_media_type** before the body is read.
 
 ---
 
-## 6. Source values
+## 3. Request
 
-### `general/get-three-estimates`
-General estimate request. Admin assigns tier and routes to up to three contractors.
+```
+POST https://cole-prolandy-project.replit.app/api/integrations/wix/estimate-requests
+Content-Type: application/json
+Authorization: Bearer <WIX_ESTIMATE_API_SECRET>
+```
 
-### `direct-contractor-profile-request`
-Direct request targeting a specific Wix contractor. Must include `externalContractorId`.  
-Requires a pre-existing `ExternalContractorIdentity` mapping (`source="wix"`, `externalId=<value>`) in the Landy's Pro database. Unresolved IDs create a held lead — **no general-matching fallback**.
+The body must be valid JSON. An unparseable body returns **400 invalid_json**.  
+Unknown/extra fields are rejected with **422 validation_error** (the schema is strict).
+
+### 3a. Fields
+
+#### Required
+
+| Field | Type | Constraints | Notes |
+|---|---|---|---|
+| `source` | string | `"general/get-three-estimates"` or `"direct-contractor-profile-request"` | See section 5 |
+| `externalRequestId` | string | min 1 char, max 160 chars (after trim) | Your stable unique ID; used for idempotency |
+| `email` | string | valid email format, max 320 chars | Landowner email |
+| `propertyZip` | string | 5-digit (`12345`) or ZIP+4 (`12345-6789`) | Property ZIP code |
+| `landTypeCode` | string | min 1 char, max 80 chars | Must match an active code — see section 6 |
+| `projectTypeCode` | string | min 1 char, max 80 chars | Must match an active code — see section 6 |
+| `budget` | string | min 1 char, max 280 chars | Free-text budget description — stored verbatim, not parsed |
+| `timeline` | string | **`YYYY-MM-DD` format only** | Must be a valid calendar date; e.g. `"2026-10-01"` |
+| `urgency` | string | min 1 char, max 280 chars | Urgency description; e.g. `"Within 30 days"` |
+| `description` | string | min 10 chars, max 4000 chars | Project description |
+
+#### Optional
+
+| Field | Type | Constraints | Notes |
+|---|---|---|---|
+| `firstName` | string \| null | max 80 chars | Landowner first name |
+| `lastName` | string \| null | max 80 chars | Landowner last name |
+| `phone` | string \| null | max 40 chars | Landowner phone |
+| `contractorCategoryCode` | string \| null | min 1 char, max 80 chars if provided | Preferred contractor category — see section 6 |
+
+#### Conditional
+
+| Field | Type | Constraints | Condition |
+|---|---|---|---|
+| `externalContractorId` | string | min 1 char, max 160 chars | **Required** when `source` is `"direct-contractor-profile-request"`. **Prohibited** when `source` is `"general/get-three-estimates"`. |
 
 ---
 
-## 7. Active taxonomy codes
+## 4. Idempotency
 
-Only codes with `archivedAt IS NULL` are accepted. Unknown or archived codes return `422 invalid_reference`.
+Idempotency is keyed on `externalRequestId`.
 
-Confirm active codes with the operator before go-live. Official codes seeded at launch:
-
-### Contractor categories (12)
-
-| Display name | Code |
+| Scenario | Behavior |
 |---|---|
-| Land Clearing | `land-clearing` |
-| Surveyors | `surveyors` |
-| Builders | `builders` |
-| Dirt Work & Excavation | `dirt-work-excavation` |
-| Fencing & Entrances | `fencing-entrances` |
-| Water Well & Septic | `water-well-septic` |
-| Forestry & Timber | `forestry-timber` |
-| Property Maintenance | `property-maintenance` |
-| Wildlife Management | `wildlife-management` |
-| Farm & Agriculture | `farm-agriculture` |
-| Land Lenders | `land-lenders` |
-| Land Realtors | `land-realtors` |
+| Same `externalRequestId` + **identical payload** | `202` — same `leadId` returned, `"replay": true` |
+| Same `externalRequestId` + **different payload** | `409 idempotency_conflict` |
+| New `externalRequestId` | `202` — new `leadId` created, `"replay": false` |
 
-### Land types (6)
+The payload is hashed with SHA-256 of `JSON.stringify(payload)` (the full parsed body, not the raw bytes).
+
+**Retry rules:**
+
+| Status | Safe to retry? |
+|---|---|
+| Network timeout / 5xx | ✅ Yes — retry with the **identical** payload and same `externalRequestId` |
+| 202 | ✅ Yes — returns same `leadId` |
+| 401 | ❌ Fix the secret first |
+| 409 | ❌ Do not retry — you must resolve the payload conflict or use a new `externalRequestId` |
+| 415 | ❌ Add `Content-Type: application/json` |
+| 422 | ❌ Fix the validation error or taxonomy code before retrying |
+
+---
+
+## 5. Source values and flows
+
+### `"general/get-three-estimates"`
+
+General estimate request. The lead enters admin tier review, after which Landy's routes it to eligible contractors.
+
+- `externalContractorId` must **not** be included.
+
+### `"direct-contractor-profile-request"`
+
+Request targeting a specific contractor by their Wix external ID.
+
+- `externalContractorId` is **required**.
+- The value must match a `ExternalContractorIdentity` record in Landy's database (`source="wix"`, `externalId=<value>`). These mappings are created by the Landy's operator — coordinate with Landy's / TECHMA to confirm which contractor IDs are registered before sending direct requests.
+- If no mapping is found, or the mapped contractor is deactivated, the lead is created in a **held state** (`contractorReviewRequired: true`). There is **no automatic fallback to general matching**.
+
+---
+
+## 6. Taxonomy codes
+
+`landTypeCode`, `projectTypeCode`, and `contractorCategoryCode` must match an **active** (non-archived) code in the Landy's database. Unknown or archived codes return `422 invalid_reference`.
+
+You can retrieve the current active codes at any time:
+
+```bash
+GET https://cole-prolandy-project.replit.app/api/estimate
+```
+
+This returns the live active taxonomy without authentication.
+
+The codes seeded at launch are listed below. Confirm with the Landy's / TECHMA operator before go-live — codes may be added or archived.
+
+### Land type codes
 
 | Display name | Code |
 |---|---|
 | Development | `development` |
 | Farmland | `farmland` |
-| Timberland | `timberland` |
-| Ranching | `ranching` |
 | Homestead | `homestead` |
 | Hunting | `hunting` |
+| Ranching | `ranching` |
+| Timberland | `timberland` |
 
-### Project types (14)
+### Project type codes
 
 | Display name | Code |
 |---|---|
-| Culvert Install | `culvert-install` |
 | Barndominium Building | `barndominium-building` |
 | Brush Hogging | `brush-hogging` |
-| Pond Building | `pond-building` |
 | Cabin Construction | `cabin-construction` |
-| Driveway Construction | `driveway-construction` |
-| Water Well Drilling | `water-well-drilling` |
-| Gated Entrance | `gated-entrance` |
+| Culvert Install | `culvert-install` |
 | Drainage Improvement | `drainage-improvement` |
+| Driveway Construction | `driveway-construction` |
+| Gated Entrance | `gated-entrance` |
 | Irrigation System Installation | `irrigation-system-installation` |
-| Retaining Wall Construction | `retaining-wall-construction` |
-| Utility Trenching | `utility-trenching` |
-| Tree Removal & Stump Grinding | `tree-removal-stump-grinding` |
 | Land Grading & Leveling | `land-grading-leveling` |
+| Pond Building | `pond-building` |
+| Retaining Wall Construction | `retaining-wall-construction` |
+| Tree Removal & Stump Grinding | `tree-removal-stump-grinding` |
+| Utility Trenching | `utility-trenching` |
+| Water Well Drilling | `water-well-drilling` |
 
----
+### Contractor category codes (optional field)
 
-## 8. General estimate — example
-
-```bash
-curl -sS -X POST "{PRODUCTION_BASE_URL}/api/integrations/wix/estimate-requests" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_SECRET_HERE" \
-  -d '{
-    "source": "general/get-three-estimates",
-    "externalRequestId": "estimate-2026-000123",
-    "firstName": "Jordan",
-    "lastName": "Lee",
-    "phone": "+15125550100",
-    "email": "jordan@example.com",
-    "propertyZip": "78701",
-    "contractorCategoryCode": "builders",
-    "landTypeCode": "development",
-    "projectTypeCode": "culvert-install",
-    "budget": "$10,000-$20,000",
-    "timeline": "2026-10-01",
-    "urgency": "Within 30 days",
-    "description": "Install a new culvert at the main property entrance."
-  }'
-```
-
----
-
-## 9. Direct contractor request — example
-
-Only send when a confirmed `ExternalContractorIdentity` mapping exists in production:
-
-```bash
-curl -sS -X POST "{PRODUCTION_BASE_URL}/api/integrations/wix/estimate-requests" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_SECRET_HERE" \
-  -d '{
-    "source": "direct-contractor-profile-request",
-    "externalRequestId": "direct-2026-000456",
-    "email": "jordan@example.com",
-    "propertyZip": "78701",
-    "landTypeCode": "development",
-    "projectTypeCode": "culvert-install",
-    "budget": "$10,000-$20,000",
-    "timeline": "2026-10-01",
-    "urgency": "Within 30 days",
-    "description": "Direct request for a specific contractor.",
-    "externalContractorId": "KNOWN_WIX_CONTRACTOR_ID"
-  }'
-```
-
----
-
-## 10. externalContractorId semantics
-
-- Must match `ExternalContractorIdentity.externalId` where `source="wix"` in the Landy's Pro database.
-- Contractor mappings are created manually by the Landy's Pro operator.
-- Unresolved IDs → lead held with `contractorReviewRequired: true`. No general-matching fallback. Ever.
-- Deactivated contractor → same hold behavior.
-
----
-
-## 11. externalRequestId and idempotency
-
-| Scenario | Behavior |
+| Display name | Code |
 |---|---|
-| Identical payload retry | 202 · same `leadId` · `"replay": true` |
-| Same ID, different payload | 409 `idempotency_conflict` |
-| New ID, any payload | 202 · new `leadId` · `"replay": false` |
-
-- Safe to retry identical payloads on network timeout.
-- Do **not** retry 409 — fix the payload mismatch first.
-- Do **not** retry 422 — fix the validation error or taxonomy code first.
-- Never reuse an `externalRequestId` across different business intents.
+| Farm & Agriculture | `farm-agriculture` |
+| Fencing & Entrances | `fencing-entrances` |
+| Forestry & Timber | `forestry-timber` |
+| Land Clearing | `land-clearing` |
+| Land Lenders | `land-lenders` |
+| Land Realtors | `land-realtors` |
+| Property Maintenance | `property-maintenance` |
+| Surveyors | `surveyors` |
+| Water Well & Septic | `water-well-septic` |
+| Wildlife Management | `wildlife-management` |
 
 ---
 
-## 12. Success response
+## 7. Tier assignment and review behavior
+
+**There is no automatic tier assignment.**
+
+Every request — general or direct — enters manual admin review:
+
+- Lead is created with `tier: null`, `priceCents: null`.
+- `reviewStatus` is always `"pending_review"` on intake.
+- `tierReviewRequired: true` is always set on intake.
+- No contractor matching, notifications, wallet charges, or expiry timers start until an admin assigns a tier and routes the lead in the Landy's Pro admin dashboard.
+- The `budget` field is stored verbatim for the admin to reference. It is not parsed or used for tier inference.
+
+---
+
+## 8. Success response
 
 **HTTP 202 Accepted**
 
@@ -246,109 +224,204 @@ curl -sS -X POST "{PRODUCTION_BASE_URL}/api/integrations/wix/estimate-requests" 
 }
 ```
 
-For a direct request with an unresolved contractor, `blockers` will also include `"contractor_review"`.
-
----
-
-## 13. Error responses
-
-| HTTP | Error code | When |
-|---:|---|---|
-| 400 | `invalid_json` | Request body is not valid JSON |
-| 401 | `unauthorized` | `Authorization` header missing or secret incorrect |
-| 409 | `idempotency_conflict` | Same `externalRequestId`, different payload hash |
-| 415 | `unsupported_media_type` | `Content-Type` is not `application/json` |
-| 422 | `validation_error` | Zod schema failure — response includes `issues[]` with field-level detail |
-| 422 | `invalid_reference` | `landTypeCode`, `projectTypeCode`, or `contractorCategoryCode` unknown or archived |
-| 500 | `internal_error` | Unexpected server failure |
-| 503 | `integration_disabled` | `WIX_ESTIMATE_INTEGRATION_ENABLED` flag is not `"true"` |
-
-Error body shape:
+For a direct request where the contractor could not be resolved at intake time, `blockers` will also contain `"contractor_review"`:
 
 ```json
 {
-  "ok": false,
-  "error": {
-    "code": "validation_error",
-    "message": "Request validation failed",
-    "issues": [
-      { "path": ["landTypeCode"], "message": "Required" }
-    ]
+  "ok": true,
+  "data": {
+    "leadId": "cm...",
+    "replay": false,
+    "reviewStatus": "pending_review",
+    "blockers": ["tier_review", "contractor_review"]
+  }
+}
+```
+
+For an idempotent replay (same `externalRequestId`, identical payload):
+
+```json
+{
+  "ok": true,
+  "data": {
+    "leadId": "cm...",
+    "replay": true,
+    "reviewStatus": "pending_review",
+    "blockers": ["tier_review"]
   }
 }
 ```
 
 ---
 
-## 14. Retry policy
+## 9. Error responses
 
-| Status | Retry? |
+All errors follow the same envelope:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "<error_code>",
+    "message": "<human-readable description>"
+  }
+}
+```
+
+Validation errors include an `issues` array:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "validation_error",
+    "message": "Request validation failed.",
+    "issues": [
+      { "path": "landTypeCode", "message": "Required" },
+      { "path": "externalContractorId", "message": "Direct contractor requests require externalContractorId." }
+    ]
+  }
+}
+```
+
+Note: `path` is a dot-separated string (e.g. `"timeline"`, `"externalContractorId"`), not an array.
+
+### Error code reference
+
+| HTTP | Code | When |
+|---:|---|---|
+| 400 | `invalid_json` | Body is not parseable as JSON |
+| 401 | `unauthorized` | `Authorization` header missing, malformed, or secret is wrong |
+| 409 | `idempotency_conflict` | Same `externalRequestId`, different payload |
+| 415 | `unsupported_media_type` | `Content-Type` is not `application/json` |
+| 422 | `validation_error` | Zod schema failure — `issues[]` contains field-level detail |
+| 422 | `invalid_reference` | `landTypeCode`, `projectTypeCode`, or `contractorCategoryCode` not found or archived |
+| 500 | `internal_error` | Unexpected server failure |
+| 503 | `integration_disabled` | Feature flag not yet enabled by Landy's operator |
+
+---
+
+## 10. Example — general estimate request
+
+```bash
+curl -sS -X POST "https://cole-prolandy-project.replit.app/api/integrations/wix/estimate-requests" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <WIX_ESTIMATE_API_SECRET>" \
+  -d '{
+    "source": "general/get-three-estimates",
+    "externalRequestId": "estimate-2026-000123",
+    "firstName": "Jordan",
+    "lastName": "Lee",
+    "phone": "+15125550100",
+    "email": "jordan@example.com",
+    "propertyZip": "78701",
+    "contractorCategoryCode": "land-clearing",
+    "landTypeCode": "development",
+    "projectTypeCode": "pond-building",
+    "budget": "$10,000–$20,000",
+    "timeline": "2026-10-01",
+    "urgency": "Within 30 days",
+    "description": "Install a retention pond at the main parcel entrance."
+  }'
+```
+
+Expected response:
+
+```json
+HTTP 202
+{
+  "ok": true,
+  "data": {
+    "leadId": "cm...",
+    "replay": false,
+    "reviewStatus": "pending_review",
+    "blockers": ["tier_review"]
+  }
+}
+```
+
+---
+
+## 11. Example — direct contractor profile request
+
+Only send when Landy's / TECHMA has confirmed a registered `externalContractorId` mapping for the contractor:
+
+```bash
+curl -sS -X POST "https://cole-prolandy-project.replit.app/api/integrations/wix/estimate-requests" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <WIX_ESTIMATE_API_SECRET>" \
+  -d '{
+    "source": "direct-contractor-profile-request",
+    "externalRequestId": "direct-2026-000456",
+    "firstName": "Jordan",
+    "lastName": "Lee",
+    "phone": "+15125550100",
+    "email": "jordan@example.com",
+    "propertyZip": "78701",
+    "landTypeCode": "development",
+    "projectTypeCode": "pond-building",
+    "budget": "$10,000–$20,000",
+    "timeline": "2026-10-01",
+    "urgency": "Within 30 days",
+    "description": "Direct request for a specific contractor to build a retention pond.",
+    "externalContractorId": "CONFIRMED_WIX_CONTRACTOR_ID"
+  }'
+```
+
+If the contractor ID resolves, `blockers` will be `["tier_review"]`.  
+If the contractor ID is not yet mapped or the contractor is deactivated, `blockers` will be `["tier_review", "contractor_review"]` — the lead is held for admin resolution.
+
+---
+
+## 12. File attachments
+
+Attachment transport is not yet part of the production integration contract.
+Please do not send file data until Landy's confirms the agreed transfer mechanism.
+
+The schema is strict — any attachment-related fields in the body will be rejected with `422 validation_error`.
+
+---
+
+## 13. Testing checklist
+
+Run the following sequence against the production endpoint before enabling live traffic.
+
+1. **Integration disabled** — send a valid request before the flag is enabled → expect `503 integration_disabled`
+2. **Missing auth** — omit the `Authorization` header → expect `401 unauthorized`
+3. **Wrong secret** — send an incorrect token → expect `401 unauthorized`
+4. **Wrong content-type** — send `Content-Type: text/plain` → expect `415 unsupported_media_type`
+5. **Invalid JSON** — send a malformed body → expect `400 invalid_json`
+6. **Missing required field** — omit `timeline` → expect `422 validation_error` with `path: "timeline"`
+7. **Invalid timeline format** — send `"timeline": "Q4 2026"` → expect `422 validation_error`
+8. **Unknown taxonomy code** — send `"landTypeCode": "swampland"` → expect `422 invalid_reference`
+9. **General request with contractor ID** — include `externalContractorId` on a general source → expect `422 validation_error`
+10. **Direct request without contractor ID** — omit `externalContractorId` on a direct source → expect `422 validation_error`
+11. **Valid general request** — expect `202`, note `leadId`
+12. **Idempotent retry** — repeat identical payload with same `externalRequestId` → expect `202`, same `leadId`, `"replay": true`
+13. **Conflict** — same `externalRequestId`, different `description` → expect `409 idempotency_conflict`
+14. **Direct contractor request** — only run when a known mapped `externalContractorId` is confirmed with Landy's
+
+---
+
+## 14. Information required from Wix developer
+
+The following information is needed to implement contractor synchronisation from Wix into Landy's Pro.
+These are **requested capabilities** — we are not assuming Wix already provides them in any specific form.
+Please share whatever is available and indicate where a capability is not yet offered.
+
+| Item | What we need |
 |---|---|
-| Network timeout / 5xx | ✅ Safe — idempotent on same `externalRequestId` |
-| 202 | ✅ Safe — returns same `leadId` |
-| 401 | ❌ Fix secret first |
-| 409 | ❌ Fix payload or use a new `externalRequestId` |
-| 415 | ❌ Add `Content-Type: application/json` |
-| 422 | ❌ Fix the validation/taxonomy error |
+| **API / base endpoint** | Base URL for Wix contractor data API |
+| **Authentication** | Auth method (API key, OAuth token, etc.) and how credentials are issued |
+| **Stable contractor external ID** | The field Wix uses as a permanent, immutable identifier per contractor — the value Wix should include in `externalContractorId` |
+| **List / retrieval** | How to retrieve the full contractor list (endpoint, method) |
+| **Pagination** | Pagination mechanism (cursor, page/size, offset) and max page size |
+| **Response schema** | Full response field names and types for contractor records |
+| **Active / deactivated status** | Whether a contractor-active or deactivated status field is available, and what values it uses |
+| **Change notification** | Webhook or `updated_since` / `modified_after` filter to retrieve only changed records |
+| **Contractor category** | How the contractor's service category is represented in the response (field name, possible values) |
+| **Project / service types** | How a contractor's offered project or service types are represented |
+| **Service area / geography** | Whether contractors have a service-area or geographic-coverage field, and its format |
+| **Profile / media fields** | Which profile fields are available (bio/about, business hours, logo/photo URLs, etc.) |
 
----
-
-## 15. Tier assignment behavior
-
-**Automatic tier assignment is NOT implemented.** Every Wix request enters manual admin tier review:
-
-- Lead is created with `tier: null`, `priceCents: null`, `reviewStatus: PENDING_REVIEW`, `tierReviewRequired: true`.
-- The `budget` text field is stored verbatim but **not parsed** for tier inference.
-- No contractor matching, notifications, wallet charges, or expiry timers start until an admin finalizes the tier.
-- Admin reviews and assigns tier via the Landy's Pro admin dashboard.
-
----
-
-## 16. Direct contractor routing behavior
-
-- A direct request routes only to the mapped contractor — **never** falls back to general matching.
-- If the mapped contractor is deactivated between request and admin review, the lead remains held.
-- Admin manually resolves held leads.
-
----
-
-## 17. File attachments
-
-**Attachment transport is not part of the production integration contract.** The endpoint accepts JSON only. Attachment-related fields in the request body are rejected with `422 validation_error`.
-
-The `LeadAttachment` metadata model exists internally for future use.
-
----
-
-## 18. Testing procedure
-
-Run the following tests against the production endpoint before enabling live traffic:
-
-1. **Missing auth** → expect `401 unauthorized`
-2. **Valid general request** → expect `202`, note `leadId`
-3. **Identical retry** → same `externalRequestId` + identical payload → expect `202` with `"replay": true` and the same `leadId`
-4. **Conflict** → same `externalRequestId` + mutated payload → expect `409 idempotency_conflict`
-5. **Invalid taxonomy** → unknown `landTypeCode` → expect `422 invalid_reference`
-6. **Disabled flag** → test before operator enables flag → expect `503 integration_disabled`
-7. **Direct contractor** → only run if a known `ExternalContractorIdentity` mapping exists in production
-
----
-
-## 19. Production go-live checklist (Wix developer)
-
-- [ ] Operator has enabled `WIX_ESTIMATE_INTEGRATION_ENABLED=true`
-- [ ] Production secret received privately from operator — stored securely, not in source code
-- [ ] Active taxonomy codes confirmed with operator (codes can be queried: `GET /api/estimate` returns active categories)
-- [ ] General request tested (step 2 above)
-- [ ] Idempotent retry tested (step 3 above)
-- [ ] Conflict case tested (step 4 above)
-- [ ] Direct routing tested **only** with a known mapped `externalContractorId`
-
----
-
-## 20. Contractor sync (future)
-
-The foundation for Wix contractor synchronization is implemented in `lib/integrations/contractors/`. The live HTTP adapter is **not yet implemented** — blocked pending Wix API information.
-
-Fields that must **never** be overwritten by any future sync:
-`walletBalanceCents`, Stripe customer/card fields, `clerkUserId`, `isPro`, wallet transactions, lead matches, pricing snapshots, promo/refund history, audit logs.
+Please send this information to Landy's / TECHMA at your earliest convenience so contractor sync implementation can proceed.
