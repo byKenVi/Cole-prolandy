@@ -53,3 +53,6 @@ NEXT_PUBLIC_APP_URL = "https://cole-prolandy-project.replit.app"
 STRIPE_MOCK = "false"
 RESEND_MOCK = "false"
 TWILIO_MOCK = "false"
+
+[userenv.shared]
+WIX_ESTIMATE_INTEGRATION_ENABLED = "false"
