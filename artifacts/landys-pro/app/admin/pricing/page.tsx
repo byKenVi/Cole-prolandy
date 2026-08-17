@@ -136,6 +136,7 @@ export default async function PricingPage() {
                       id: t.id,
                       tier: t.tier,
                       priceCents: t.priceCents,
+                      maxBudgetCents: t.maxBudgetCents,
                     })),
                   },
                 ],

@@ -167,7 +167,7 @@ describe("provider-neutral contractor synchronization", () => {
     expect(store.createCount).toBe(0);
   });
 
-  it("holds deactivated contractors for administrative review", async () => {
+  it("still evaluates deactivated contractors for profile sync updates", async () => {
     const store = new MemoryStore();
     store.identities.set("directory:external-1", {
       contractorId: "contractor-1",
@@ -184,8 +184,7 @@ describe("provider-neutral contractor synchronization", () => {
 
     const result = await syncContractor(store, RECORD, FULL_POLICY, { dryRun: false });
 
-    expect(result.status).toBe("unresolved");
-    expect(result.reasons[0]).toContain("deactivated");
+    expect(result.status).toBe("unchanged");
     expect(store.updateCount).toBe(0);
   });
 

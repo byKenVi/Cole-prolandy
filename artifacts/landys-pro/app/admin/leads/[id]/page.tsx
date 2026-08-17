@@ -203,10 +203,11 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
         </div>
       </header>
 
-      {lead.reviewStatus !== "ROUTED" && (
+      {lead.reviewStatus !== "ROUTED" && (lead.budgetReviewRequired || lead.tierReviewRequired) && (
         <LeadReviewForm
           leadId={lead.id}
-          currentTier={lead.tier}
+          currentBudgetCents={lead.budgetCents}
+          budgetRaw={lead.budget}
           contractorReviewRequired={lead.contractorReviewRequired}
         />
       )}
@@ -227,6 +228,15 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <Field label="Project type" value={lead.projectType.name} />
           <Field label="Land type" value={lead.landType?.name ?? "—"} />
           <Field label="Budget" value={lead.budget ?? "—"} />
+          <Field
+            label="Normalized budget"
+            value={lead.budgetCents != null ? formatMoney(lead.budgetCents) : "—"}
+          />
+          <Field label="Resolved tier" value={lead.tier != null ? `Tier ${lead.tier}` : "—"} />
+          <Field
+            label="Purchases"
+            value={`${lead.acceptedCount} / ${lead.maxPurchases}${lead.soldOutAt ? " (sold out)" : ""}`}
+          />
           <Field label="Urgency" value={lead.urgency ?? "—"} />
           <Field label="Timeline" value={lead.timeline ? formatDate(lead.timeline) : "—"} />
           <Field label="Source" value={lead.source} />

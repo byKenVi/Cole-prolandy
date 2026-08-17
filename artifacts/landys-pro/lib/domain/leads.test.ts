@@ -38,6 +38,8 @@ function seedScenario(opts: {
   const db = createFakeDb();
   h.db = db;
 
+  db.projectType.seed([{ id: "pt1", contractorTypeId: "ct1" }]);
+
   Object.entries(opts.balances).forEach(([id, bal]) =>
     db.contractor.seed([{ id, walletBalanceCents: bal, contractorTypeId: "ct1" }]),
   );
@@ -52,8 +54,13 @@ function seedScenario(opts: {
       projectTypeId: "pt1",
       tier: 2,
       priceCents: opts.priceCents,
+      maxPurchases: 3,
+      acceptedCount: 0,
       status: opts.leadStatus ?? LeadStatus.DISTRIBUTED,
       expiresAt: new Date(Date.now() + (opts.expiresInMs ?? 24 * HOUR)),
+      tierReviewRequired: false,
+      budgetReviewRequired: false,
+      contractorReviewRequired: false,
     },
   ]);
   return db;
@@ -170,6 +177,7 @@ describe("safe intake distribution gate", () => {
         priceCents: null,
         expiresAt: null,
         tierReviewRequired: true,
+        budgetReviewRequired: true,
         contractorReviewRequired: false,
         status: LeadStatus.NEW,
       },
@@ -191,41 +199,6 @@ describe("safe intake distribution gate", () => {
     expect(db.leadMatch.rows).toHaveLength(0);
   });
 
-  it("honors the configured maximum recipient limit", async () => {
-    const db = createFakeDb();
-    const setting = db.appSetting.rows.find((row) => row.key === "maxLeadRecipients");
-    if (!setting) throw new Error("maxLeadRecipients fixture is missing");
-    setting.value = "2";
-    db.projectType.seed([{ id: "pt-limit", contractorTypeId: "ct-limit" }]);
-    db.lead.seed([
-      {
-        id: "lead-limit",
-        projectTypeId: "pt-limit",
-        tier: 1,
-        priceCents: 2500,
-        expiresAt: new Date(Date.now() + HOUR),
-        tierReviewRequired: false,
-        contractorReviewRequired: false,
-        status: LeadStatus.NEW,
-      },
-    ]);
-    db.contractor.seed(
-      Array.from({ length: 5 }, (_, index) => ({
-        id: `contractor-${index}`,
-        name: `Contractor ${index}`,
-        email: `contractor-${index}@example.com`,
-        phone: `+1512555010${index}`,
-        createdAt: new Date(index),
-        deactivatedAt: null,
-        projects: [{ contractorTypeId: "ct-limit" }],
-      })),
-    );
-
-    const result = await distributeLead(asDb(db), "lead-limit");
-
-    expect(result.matches).toHaveLength(2);
-    expect(db.leadMatch.rows).toHaveLength(2);
-  });
 });
 
 describe("declineLeadMatch", () => {

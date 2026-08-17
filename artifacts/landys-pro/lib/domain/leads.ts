@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { generateAcceptToken } from "@/lib/tokens";
 import type { DbClient } from "./types";
 import { applyWalletTransactionInTx } from "./wallet";
-import { getMaxLeadRecipients } from "./settings";
 import {
   InvalidStateError,
   LeadExpiredError,
+  LeadSoldOutError,
   NotFoundError,
 } from "./errors";
 
@@ -26,15 +26,8 @@ export type DistributeLeadResult = {
 };
 
 /**
- * Distribute a lead to up to `maxLeadRecipients` eligible contractors by creating
- * PENDING LeadMatch rows. Leads are SHARED (business rule 1): all recipients may
- * accept independently; no exclusivity/lock.
- *
- * Eligibility: contractors assigned to the lead's project (ContractorProject),
- * not deactivated. Project assignment is multi-project and admin-controlled.
- *
- * Notifications are fired by the caller using the returned matches (keeps the
- * domain free of integration side effects).
+ * Distribute a lead to ALL eligible contractors by creating PENDING LeadMatch rows.
+ * Eligibility: active, assigned to lead project type, and (when set) contractor category.
  */
 export async function distributeLead(
   db: DbClient,
@@ -50,33 +43,45 @@ export async function distributeLead(
     lead.priceCents === null ||
     lead.expiresAt === null ||
     lead.tierReviewRequired ||
+    lead.budgetReviewRequired ||
     lead.contractorReviewRequired
   ) {
     throw new InvalidStateError("This lead is still awaiting intake review.");
   }
+  if (lead.status === LeadStatus.SOLD_OUT || lead.status === LeadStatus.EXPIRED) {
+    throw new InvalidStateError("This lead is no longer available for distribution.");
+  }
 
-  const maxRecipients = await getMaxLeadRecipients(db);
   const projectId = lead.projectType.contractorTypeId;
-
   const alreadyMatchedIds = new Set(lead.matches.map((m) => m.contractorId));
+
+  const categoryFilter = lead.contractorCategoryId
+    ? {
+        OR: [
+          { contractorCategoryId: lead.contractorCategoryId },
+          {
+            categoryMemberships: {
+              some: { categoryId: lead.contractorCategoryId },
+            },
+          },
+        ],
+      }
+    : {};
 
   const candidates = await db.contractor.findMany({
     where: {
       deactivatedAt: null,
       id: { notIn: Array.from(alreadyMatchedIds) },
       projects: { some: { contractorTypeId: projectId } },
+      ...categoryFilter,
     },
-    // Stable creation order keeps distribution deterministic.
     orderBy: { createdAt: "asc" },
-    take: Math.max(0, maxRecipients - alreadyMatchedIds.size),
     select: { id: true, name: true, email: true, phone: true },
   });
 
   const matches: DistributeLeadResult["matches"] = [];
   for (const c of candidates) {
     const match = await db.leadMatch.create({
-      // Override the weak cuid() schema default with a crypto-random token —
-      // this is the sole credential for the unauthenticated accept link.
       data: {
         leadId,
         contractorId: c.id,
@@ -102,11 +107,6 @@ export async function distributeLead(
 // Charge (used inside accept)
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Charge a contractor for an accepted lead. Must run inside a transaction.
- * Debits the wallet via the single wallet mutation point; throws
- * InsufficientBalanceError if funds are too low (business rule 3).
- */
 export async function chargeForLead(
   tx: Prisma.TransactionClient,
   params: { contractorId: string; leadMatchId: string; priceCents: number },
@@ -142,12 +142,6 @@ export type AcceptLeadMatchResult = {
   };
 };
 
-/**
- * Accept a lead match. Charges the contractor and reveals landowner contact.
- * Idempotent: a second accept returns the existing accepted result without a
- * second charge. Same function backs both the logged-in app and the tokenized
- * SMS flow, keeping them in sync.
- */
 export async function acceptLeadMatch(
   input: AcceptLeadMatchInput,
 ): Promise<AcceptLeadMatchResult> {
@@ -172,16 +166,16 @@ export async function acceptLeadMatch(
       propertyLocation: lead.propertyLocation,
     };
 
-    // Idempotent fast-path (first read, no lock yet).
     if (match.status === LeadMatchStatus.ACCEPTED) {
       return alreadyAcceptedResult(tx, match, contactPayload);
     }
     if (match.status === LeadMatchStatus.DECLINED) {
       throw new InvalidStateError("This lead was already passed on.");
     }
+    if (match.status === LeadMatchStatus.SOLD_OUT) {
+      throw new LeadSoldOutError();
+    }
 
-    // Expiry (business rule 6). Checked before the claim so an expired-but-still
-    // -PENDING match can never be accepted.
     const isExpired =
       match.status === LeadMatchStatus.EXPIRED ||
       lead.status === LeadStatus.EXPIRED ||
@@ -197,41 +191,98 @@ export async function acceptLeadMatch(
       throw new LeadExpiredError();
     }
 
-    // ── Atomic claim: money-safety gate ──
-    // Flip PENDING → ACCEPTED in a single guarded UPDATE (row lock). With two
-    // concurrent accepts of the SAME match (SMS link + in-app tap, double-click),
-    // exactly one wins (count === 1); the loser sees count === 0 and NEVER
-    // charges. The charge runs only after a successful claim and shares this
-    // transaction, so an insufficient-balance failure rolls the claim back to
-    // PENDING.
+    if (lead.status === LeadStatus.SOLD_OUT || lead.acceptedCount >= lead.maxPurchases) {
+      if (match.status === LeadMatchStatus.PENDING) {
+        await tx.leadMatch.update({
+          where: { id: match.id },
+          data: { status: LeadMatchStatus.SOLD_OUT },
+        });
+      }
+      throw new LeadSoldOutError();
+    }
+
     const claimed = await tx.leadMatch.updateMany({
       where: { id: match.id, status: LeadMatchStatus.PENDING },
       data: { status: LeadMatchStatus.ACCEPTED, acceptedAt: new Date() },
     });
 
     if (claimed.count === 0) {
-      // Lost the race (or status changed since the first read). Re-read the
-      // authoritative row and mirror the non-concurrent behavior exactly.
       const fresh = await tx.leadMatch.findUnique({ where: { id: match.id } });
       if (!fresh) throw new NotFoundError("Lead invite");
       if (fresh.status === LeadMatchStatus.ACCEPTED) {
         return alreadyAcceptedResult(tx, fresh, contactPayload);
       }
+      if (fresh.status === LeadMatchStatus.SOLD_OUT) throw new LeadSoldOutError();
       if (fresh.status === LeadMatchStatus.DECLINED) {
         throw new InvalidStateError("This lead was already passed on.");
       }
       throw new LeadExpiredError();
     }
 
-    // Winner only: charge (throws InsufficientBalanceError → rolls back claim).
+    const slot = await tx.lead.updateMany({
+      where: {
+        id: lead.id,
+        acceptedCount: { lt: lead.maxPurchases },
+        status: { in: [LeadStatus.NEW, LeadStatus.DISTRIBUTED] },
+      },
+      data: { acceptedCount: { increment: 1 } },
+    });
+
+    if (slot.count === 0) {
+      await tx.leadMatch.update({
+        where: { id: match.id },
+        data: { status: LeadMatchStatus.PENDING, acceptedAt: null },
+      });
+      throw new LeadSoldOutError();
+    }
+
     if (lead.priceCents === null) {
+      await tx.lead.update({
+        where: { id: lead.id },
+        data: { acceptedCount: { decrement: 1 } },
+      });
+      await tx.leadMatch.update({
+        where: { id: match.id },
+        data: { status: LeadMatchStatus.PENDING, acceptedAt: null },
+      });
       throw new InvalidStateError("This lead has no resolved price snapshot.");
     }
-    const charge = await chargeForLead(tx, {
-      contractorId: match.contractorId,
-      leadMatchId: match.id,
-      priceCents: lead.priceCents,
-    });
+
+    let charge;
+    try {
+      charge = await chargeForLead(tx, {
+        contractorId: match.contractorId,
+        leadMatchId: match.id,
+        priceCents: lead.priceCents,
+      });
+    } catch (error) {
+      await tx.lead.update({
+        where: { id: lead.id },
+        data: { acceptedCount: { decrement: 1 } },
+      });
+      await tx.leadMatch.update({
+        where: { id: match.id },
+        data: { status: LeadMatchStatus.PENDING, acceptedAt: null },
+      });
+      throw error;
+    }
+
+    const updatedLead = await tx.lead.findUnique({ where: { id: lead.id } });
+    if (
+      updatedLead &&
+      updatedLead.acceptedCount >= updatedLead.maxPurchases &&
+      updatedLead.status !== LeadStatus.SOLD_OUT
+    ) {
+      const now = new Date();
+      await tx.lead.update({
+        where: { id: lead.id },
+        data: { status: LeadStatus.SOLD_OUT, soldOutAt: now },
+      });
+      await tx.leadMatch.updateMany({
+        where: { leadId: lead.id, status: LeadMatchStatus.PENDING },
+        data: { status: LeadMatchStatus.SOLD_OUT },
+      });
+    }
 
     await writeAudit(tx, {
       actorType: input.actorType ?? "contractor",
@@ -251,7 +302,6 @@ export async function acceptLeadMatch(
   });
 }
 
-/** Build the idempotent "already accepted" response (contact revealed, no charge). */
 async function alreadyAcceptedResult(
   tx: Prisma.TransactionClient,
   match: { id: string; contractorId: string },
@@ -284,6 +334,9 @@ export async function declineLeadMatch(
     }
     if (match.status === LeadMatchStatus.ACCEPTED) {
       throw new InvalidStateError("This lead was already accepted.");
+    }
+    if (match.status === LeadMatchStatus.SOLD_OUT) {
+      throw new LeadSoldOutError();
     }
 
     await tx.leadMatch.update({
@@ -348,7 +401,6 @@ export async function refundLeadMatch(params: {
         note: params.reason ?? "Lead charge refunded",
       });
     } catch (e) {
-      // Concurrent double-refund hits @@unique([leadMatchId, type]).
       if (
         typeof e === "object" &&
         e !== null &&
@@ -377,10 +429,6 @@ export async function refundLeadMatch(params: {
 // Expiry sweep
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Mark leads (and their pending matches) expired once past expiresAt.
- * Idempotent; safe to run on a schedule (cron) or on-demand.
- */
 export async function expireLeads(
   db: DbClient,
   now: Date = new Date(),

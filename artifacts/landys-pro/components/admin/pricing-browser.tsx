@@ -12,7 +12,7 @@ export type PricingGroupData = {
   rows: {
     projectTypeId: string;
     name: string;
-    tiers: { id: string; tier: number; priceCents: number }[];
+    tiers: { id: string; tier: number; priceCents: number; maxBudgetCents: number | null }[];
   }[];
 };
 

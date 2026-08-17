@@ -8,6 +8,9 @@ import { RowLink } from "@/components/admin/row-link";
 import { PaginationControls } from "@/components/pagination-controls";
 import { formatMoney } from "@/lib/money";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage, parsePageSize } from "@/lib/pagination";
+import { WixContractorSyncPanel } from "@/components/admin/wix-contractor-sync-panel";
+import { APP_SETTING_KEYS } from "@/lib/domain/types";
+import { getOptionalStringSetting } from "@/lib/domain/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -43,12 +46,31 @@ export default async function AdminContractors({
   if (filter === "deactivated") where.deactivatedAt = { not: null };
   else where.deactivatedAt = null;
 
-  const [filteredCount, totalCount, proCount, walletAgg] = await Promise.all([
+  const [filteredCount, totalCount, proCount, walletAgg, lastSuccessAt, lastAttemptAt, lastResultRaw] =
+    await Promise.all([
     prisma.contractor.count({ where }),
     prisma.contractor.count(),
     prisma.contractor.count({ where: { isPro: true } }),
     prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
+    getOptionalStringSetting(prisma, APP_SETTING_KEYS.wixContractorSyncLastSuccessAt),
+    getOptionalStringSetting(prisma, APP_SETTING_KEYS.wixContractorSyncLastAttemptAt),
+    getOptionalStringSetting(prisma, APP_SETTING_KEYS.wixContractorSyncLastResult),
   ]);
+
+  let lastResult: {
+    created: number;
+    updated: number;
+    unchanged: number;
+    unresolved: number;
+    errors: string[];
+  } | null = null;
+  if (lastResultRaw) {
+    try {
+      lastResult = JSON.parse(lastResultRaw);
+    } catch {
+      lastResult = null;
+    }
+  }
 
   const { page, skip, take, totalPages } = paginationMeta(
     filteredCount,
@@ -75,6 +97,11 @@ export default async function AdminContractors({
 
   return (
     <div className="admin-fade-up">
+      <WixContractorSyncPanel
+        lastSuccessAt={lastSuccessAt}
+        lastAttemptAt={lastAttemptAt}
+        lastResult={lastResult}
+      />
       <PageHeader
         kicker="Network"
         title="Contractors"

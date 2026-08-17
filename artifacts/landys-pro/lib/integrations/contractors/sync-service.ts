@@ -91,11 +91,6 @@ export async function syncContractor(
       "External identity is not mapped and contractor creation is disabled by policy.",
     ]);
   }
-  if (existing?.deactivated) {
-    return unresolved(record, dryRun, [
-      "The mapped contractor is deactivated and requires administrative review.",
-    ]);
-  }
 
   const target = existing
     ? {

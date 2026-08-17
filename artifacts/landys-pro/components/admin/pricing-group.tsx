@@ -3,18 +3,16 @@
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { updatePriceTier } from "@/app/actions/admin";
-import { centsToDollars, dollarsToCents } from "@/lib/money";
+import { centsToDollars, dollarsToCents, formatMoney } from "@/lib/money";
 
-type Tier = { id: string; tier: number; priceCents: number };
+type Tier = {
+  id: string;
+  tier: number;
+  priceCents: number;
+  maxBudgetCents: number | null;
+};
 type Row = { projectTypeId: string; name: string; tiers: Tier[] };
 
-/**
- * One trade's pricing card: a project × tier matrix with a single per-trade
- * "Save changes" button (matching the design model). Each tier maps to a real
- * PriceTier row; saving diffs the values and calls the existing updatePriceTier
- * server action for every changed cell. Money logic is untouched — this only
- * edits the matrix that prices *future* leads.
- */
 export function PricingGroup({
   name,
   sub,
@@ -31,46 +29,56 @@ export function PricingGroup({
   const [message, setMessage] = useState<string | null>(null);
 
   const original = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const r of rows) for (const t of r.tiers) map[t.id] = String(centsToDollars(t.priceCents));
-    return map;
+    const prices: Record<string, string> = {};
+    const budgets: Record<string, string> = {};
+    for (const r of rows) {
+      for (const t of r.tiers) {
+        prices[t.id] = String(centsToDollars(t.priceCents));
+        budgets[t.id] =
+          t.maxBudgetCents != null ? String(centsToDollars(t.maxBudgetCents)) : "";
+      }
+    }
+    return { prices, budgets };
   }, [rows]);
 
-  const [values, setValues] = useState<Record<string, string>>(original);
-
-  const max = useMemo(() => {
-    const nums = Object.values(values).map((v) => parseFloat(v) || 0);
-    return Math.max(1, ...nums);
-  }, [values]);
-
-  function setCell(id: string, raw: string) {
-    const v = raw.replace(/[^0-9.]/g, "");
-    setValues((s) => ({ ...s, [id]: v }));
-    setStatus("idle");
-    setMessage(null);
-  }
+  const [prices, setPrices] = useState<Record<string, string>>(original.prices);
+  const [budgets, setBudgets] = useState<Record<string, string>>(original.budgets);
 
   function save() {
     setMessage(null);
     startTransition(async () => {
-      const changed = Object.entries(values).filter(
-        ([id, v]) => dollarsToCents(v) !== dollarsToCents(original[id]),
-      );
-      for (const [id, v] of changed) {
-        const res = await updatePriceTier(id, dollarsToCents(v));
-        if (!res.ok) {
-          setStatus("error");
-          setMessage(res.message);
-          return;
+      for (const r of rows) {
+        for (const tier of r.tiers) {
+          const priceChanged =
+            dollarsToCents(prices[tier.id]) !== dollarsToCents(original.prices[tier.id]);
+          const budgetChanged =
+            tier.tier < 3 &&
+            dollarsToCents(budgets[tier.id] ?? "0") !==
+              dollarsToCents(original.budgets[tier.id] ?? "0");
+          if (!priceChanged && !budgetChanged) continue;
+
+          const maxBudgetCents =
+            tier.tier < 3 ? dollarsToCents(budgets[tier.id] ?? "0") : undefined;
+          const res = await updatePriceTier(
+            tier.id,
+            dollarsToCents(prices[tier.id]),
+            maxBudgetCents,
+          );
+          if (!res.ok) {
+            setStatus("error");
+            setMessage(res.message);
+            return;
+          }
         }
       }
       setStatus("saved");
-      setMessage(changed.length ? "Saved" : "No changes");
+      setMessage("Saved");
       setTimeout(() => setStatus("idle"), 1800);
     });
   }
 
-  const TIER_NAMES = ["Tier 1 · Small", "Tier 2 · Standard", "Tier 3 · Large"] as const;
+  const tier1 = rows[0]?.tiers.find((t) => t.tier === 1);
+  const tier2 = rows[0]?.tiers.find((t) => t.tier === 2);
 
   return (
     <div
@@ -100,195 +108,121 @@ export function PricingGroup({
           >
             {iconSrc ? (
               <Image src={iconSrc} alt="" width={28} height={28} style={{ objectFit: "contain" }} />
-            ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="4" />
-                <path d="M8 12h8M12 8v8" />
-              </svg>
-            )}
+            ) : null}
           </span>
           <div style={{ minWidth: 0 }}>
-            <p
-              style={{
-                margin: 0,
-                font: "600 17px/1.2 'Inter'",
-                color: "var(--ink)",
-                overflowWrap: "anywhere",
-              }}
-            >
-              {name}
-            </p>
+            <p style={{ margin: 0, font: "600 17px/1.2 'Inter'", color: "var(--ink)" }}>{name}</p>
             <p style={{ margin: "4px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
               {sub}
             </p>
           </div>
         </div>
-        <div className="pricing-group-actions">
-          {message && (
-            <span
+        <button
+          type="button"
+          onClick={save}
+          disabled={pending}
+          style={{
+            minHeight: 44,
+            padding: "0 18px",
+            background: "var(--sageFg)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 999,
+            font: "600 13px/1 'Inter'",
+            cursor: pending ? "default" : "pointer",
+          }}
+        >
+          {pending ? "Saving…" : status === "saved" ? "Saved" : "Save changes"}
+        </button>
+      </div>
+
+      {message && (
+        <p
+          style={{
+            padding: "0 20px 8px",
+            font: "500 12px/1.4 'Inter'",
+            color: status === "error" ? "var(--danger)" : "var(--sageFg)",
+          }}
+        >
+          {message}
+        </p>
+      )}
+
+      <div className="pricing-group-body" style={{ padding: "0 20px 20px" }}>
+        {[1, 2, 3].map((tierNum) => {
+          const tier = rows[0]?.tiers.find((t) => t.tier === tierNum);
+          if (!tier) return null;
+          const t1Max = tier1 ? dollarsToCents(budgets[tier1.id] ?? "0") : 0;
+          const t2Max = tier2 ? dollarsToCents(budgets[tier2.id] ?? "0") : 0;
+          const range =
+            tierNum === 1
+              ? `Up to ${formatMoney(t1Max)}`
+              : tierNum === 2
+                ? `${formatMoney(t1Max + 1)} – ${formatMoney(t2Max)}`
+                : `Above ${formatMoney(t2Max)}`;
+
+          return (
+            <div
+              key={tierNum}
               style={{
-                font: "500 12px/1 'Inter'",
-                color: status === "error" ? "var(--danger)" : "var(--sageFg)",
+                borderTop: "1px solid var(--line)",
+                paddingTop: 16,
+                marginTop: 16,
+                display: "grid",
+                gap: 10,
               }}
             >
-              {message}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={save}
-            disabled={pending}
-            className="pricing-save-btn"
-            style={{
-              minHeight: 44,
-              padding: "0 18px",
-              background: "var(--sageFg)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 999,
-              font: "600 13px/1 'Inter'",
-              cursor: pending ? "default" : "pointer",
-              opacity: pending ? 0.8 : 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-            }}
-          >
-            {pending ? "Saving…" : status === "saved" ? "Saved" : "Save changes"}
-          </button>
-        </div>
-      </div>
-
-      <div className="pricing-group-body">
-        {/* Desktop: 4-col matrix */}
-        <div className="pricing-matrix-desktop">
-          <div className="pricing-matrix-head">
-            <span style={colLabel}>Project type</span>
-            <span style={colLabel}>Tier 1</span>
-            <span style={colLabel}>Tier 2</span>
-            <span style={colLabel}>Tier 3</span>
-          </div>
-
-          {rows.map((r) => (
-            <div key={r.projectTypeId} className="pricing-matrix-row">
-              <span style={{ font: "500 14px/1.3 'Inter'", color: "var(--ink)" }}>{r.name}</span>
-              {[1, 2, 3].map((tierNum) => {
-                const tier = r.tiers.find((t) => t.tier === tierNum);
-                if (!tier) return <span key={tierNum} style={{ color: "var(--ink3)" }}>—</span>;
-                return (
-                  <TierField
-                    key={tierNum}
-                    value={values[tier.id] ?? ""}
-                    max={max}
-                    onChange={(v) => setCell(tier.id, v)}
-                  />
-                );
-              })}
-            </div>
-          ))}
-        </div>
-
-        {/* Tablet / phone: labeled fields (3-col on tablet, stacked on phone) */}
-        <div className="pricing-matrix-mobile">
-          {rows.map((r) => (
-            <div key={r.projectTypeId} className="pricing-mobile-block">
-              <p className="pricing-mobile-project">{r.name}</p>
-              <div className="pricing-mobile-tiers">
-                {[1, 2, 3].map((tierNum) => {
-                  const tier = r.tiers.find((t) => t.tier === tierNum);
-                  if (!tier) {
-                    return (
-                      <div key={tierNum} className="pricing-mobile-tier">
-                        <span style={colLabel}>{TIER_NAMES[tierNum - 1]}</span>
-                        <span style={{ color: "var(--ink3)" }}>—</span>
-                      </div>
-                    );
+              <p style={{ margin: 0, font: "600 14px/1.3 'Inter'", color: "var(--ink)" }}>
+                Tier {tierNum}
+              </p>
+              <p style={{ margin: 0, font: "400 12px/1.4 'Inter'", color: "var(--ink3)" }}>
+                Project budget: {range}
+              </p>
+              <label style={{ font: "600 11px/1 'Inter'", color: "var(--ink3)" }}>
+                Lead price
+                <input
+                  value={prices[tier.id] ?? ""}
+                  onChange={(e) =>
+                    setPrices((s) => ({ ...s, [tier.id]: e.target.value.replace(/[^0-9.]/g, "") }))
                   }
-                  return (
-                    <div key={tierNum} className="pricing-mobile-tier">
-                      <span style={colLabel}>{TIER_NAMES[tierNum - 1]}</span>
-                      <TierField
-                        value={values[tier.id] ?? ""}
-                        max={max}
-                        onChange={(v) => setCell(tier.id, v)}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+                  style={{
+                    display: "block",
+                    marginTop: 6,
+                    width: "100%",
+                    height: 42,
+                    padding: "0 12px",
+                    borderRadius: 10,
+                    border: "1px solid var(--fieldLine)",
+                  }}
+                />
+              </label>
+              {tierNum < 3 && (
+                <label style={{ font: "600 11px/1 'Inter'", color: "var(--ink3)" }}>
+                  Max project budget
+                  <input
+                    value={budgets[tier.id] ?? ""}
+                    onChange={(e) =>
+                      setBudgets((s) => ({
+                        ...s,
+                        [tier.id]: e.target.value.replace(/[^0-9.]/g, ""),
+                      }))
+                    }
+                    style={{
+                      display: "block",
+                      marginTop: 6,
+                      width: "100%",
+                      height: 42,
+                      padding: "0 12px",
+                      borderRadius: 10,
+                      border: "1px solid var(--fieldLine)",
+                    }}
+                  />
+                </label>
+              )}
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );
 }
-
-function TierField({
-  value,
-  max,
-  onChange,
-}: {
-  value: string;
-  max: number;
-  onChange: (v: string) => void;
-}) {
-  const pct = Math.round(((parseFloat(value) || 0) / max) * 100);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 7, minWidth: 0 }}>
-      <div
-        className="a-field"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          height: 42,
-          padding: "0 12px",
-          background: "var(--field)",
-          border: "1px solid var(--fieldLine)",
-          borderRadius: 11,
-        }}
-      >
-        <span style={{ color: "var(--gold)", fontWeight: 700 }}>$</span>
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          inputMode="decimal"
-          className="a-input"
-          style={{
-            width: "100%",
-            minWidth: 0,
-            font: "600 15px/1 'Inter'",
-            fontVariantNumeric: "tabular-nums",
-          }}
-        />
-      </div>
-      <div
-        style={{
-          height: 4,
-          borderRadius: 999,
-          background: "var(--track)",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            height: "100%",
-            width: `${pct}%`,
-            background: "var(--gold)",
-            borderRadius: 999,
-            transition: "width .3s ease",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-const colLabel: React.CSSProperties = {
-  font: "600 10px/1 var(--mono)",
-  letterSpacing: ".08em",
-  textTransform: "uppercase",
-  color: "var(--ink3)",
-};

@@ -7,11 +7,16 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { distributeLead } from "@/lib/domain/leads";
+import { resolveBudgetCents } from "@/lib/domain/budget";
+import { snapshotLeadPricing } from "@/lib/domain/tier-resolution";
 import { resolvePrice } from "@/lib/domain/pricing";
-import { getLeadExpiryHours } from "@/lib/domain/settings";
+import { getLeadExpiryHours, getMaxLeadPurchases } from "@/lib/domain/settings";
 import { InvalidStateError, NotFoundError } from "@/lib/domain/errors";
 import { notifyNewLead } from "@/lib/notifications";
 import { generateAcceptToken } from "@/lib/tokens";
+import type { WixEstimateAttachment } from "@/lib/integrations/wix/estimate-contract";
+import { ingestLeadAttachments } from "@/lib/services/lead-attachments";
+import { resolveWixContractorExternalId } from "@/lib/integrations/wix/contractor-id-resolver";
 
 export type LeadIntakeInput = {
   landownerName: string;
@@ -23,6 +28,7 @@ export type LeadIntakeInput = {
   tier: number;
   landTypeId?: string | null;
   source?: string;
+  budgetCents?: number | null;
 };
 
 export type LeadIntakeResult = {
@@ -41,9 +47,11 @@ export type OfficialEstimateIntakeInput = {
   landTypeCode: string;
   projectTypeCode: string;
   budget?: string | null;
+  budgetCents?: number | null;
   timeline?: Date | null;
   urgency?: string | null;
   description?: string | null;
+  attachments?: WixEstimateAttachment[];
   source: string;
   externalRequestId?: string | null;
   payloadHash?: string | null;
@@ -55,8 +63,8 @@ export type OfficialEstimateIntakeInput = {
 export type OfficialEstimateIntakeResult = {
   leadId: string;
   replay: boolean;
-  reviewStatus: "pending_review";
-  blockers: Array<"tier_review" | "contractor_review">;
+  reviewStatus: "pending_review" | "routed";
+  blockers: Array<"budget_review" | "contractor_review" | "attachment_ingestion">;
 };
 
 export class LeadIntakeConflictError extends Error {
@@ -73,10 +81,7 @@ function clean(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-/**
- * Legacy compatibility path for callers that already supply an explicit tier.
- * Official estimate intake must use createOfficialEstimateRequest instead.
- */
+/** Legacy admin/manual path with explicit tier. */
 export async function createAndDistributeLead(
   input: LeadIntakeInput,
 ): Promise<LeadIntakeResult> {
@@ -99,7 +104,10 @@ export async function createAndDistributeLead(
     projectTypeId: projectType.id,
     tier: input.tier,
   });
-  const expiryHours = await getLeadExpiryHours(prisma);
+  const [expiryHours, maxPurchases] = await Promise.all([
+    getLeadExpiryHours(prisma),
+    getMaxLeadPurchases(prisma),
+  ]);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + expiryHours * 3600 * 1000);
 
@@ -112,11 +120,14 @@ export async function createAndDistributeLead(
       description: clean(input.description),
       projectTypeId: projectType.id,
       landTypeId: input.landTypeId ?? null,
+      budgetCents: input.budgetCents ?? null,
       tier: input.tier,
       priceCents,
+      maxPurchases,
       status: LeadStatus.NEW,
       reviewStatus: LeadReviewStatus.ROUTED,
       tierReviewRequired: false,
+      budgetReviewRequired: false,
       contractorReviewRequired: false,
       routingMode: LeadRoutingMode.GENERAL,
       routedAt: now,
@@ -153,7 +164,7 @@ export async function createOfficialEstimateRequest(
   const [projectType, landType, category] = await Promise.all([
     prisma.projectType.findFirst({
       where: { code: input.projectTypeCode, archivedAt: null },
-      select: { id: true },
+      select: { id: true, contractorTypeId: true, name: true },
     }),
     prisma.landType.findFirst({
       where: { code: input.landTypeCode, archivedAt: null },
@@ -183,26 +194,43 @@ export async function createOfficialEstimateRequest(
       select: {
         id: true,
         payloadHash: true,
+        reviewStatus: true,
         tierReviewRequired: true,
+        budgetReviewRequired: true,
         contractorReviewRequired: true,
       },
     });
     if (existing) return replayResult(existing, input.payloadHash);
   }
 
+  const budget = resolveBudgetCents({
+    budgetCents: input.budgetCents,
+    budget: input.budget,
+  });
+  const budgetReviewRequired = !budget.ok;
+
   let contractorReviewRequired = false;
+  let resolvedExternalId = input.routing.mode === "direct" ? input.routing.contractorExternalId : null;
   if (input.routing.mode === "direct") {
+    const resolved = await resolveWixContractorExternalId(
+      prisma,
+      input.routing.contractorExternalId,
+    );
+    resolvedExternalId = resolved.externalId;
     const identity = await prisma.externalContractorIdentity.findUnique({
       where: {
         source_externalId: {
           source: input.routing.contractorSource,
-          externalId: input.routing.contractorExternalId,
+          externalId: resolvedExternalId,
         },
       },
       select: { contractor: { select: { deactivatedAt: true } } },
     });
     contractorReviewRequired = !identity || Boolean(identity.contractor.deactivatedAt);
   }
+
+  const isDirect = input.routing.mode === "direct";
+  const maxPurchasesDefault = isDirect ? 1 : await getMaxLeadPurchases(prisma);
 
   const firstName = clean(input.firstName);
   const lastName = clean(input.lastName);
@@ -218,47 +246,32 @@ export async function createOfficialEstimateRequest(
     landType: { connect: { id: landType.id } },
     projectType: { connect: { id: projectType.id } },
     description: clean(input.description),
-    budget: clean(input.budget),
+    budget: budget.ok ? budget.budgetRaw : clean(input.budget),
+    budgetCents: budget.ok ? budget.budgetCents : null,
     timeline: input.timeline ?? null,
     urgency: clean(input.urgency),
     tier: null,
     priceCents: null,
+    maxPurchases: maxPurchasesDefault,
     status: LeadStatus.NEW,
     reviewStatus: LeadReviewStatus.PENDING_REVIEW,
-    tierReviewRequired: true,
+    tierReviewRequired: budgetReviewRequired,
+    budgetReviewRequired,
     contractorReviewRequired,
-    routingMode:
-      input.routing.mode === "direct" ? LeadRoutingMode.DIRECT : LeadRoutingMode.GENERAL,
+    routingMode: isDirect ? LeadRoutingMode.DIRECT : LeadRoutingMode.GENERAL,
     directContractorSource:
       input.routing.mode === "direct" ? input.routing.contractorSource : null,
-    directContractorExternalId:
-      input.routing.mode === "direct" ? input.routing.contractorExternalId : null,
+    directContractorExternalId: isDirect ? resolvedExternalId : null,
     source: input.source,
     externalRequestId: input.externalRequestId ?? null,
     payloadHash: input.payloadHash ?? null,
     expiresAt: null,
   };
 
+  let leadId: string;
   try {
     const lead = await prisma.lead.create({ data: leadData, select: { id: true } });
-    await writeLeadAudit("lead.request.created", lead.id, {
-      source: input.source,
-      externalRequestId: input.externalRequestId ?? null,
-      routingMode: input.routing.mode,
-      blockers: [
-        "tier_review",
-        ...(contractorReviewRequired ? ["contractor_review"] : []),
-      ],
-    });
-    return {
-      leadId: lead.id,
-      replay: false,
-      reviewStatus: "pending_review",
-      blockers: [
-        "tier_review",
-        ...(contractorReviewRequired ? (["contractor_review"] as const) : []),
-      ],
-    };
+    leadId = lead.id;
   } catch (error) {
     if (input.externalRequestId && isUniqueConstraint(error)) {
       const existing = await prisma.lead.findUnique({
@@ -271,7 +284,9 @@ export async function createOfficialEstimateRequest(
         select: {
           id: true,
           payloadHash: true,
+          reviewStatus: true,
           tierReviewRequired: true,
+          budgetReviewRequired: true,
           contractorReviewRequired: true,
         },
       });
@@ -279,17 +294,73 @@ export async function createOfficialEstimateRequest(
     }
     throw error;
   }
+
+  const attachmentResult = await ingestLeadAttachments({
+    leadId,
+    attachments: input.attachments ?? [],
+  });
+
+  const blockers: OfficialEstimateIntakeResult["blockers"] = [];
+  if (budgetReviewRequired) blockers.push("budget_review");
+  if (contractorReviewRequired) blockers.push("contractor_review");
+  if (attachmentResult.hasFailures) blockers.push("attachment_ingestion");
+
+  await writeLeadAudit("lead.request.created", leadId, {
+    source: input.source,
+    externalRequestId: input.externalRequestId ?? null,
+    routingMode: input.routing.mode,
+    blockers,
+    budgetCents: budget.ok ? budget.budgetCents : null,
+  });
+
+  if (!budgetReviewRequired && !contractorReviewRequired) {
+    const routed = await autoRouteLead({
+      leadId,
+      actorId: null,
+    });
+    return {
+      leadId,
+      replay: false,
+      reviewStatus: routed.heldForContractorReview ? "pending_review" : "routed",
+      blockers: routed.heldForContractorReview
+        ? [...blockers, "contractor_review"]
+        : blockers.filter((b) => b !== "budget_review"),
+    };
+  }
+
+  return {
+    leadId,
+    replay: false,
+    reviewStatus: "pending_review",
+    blockers,
+  };
 }
 
 export async function finalizeLeadForRouting(params: {
   leadId: string;
-  tier: number;
+  budgetCents?: number;
   actorId?: string | null;
 }): Promise<LeadIntakeResult & { heldForContractorReview: boolean }> {
-  if (!Number.isInteger(params.tier) || params.tier < 1 || params.tier > 3) {
-    throw new InvalidStateError("Tier must be 1, 2, or 3.");
+  if (params.budgetCents != null) {
+    if (!Number.isInteger(params.budgetCents) || params.budgetCents <= 0) {
+      throw new InvalidStateError("Budget must be a positive whole number of cents.");
+    }
+    await prisma.lead.update({
+      where: { id: params.leadId },
+      data: {
+        budgetCents: params.budgetCents,
+        budgetReviewRequired: false,
+        tierReviewRequired: false,
+      },
+    });
   }
+  return autoRouteLead(params);
+}
 
+async function autoRouteLead(params: {
+  leadId: string;
+  actorId?: string | null;
+}): Promise<LeadIntakeResult & { heldForContractorReview: boolean }> {
   const result = await prisma.$transaction(async (tx) => {
     const lead = await tx.lead.findUnique({
       where: { id: params.leadId },
@@ -309,16 +380,18 @@ export async function finalizeLeadForRouting(params: {
       };
     }
 
-    if (lead.tier !== null && lead.tier !== params.tier) {
-      throw new InvalidStateError("This lead already has a different tier snapshot.");
+    if (lead.budgetCents == null || lead.budgetReviewRequired) {
+      throw new InvalidStateError("This lead requires budget review before routing.");
     }
-    const priceCents =
-      lead.priceCents ??
-      (await resolvePrice(tx, {
-        contractorTypeId: lead.projectType.contractorTypeId,
-        projectTypeId: lead.projectTypeId,
-        tier: params.tier,
-      }));
+
+    const pricing = await snapshotLeadPricing(tx, {
+      contractorTypeId: lead.projectType.contractorTypeId,
+      projectTypeId: lead.projectTypeId,
+      budgetCents: lead.budgetCents,
+    });
+
+    const priceCents = lead.priceCents ?? pricing.priceCents;
+    const tier = lead.tier ?? pricing.tier;
 
     if (
       lead.routingMode === LeadRoutingMode.DIRECT &&
@@ -342,11 +415,13 @@ export async function finalizeLeadForRouting(params: {
         const held = await tx.lead.update({
           where: { id: lead.id },
           data: {
-            tier: params.tier,
+            tier,
             priceCents,
             tierReviewRequired: false,
+            budgetReviewRequired: false,
             contractorReviewRequired: true,
             reviewStatus: LeadReviewStatus.PENDING_REVIEW,
+            maxPurchases: 1,
             expiresAt: null,
           },
           include: { projectType: true },
@@ -391,12 +466,14 @@ export async function finalizeLeadForRouting(params: {
       const routed = await tx.lead.update({
         where: { id: lead.id },
         data: {
-          tier: params.tier,
+          tier,
           priceCents,
           tierReviewRequired: false,
+          budgetReviewRequired: false,
           contractorReviewRequired: false,
           reviewStatus: LeadReviewStatus.ROUTED,
           status: LeadStatus.DISTRIBUTED,
+          maxPurchases: 1,
           routedAt: now,
           expiresAt,
         },
@@ -413,14 +490,19 @@ export async function finalizeLeadForRouting(params: {
     const expiryHours = await getLeadExpiryHours(tx);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + expiryHours * 3600 * 1000);
+    const maxPurchases =
+      lead.maxPurchases > 0 ? lead.maxPurchases : await getMaxLeadPurchases(tx);
+
     await tx.lead.update({
       where: { id: lead.id },
       data: {
-        tier: params.tier,
+        tier,
         priceCents,
         tierReviewRequired: false,
+        budgetReviewRequired: false,
         contractorReviewRequired: false,
         reviewStatus: LeadReviewStatus.READY,
+        maxPurchases,
         expiresAt,
       },
     });
@@ -455,6 +537,7 @@ export async function finalizeLeadForRouting(params: {
     recipients: result.recipients,
     tier: result.lead.tier,
     priceCents: result.lead.priceCents,
+    budgetCents: result.lead.budgetCents,
     heldForContractorReview: result.heldForContractorReview,
   });
 
@@ -473,20 +556,24 @@ function replayResult(
   existing: {
     id: string;
     payloadHash: string | null;
+    reviewStatus: LeadReviewStatus;
     tierReviewRequired: boolean;
+    budgetReviewRequired: boolean;
     contractorReviewRequired: boolean;
   },
   payloadHash: string | null | undefined,
 ): OfficialEstimateIntakeResult {
   if (existing.payloadHash !== payloadHash) throw new LeadIntakeConflictError();
+  const blockers: OfficialEstimateIntakeResult["blockers"] = [];
+  if (existing.budgetReviewRequired || existing.tierReviewRequired) {
+    blockers.push("budget_review");
+  }
+  if (existing.contractorReviewRequired) blockers.push("contractor_review");
   return {
     leadId: existing.id,
     replay: true,
-    reviewStatus: "pending_review",
-    blockers: [
-      ...(existing.tierReviewRequired ? (["tier_review"] as const) : []),
-      ...(existing.contractorReviewRequired ? (["contractor_review"] as const) : []),
-    ],
+    reviewStatus: existing.reviewStatus === LeadReviewStatus.ROUTED ? "routed" : "pending_review",
+    blockers,
   };
 }
 

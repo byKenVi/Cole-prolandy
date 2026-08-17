@@ -30,6 +30,29 @@ function matchWhere(row: Row, where: Row | undefined): boolean {
       if (!(cond as { in: unknown[] }).in.includes(row.status)) return false;
       continue;
     }
+    if (key === "status" && cond && typeof cond === "object" && "notIn" in cond) {
+      if ((cond as { notIn: unknown[] }).notIn.includes(row.status)) return false;
+      continue;
+    }
+    if (key === "tier" && cond && typeof cond === "object" && "in" in cond) {
+      if (!(cond as { in: unknown[] }).in.includes(row.tier)) return false;
+      continue;
+    }
+    if (key === "acceptedCount" && cond && typeof cond === "object" && "lt" in cond) {
+      if ((row.acceptedCount as number) >= (cond as { lt: number }).lt) return false;
+      continue;
+    }
+    if (key === "OR" && Array.isArray(cond)) {
+      if (!cond.some((clause) => matchWhere(row, clause as Row))) return false;
+      continue;
+    }
+    if (key === "categoryMemberships" && cond && typeof cond === "object" && "some" in cond) {
+      const memberships = (row.categoryMemberships as Row[] | undefined) ?? [];
+      if (!memberships.some((m) => matchWhere(m, (cond as { some: Row }).some))) {
+        return false;
+      }
+      continue;
+    }
     if (key === "projects" && cond && typeof cond === "object" && "some" in cond) {
       const projects = (row.projects as Row[] | undefined) ?? [];
       if (!projects.some((project) => matchWhere(project, (cond as { some: Row }).some))) {
@@ -68,6 +91,8 @@ function applyData(row: Row, data: Row): void {
   for (const [key, val] of Object.entries(data)) {
     if (val && typeof val === "object" && "increment" in val) {
       row[key] = (row[key] as number) + (val as { increment: number }).increment;
+    } else if (val && typeof val === "object" && "decrement" in val) {
+      row[key] = (row[key] as number) - (val as { decrement: number }).decrement;
     } else {
       row[key] = val;
     }
@@ -300,12 +325,13 @@ export class FakeDb {
   auditLog = new Table("audit");
   processedStripeEvent = new Table("processedstripeevent");
 
+  private transactionChain: Promise<unknown> = Promise.resolve();
+
   constructor() {
     currentDb = this;
     this.appSetting.seed([
-      { key: "maxLeadRecipients", value: "3" },
+      { key: "maxLeadPurchases", value: "3" },
       { key: "leadExpiryHours", value: "48" },
-      { key: "defaultLeadTier", value: "2" },
     ]);
   }
 
@@ -331,15 +357,23 @@ export class FakeDb {
   // callback throws, all writes made inside are reverted. Critical for testing
   // the accept path, where a failed charge must roll back the status claim.
   async $transaction<T>(fn: (tx: FakeDb) => Promise<T>): Promise<T> {
-    const snapshot = this.tables().map((t) => t.rows.map((r) => ({ ...r })));
-    try {
-      return await fn(this);
-    } catch (e) {
-      this.tables().forEach((t, i) => {
-        t.rows = snapshot[i];
-      });
-      throw e;
-    }
+    const run = async () => {
+      const snapshot = this.tables().map((t) => t.rows.map((r) => ({ ...r })));
+      try {
+        return await fn(this);
+      } catch (e) {
+        this.tables().forEach((t, i) => {
+          t.rows = snapshot[i];
+        });
+        throw e;
+      }
+    };
+    const result = this.transactionChain.then(run, run);
+    this.transactionChain = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 }
 

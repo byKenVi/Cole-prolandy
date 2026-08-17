@@ -1,14 +1,15 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { EstimateFieldsSchema } from "@/lib/integrations/estimate-fields";
+import { WixEstimateFieldsSchema } from "@/lib/integrations/wix/estimate-fields-ext";
 
 export const WIX_ESTIMATE_SOURCE = "wix" as const;
+export const WIX_CONTRACTOR_SOURCE = "wix" as const;
 export const WIX_ESTIMATE_REQUEST_SOURCE = {
   GENERAL: "general/get-three-estimates",
   DIRECT: "direct-contractor-profile-request",
 } as const;
 
-export const WixEstimateRequestSchema = EstimateFieldsSchema.extend({
+export const WixEstimateRequestSchema = WixEstimateFieldsSchema.extend({
   source: z.enum([
     WIX_ESTIMATE_REQUEST_SOURCE.GENERAL,
     WIX_ESTIMATE_REQUEST_SOURCE.DIRECT,
@@ -25,7 +26,7 @@ export const WixEstimateRequestSchema = EstimateFieldsSchema.extend({
       context.addIssue({
         code: "custom",
         path: ["externalContractorId"],
-        message: "Direct contractor requests require externalContractorId.",
+        message: "Direct contractor requests require externalContractorId (Wix _id).",
       });
     }
     if (
@@ -41,17 +42,27 @@ export const WixEstimateRequestSchema = EstimateFieldsSchema.extend({
   });
 
 export type WixEstimateRequest = z.infer<typeof WixEstimateRequestSchema>;
+export type { WixEstimateAttachment } from "@/lib/integrations/wix/estimate-fields-ext";
 
+/** Stable payload hash — attachment order normalized, URLs included for idempotency. */
 export function wixEstimatePayloadHash(payload: WixEstimateRequest): string {
-  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+  const normalized = {
+    ...payload,
+    attachments: [...(payload.attachments ?? [])].sort((a, b) =>
+      a.downloadUrl.localeCompare(b.downloadUrl),
+    ),
+  };
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
 }
 
 export function hasValidBearerSecret(
   authorization: string | null,
   expectedSecret: string | undefined,
 ): boolean {
-  if (!authorization?.startsWith("Bearer ") || !expectedSecret) return false;
-  const supplied = authorization.slice("Bearer ".length);
+  if (!authorization || !expectedSecret) return false;
+  const supplied = authorization.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : authorization;
   if (!supplied) return false;
 
   const suppliedDigest = createHash("sha256").update(supplied).digest();

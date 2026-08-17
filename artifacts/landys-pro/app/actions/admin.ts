@@ -21,7 +21,11 @@ import { availableIntegrationCode } from "@/lib/taxonomy";
 type Result = { ok: true; message?: string } | { ok: false; message: string };
 
 // ── Pricing matrix ──
-export async function updatePriceTier(id: string, priceCents: number): Promise<Result> {
+export async function updatePriceTier(
+  id: string,
+  priceCents: number,
+  maxBudgetCents?: number | null,
+): Promise<Result> {
   await requireAdmin();
   if (!Number.isInteger(priceCents) || priceCents < 0) {
     return { ok: false, message: "Price must be a positive whole number of cents." };
@@ -29,14 +33,32 @@ export async function updatePriceTier(id: string, priceCents: number): Promise<R
   const before = await prisma.priceTier.findUnique({ where: { id } });
   if (!before) return { ok: false, message: "Price tier not found." };
 
-  await prisma.priceTier.update({ where: { id }, data: { priceCents } });
+  if (maxBudgetCents != null && before.tier === 3) {
+    return { ok: false, message: "Tier 3 does not use a max budget threshold." };
+  }
+  if (maxBudgetCents != null && (!Number.isInteger(maxBudgetCents) || maxBudgetCents < 0)) {
+    return { ok: false, message: "Max budget must be a non-negative whole number of cents." };
+  }
+
+  await prisma.priceTier.update({
+    where: { id },
+    data: {
+      priceCents,
+      ...(maxBudgetCents !== undefined ? { maxBudgetCents } : {}),
+    },
+  });
   await prisma.auditLog.create({
     data: {
       actorType: "admin",
       action: "PRICE_TIER_UPDATED",
       targetType: "PriceTier",
       targetId: id,
-      metadata: { from: before.priceCents, to: priceCents },
+      metadata: {
+        from: before.priceCents,
+        to: priceCents,
+        maxBudgetCentsFrom: before.maxBudgetCents,
+        maxBudgetCentsTo: maxBudgetCents ?? before.maxBudgetCents,
+      },
     },
   });
   revalidatePath("/admin/pricing");
@@ -46,16 +68,12 @@ export async function updatePriceTier(id: string, priceCents: number): Promise<R
 // ── Settings ──
 const SettingSchema = z.discriminatedUnion("key", [
   z.object({
-    key: z.literal("maxLeadRecipients"),
+    key: z.literal("maxLeadPurchases"),
     value: z.coerce.number().int().min(1).max(100),
   }),
   z.object({
     key: z.literal("leadExpiryHours"),
     value: z.coerce.number().int().min(1).max(8760),
-  }),
-  z.object({
-    key: z.literal("defaultLeadTier"),
-    value: z.coerce.number().int().min(1).max(3),
   }),
 ]);
 
@@ -1023,12 +1041,15 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
 }
 
 // ── Lead review + manual lead creation ──
-export async function finalizeLeadReview(leadId: string, tier: number): Promise<Result> {
+export async function finalizeLeadReview(
+  leadId: string,
+  budgetCents: number,
+): Promise<Result> {
   const admin = await requireAdmin();
   try {
     const result = await finalizeLeadForRouting({
       leadId,
-      tier,
+      budgetCents,
       actorId: admin.email,
     });
     revalidatePath("/admin/leads");
@@ -1036,13 +1057,36 @@ export async function finalizeLeadReview(leadId: string, tier: number): Promise<
     return {
       ok: true,
       message: result.heldForContractorReview
-        ? "Price snapshotted; direct contractor still requires review."
+        ? "Budget resolved; direct contractor still requires review."
         : `Lead routed to ${result.recipients} contractor${result.recipients === 1 ? "" : "s"}.`,
     };
   } catch (error) {
     return {
       ok: false,
       message: error instanceof Error ? error.message : "Could not finalize this lead.",
+    };
+  }
+}
+
+export async function syncWixContractors(dryRun = false): Promise<
+  Result & { summary?: Record<string, unknown> }
+> {
+  await requireAdmin();
+  try {
+    const { runWixContractorSync } = await import("@/lib/integrations/wix/contractor-sync");
+    const summary = await runWixContractorSync({ dryRun });
+    revalidatePath("/admin/contractors");
+    return {
+      ok: true,
+      message: dryRun
+        ? `Dry run: ${summary.created} create, ${summary.updated} update, ${summary.unresolved} unresolved.`
+        : `Sync complete: ${summary.created} created, ${summary.updated} updated.`,
+      summary: summary as unknown as Record<string, unknown>,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Wix sync failed.",
     };
   }
 }

@@ -10,7 +10,13 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 export type DbClient = PrismaClient | Prisma.TransactionClient;
 
 export const APP_SETTING_KEYS = {
-  maxLeadRecipients: "maxLeadRecipients",
+  maxLeadPurchases: "maxLeadPurchases",
   leadExpiryHours: "leadExpiryHours",
+  /** @deprecated Legacy key — no longer used by intake. Kept for migration compatibility. */
+  maxLeadRecipients: "maxLeadRecipients",
+  /** @deprecated Legacy key — no longer used by intake. */
   defaultLeadTier: "defaultLeadTier",
+  wixContractorSyncLastSuccessAt: "wixContractorSyncLastSuccessAt",
+  wixContractorSyncLastAttemptAt: "wixContractorSyncLastAttemptAt",
+  wixContractorSyncLastResult: "wixContractorSyncLastResult",
 } as const;

@@ -77,8 +77,25 @@ model ContractorCategory {
 
   contractors Contractor[]
   leads       Lead[]
+  memberships ContractorCategoryMembership[]
 
   @@index([archivedAt])
+}
+
+model ContractorCategoryMembership {
+  id           String   @id @default(cuid())
+  contractorId String
+  categoryId   String
+  isPrimary    Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  contractor Contractor         @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  category   ContractorCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([contractorId, categoryId])
+  @@index([contractorId])
+  @@index([categoryId])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -118,6 +135,7 @@ model Contractor {
 
   contractorType     ContractorType      @relation(fields: [contractorTypeId], references: [id])
   contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
+  categoryMemberships ContractorCategoryMembership[]
   projects           ContractorProject[]
   externalIdentities ExternalContractorIdentity[]
   leadMatches        LeadMatch[]
@@ -136,6 +154,9 @@ model ExternalContractorIdentity {
   contractorId    String
   lastPayloadHash String?
   lastSyncedAt    DateTime?
+  sourceUpdatedAt DateTime?
+  /// Wix aliases (contractorId, proPortalId) and optional raw payload snapshot.
+  sourceMetadata  Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -168,6 +189,7 @@ model ContractorProject {
 enum LeadStatus {
   NEW
   DISTRIBUTED
+  SOLD_OUT
   EXPIRED
   CLOSED
 }
@@ -188,6 +210,7 @@ enum LeadMatchStatus {
   ACCEPTED
   DECLINED
   EXPIRED
+  SOLD_OUT
 }
 
 enum WalletTransactionType {
@@ -210,16 +233,21 @@ model Lead {
   propertyZip      String?
   description      String?
   budget           String?
+  budgetCents      Int?
   timeline         DateTime?
   urgency          String?
   landTypeId       String?
   contractorCategoryId String?
   projectTypeId    String
-  tier             Int? // 1 / 2 / 3 after explicit review
+  tier             Int? // 1 / 2 / 3 after budget resolution
   priceCents       Int? // snapshotted from PriceTier exactly once
+  maxPurchases     Int      @default(3)
+  acceptedCount    Int      @default(0)
+  soldOutAt        DateTime?
   status           LeadStatus @default(NEW)
   reviewStatus     LeadReviewStatus @default(PENDING_REVIEW)
   tierReviewRequired Boolean @default(true)
+  budgetReviewRequired Boolean @default(false)
   contractorReviewRequired Boolean @default(false)
   routingMode      LeadRoutingMode @default(GENERAL)
   directContractorSource String?
@@ -256,6 +284,8 @@ model LeadAttachment {
   contentType      String
   sizeBytes        Int
   checksumSha256   String?
+  ingestionError   String?
+  sourceUrl        String?
   createdAt        DateTime @default(now())
 
   lead Lead @relation(fields: [leadId], references: [id], onDelete: Restrict)
@@ -313,6 +343,8 @@ model PriceTier {
   projectTypeId    String
   tier             Int // 1 / 2 / 3
   priceCents       Int
+  /// Upper inclusive project budget bound for tiers 1 and 2. Tier 3 has no max.
+  maxBudgetCents   Int?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

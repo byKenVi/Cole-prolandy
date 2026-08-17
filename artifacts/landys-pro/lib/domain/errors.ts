@@ -44,6 +44,13 @@ export class LeadExpiredError extends DomainError {
   }
 }
 
+export class LeadSoldOutError extends DomainError {
+  constructor() {
+    super("LEAD_SOLD_OUT", "This lead is sold out and no longer available.");
+    this.name = "LeadSoldOutError";
+  }
+}
+
 export class PriceNotFoundError extends DomainError {
   constructor() {
     super(

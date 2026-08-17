@@ -13,22 +13,21 @@ export async function getIntSetting(
   return n;
 }
 
-export async function getMaxLeadRecipients(db: DbClient): Promise<number> {
-  const n = await getIntSetting(db, APP_SETTING_KEYS.maxLeadRecipients);
-  return Math.max(1, n); // min 1 (see business rule 1)
+export async function getOptionalStringSetting(
+  db: DbClient,
+  key: string,
+): Promise<string | null> {
+  const row = await db.appSetting.findUnique({ where: { key } });
+  return row?.value ?? null;
+}
+
+/** Maximum successful purchases per general lead (snapshotted onto each lead at creation). */
+export async function getMaxLeadPurchases(db: DbClient): Promise<number> {
+  const n = await getIntSetting(db, APP_SETTING_KEYS.maxLeadPurchases);
+  return Math.max(1, n);
 }
 
 export async function getLeadExpiryHours(db: DbClient): Promise<number> {
   const n = await getIntSetting(db, APP_SETTING_KEYS.leadExpiryHours);
   return Math.max(1, n);
-}
-
-/**
- * Legacy compatibility for callers that historically created already-resolved
- * leads. New official estimate/Wix intake must create a tier-review blocker
- * instead of calling this function.
- */
-export async function getDefaultLeadTier(db: DbClient): Promise<number> {
-  const n = await getIntSetting(db, APP_SETTING_KEYS.defaultLeadTier);
-  return Math.min(3, Math.max(1, n));
 }

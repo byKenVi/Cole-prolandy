@@ -24,28 +24,24 @@ const hintStyle: React.CSSProperties = {
   color: "var(--ink3)",
 };
 
-/** Lead distribution settings — wired to the real updateSetting server action. */
 export function SettingsForm({
-  maxLeadRecipients,
+  maxLeadPurchases,
   leadExpiryHours,
-  defaultLeadTier,
 }: {
-  maxLeadRecipients: number;
+  maxLeadPurchases: number;
   leadExpiryHours: number;
-  defaultLeadTier: number;
 }) {
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [recipients, setRecipients] = useState(String(maxLeadRecipients));
+  const [purchases, setPurchases] = useState(String(maxLeadPurchases));
   const [hours, setHours] = useState(String(leadExpiryHours));
-  const [tier, setTier] = useState(String(defaultLeadTier));
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMessage(null);
     startTransition(async () => {
-      const r1 = await updateSetting("maxLeadRecipients", Number(recipients));
+      const r1 = await updateSetting("maxLeadPurchases", Number(purchases));
       if (!r1.ok) {
         setStatus("error");
         setMessage(r1.message);
@@ -57,12 +53,6 @@ export function SettingsForm({
         setMessage(r2.message);
         return;
       }
-      const r3 = await updateSetting("defaultLeadTier", Number(tier));
-      if (!r3.ok) {
-        setStatus("error");
-        setMessage(r3.message);
-        return;
-      }
       setStatus("saved");
       setMessage(null);
       setTimeout(() => setStatus("idle"), 1800);
@@ -71,19 +61,19 @@ export function SettingsForm({
 
   return (
     <form onSubmit={onSubmit}>
-      <label style={labelStyle} htmlFor="recipients">
-        Max lead recipients
+      <label style={labelStyle} htmlFor="purchases">
+        Maximum purchases per general lead
       </label>
       <input
-        id="recipients"
+        id="purchases"
         type="number"
         min="1"
-        value={recipients}
-        onChange={(e) => setRecipients(e.target.value)}
+        value={purchases}
+        onChange={(e) => setPurchases(e.target.value)}
         style={inputStyle}
       />
       <p style={{ ...hintStyle, margin: "7px 0 20px" }}>
-        Up to this many contractors receive each shared lead. Minimum 1.
+        How many contractors can successfully purchase the same general lead (default 3).
       </p>
 
       <label style={labelStyle} htmlFor="hours">
@@ -98,24 +88,7 @@ export function SettingsForm({
         style={inputStyle}
       />
       <p style={{ ...hintStyle, margin: "7px 0 22px" }}>
-        A lead can no longer be accepted after this many hours.
-      </p>
-
-      <label style={labelStyle} htmlFor="default-tier">
-        Public estimate default tier
-      </label>
-      <select
-        id="default-tier"
-        value={tier}
-        onChange={(e) => setTier(e.target.value)}
-        style={inputStyle}
-      >
-        <option value="1">Tier 1 · Small</option>
-        <option value="2">Tier 2 · Standard</option>
-        <option value="3">Tier 3 · Large</option>
-      </select>
-      <p style={{ ...hintStyle, margin: "7px 0 22px" }}>
-        Applied to public estimate requests because landowners do not select pricing tiers.
+        A lead can no longer be purchased after this many hours unless sold out first.
       </p>
 
       {message && (

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import {
-  getDefaultLeadTier,
   getLeadExpiryHours,
-  getMaxLeadRecipients,
+  getMaxLeadPurchases,
 } from "@/lib/domain/settings";
 import { getSession } from "@/lib/auth";
 import { SettingsForm } from "@/components/admin/settings-form";
@@ -35,18 +34,16 @@ const descStyle: React.CSSProperties = {
 export default async function SettingsPage() {
   const [
     session,
-    maxLeadRecipients,
+    maxLeadPurchases,
     leadExpiryHours,
-    defaultLeadTier,
     projects,
     landTypes,
     contractorCategories,
   ] =
     await Promise.all([
     getSession(),
-    getMaxLeadRecipients(prisma),
+    getMaxLeadPurchases(prisma),
     getLeadExpiryHours(prisma),
-    getDefaultLeadTier(prisma),
     prisma.contractorType.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -145,9 +142,8 @@ export default async function SettingsPage() {
             <p style={titleStyle}>Lead distribution</p>
             <p style={descStyle}>How leads are shared and how long they stay open.</p>
             <SettingsForm
-              maxLeadRecipients={maxLeadRecipients}
+              maxLeadPurchases={maxLeadPurchases}
               leadExpiryHours={leadExpiryHours}
-              defaultLeadTier={defaultLeadTier}
             />
           </div>
 

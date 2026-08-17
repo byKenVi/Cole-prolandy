@@ -50,7 +50,23 @@ describe("Wix estimate contract", () => {
     ).toBe(false);
   });
 
-  it("rejects attachment and other undocumented fields", () => {
+  it("accepts documented attachments array", () => {
+    expect(
+      WixEstimateRequestSchema.safeParse({
+        ...VALID_REQUEST,
+        budgetCents: 1000000,
+        attachments: [
+          {
+            downloadUrl: "https://example.com/file.jpg",
+            fileName: "photo.jpg",
+            mimeType: "image/jpeg",
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects undocumented top-level attachment fields", () => {
     expect(
       WixEstimateRequestSchema.safeParse({
         ...VALID_REQUEST,

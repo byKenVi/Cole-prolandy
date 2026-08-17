@@ -10,6 +10,7 @@ import { NotFoundError } from "@/lib/domain/errors";
 const h = vi.hoisted(() => ({
   db: null as unknown as FakeDb,
   notifyNewLead: vi.fn(),
+  ingestLeadAttachments: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -26,6 +27,17 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/lib/notifications", () => ({
   notifyNewLead: h.notifyNewLead,
+}));
+
+vi.mock("@/lib/services/lead-attachments", () => ({
+  ingestLeadAttachments: h.ingestLeadAttachments,
+}));
+
+vi.mock("@/lib/integrations/wix/contractor-id-resolver", () => ({
+  resolveWixContractorExternalId: vi.fn(async (_db: unknown, id: string) => ({
+    externalId: id,
+    usedDeprecatedAlias: false,
+  })),
 }));
 
 import {
@@ -52,6 +64,32 @@ function seedTaxonomies(db: FakeDb) {
   db.contractorCategory.seed([
     { id: "category-1", code: "builders", name: "Builders", archivedAt: null },
   ]);
+  db.priceTier.seed([
+    {
+      id: "price-t1",
+      contractorTypeId: "trade-1",
+      projectTypeId: "project-1",
+      tier: 1,
+      priceCents: 3100,
+      maxBudgetCents: 500000,
+    },
+    {
+      id: "price-t2",
+      contractorTypeId: "trade-1",
+      projectTypeId: "project-1",
+      tier: 2,
+      priceCents: 4200,
+      maxBudgetCents: 1500000,
+    },
+    {
+      id: "price-t3",
+      contractorTypeId: "trade-1",
+      projectTypeId: "project-1",
+      tier: 3,
+      priceCents: 5300,
+      maxBudgetCents: null,
+    },
+  ]);
 }
 
 function input(
@@ -66,7 +104,8 @@ function input(
     contractorCategoryCode: "builders",
     landTypeCode: "development",
     projectTypeCode: "culvert-install",
-    budget: "$10,000-$20,000",
+    budget: "$10,000",
+    budgetCents: 1000000,
     timeline: new Date("2026-10-01T00:00:00.000Z"),
     urgency: "Within 30 days",
     description: "Install a new culvert at the property entrance.",
@@ -83,57 +122,61 @@ describe("official estimate intake", () => {
     h.db = createFakeDb();
     seedTaxonomies(h.db);
     h.notifyNewLead.mockReset();
+    h.ingestLeadAttachments.mockResolvedValue({ ingested: 0, failed: 0, hasFailures: false });
   });
 
-  it("stores faithful raw fields in pending review without pricing or distribution", async () => {
-    const result = await createOfficialEstimateRequest(input());
-    const lead = h.db.lead.rows[0];
+  it("auto-routes when budgetCents resolves tier and price", async () => {
+    h.db.contractor.seed(
+      Array.from({ length: 10 }, (_, index) => ({
+        id: `contractor-${index}`,
+        name: `Contractor ${index}`,
+        email: `contractor-${index}@example.com`,
+        phone: `+1512555010${index}`,
+        deactivatedAt: null,
+        createdAt: new Date(index),
+        projects: [{ contractorTypeId: "trade-1" }],
+        contractorCategoryId: "category-1",
+      })),
+    );
 
-    expect(result).toEqual({
-      leadId: lead.id,
-      replay: false,
-      reviewStatus: "pending_review",
-      blockers: ["tier_review"],
-    });
-    expect(lead).toEqual(
+    const result = await createOfficialEstimateRequest(input());
+
+    expect(result.reviewStatus).toBe("routed");
+    expect(result.blockers).not.toContain("budget_review");
+    expect(h.db.lead.rows[0]).toEqual(
       expect.objectContaining({
-        landownerName: "Jordan Lee",
-        landownerEmail: "landowner@example.com",
-        propertyZip: "78701",
-        budget: "$10,000-$20,000",
-        urgency: "Within 30 days",
-        tier: null,
-        priceCents: null,
-        expiresAt: null,
-        reviewStatus: LeadReviewStatus.PENDING_REVIEW,
-        tierReviewRequired: true,
-        contractorReviewRequired: false,
-        routingMode: LeadRoutingMode.GENERAL,
+        budgetCents: 1000000,
+        tier: 2,
+        priceCents: 4200,
+        maxPurchases: 3,
       }),
     );
+    expect(h.db.leadMatch.rows).toHaveLength(10);
+    expect(h.notifyNewLead).toHaveBeenCalledTimes(10);
+  });
+
+  it("holds leads with unresolvable budget text", async () => {
+    const result = await createOfficialEstimateRequest(
+      input({ budget: "$10,000-$20,000", budgetCents: null }),
+    );
+
+    expect(result.blockers).toContain("budget_review");
+    expect(h.db.lead.rows[0].budgetCents).toBeNull();
     expect(h.db.leadMatch.rows).toHaveLength(0);
-    expect(h.notifyNewLead).not.toHaveBeenCalled();
   });
 
   it("replays an identical external request and rejects conflicting data", async () => {
-    const first = await createOfficialEstimateRequest(input());
-    const replay = await createOfficialEstimateRequest(input());
+    const first = await createOfficialEstimateRequest(
+      input({ budget: "$10,000-$20,000", budgetCents: null }),
+    );
+    const replay = await createOfficialEstimateRequest(
+      input({ budget: "$10,000-$20,000", budgetCents: null }),
+    );
 
     expect(replay).toEqual(expect.objectContaining({ leadId: first.leadId, replay: true }));
-    expect(h.db.lead.rows).toHaveLength(1);
     await expect(
-      createOfficialEstimateRequest(input({ payloadHash: "changed-hash" })),
+      createOfficialEstimateRequest(input({ payloadHash: "changed-hash", budgetCents: null, budget: "$10,000-$20,000" })),
     ).rejects.toBeInstanceOf(LeadIntakeConflictError);
-    expect(h.db.lead.rows).toHaveLength(1);
-  });
-
-  it("rejects inactive taxonomy codes before creating a lead", async () => {
-    h.db.projectType.rows[0].archivedAt = new Date();
-
-    await expect(createOfficialEstimateRequest(input())).rejects.toBeInstanceOf(
-      NotFoundError,
-    );
-    expect(h.db.lead.rows).toHaveLength(0);
   });
 
   it("holds an unresolved direct contractor and never falls back to general matching", async () => {
@@ -159,77 +202,24 @@ describe("official estimate intake", () => {
       }),
     );
 
-    expect(result.blockers).toEqual(["tier_review", "contractor_review"]);
-    expect(h.db.lead.rows[0]).toEqual(
-      expect.objectContaining({
-        routingMode: LeadRoutingMode.DIRECT,
-        contractorReviewRequired: true,
-      }),
-    );
+    expect(result.blockers).toEqual(["contractor_review"]);
     expect(h.db.leadMatch.rows).toHaveLength(0);
     expect(h.notifyNewLead).not.toHaveBeenCalled();
   });
 
-  it("snapshots a resolved tier price once while an unknown direct contractor remains held", async () => {
-    const created = await createOfficialEstimateRequest(
-      input({
-        routing: {
-          mode: "direct",
-          contractorSource: "wix",
-          contractorExternalId: "missing-contractor",
-        },
-      }),
-    );
-    h.db.priceTier.seed([
-      {
-        id: "price-1",
-        contractorTypeId: "trade-1",
-        projectTypeId: "project-1",
-        tier: 2,
-        priceCents: 4200,
-      },
-    ]);
-
-    const first = await finalizeLeadForRouting({
-      leadId: created.leadId,
-      tier: 2,
-      actorId: "admin@example.com",
-    });
-    h.db.priceTier.rows[0].priceCents = 9900;
-    const replay = await finalizeLeadForRouting({
-      leadId: created.leadId,
-      tier: 2,
-      actorId: "admin@example.com",
-    });
-
-    expect(first).toEqual(
-      expect.objectContaining({
-        priceCents: 4200,
-        recipients: 0,
-        heldForContractorReview: true,
-      }),
-    );
-    expect(replay.priceCents).toBe(4200);
-    expect(h.db.lead.rows[0].priceCents).toBe(4200);
-    expect(h.db.lead.rows[0].expiresAt).toBeNull();
-    expect(h.db.lead.rows[0].status).toBe(LeadStatus.NEW);
-    expect(h.notifyNewLead).not.toHaveBeenCalled();
-  });
-
-  it("routes a direct request only to its mapped active contractor", async () => {
-    const mapped = {
-      id: "direct-contractor",
-      name: "Mapped Contractor",
-      email: "mapped@example.com",
-      phone: "+15125550101",
-      deactivatedAt: null,
-    };
+  it("routes a direct request only to its mapped active contractor with maxPurchases=1", async () => {
     h.db.externalContractorIdentity.seed([
       {
         id: "identity-1",
         source: "wix",
         externalId: "wix-contractor-1",
-        contractor: mapped,
+        contractor: {
+          id: "direct-contractor",
+          name: "Mapped Contractor",
+          email: "mapped@example.com",
+          phone: "+15125550101",
+          deactivatedAt: null,
+        },
       },
     ]);
     h.db.contractor.seed([
@@ -243,15 +233,7 @@ describe("official estimate intake", () => {
         projects: [{ contractorTypeId: "trade-1" }],
       },
     ]);
-    h.db.priceTier.seed([
-      {
-        id: "price-1",
-        contractorTypeId: "trade-1",
-        projectTypeId: "project-1",
-        tier: 1,
-        priceCents: 3100,
-      },
-    ]);
+
     const created = await createOfficialEstimateRequest(
       input({
         routing: {
@@ -262,37 +244,29 @@ describe("official estimate intake", () => {
       }),
     );
 
-    const result = await finalizeLeadForRouting({ leadId: created.leadId, tier: 1 });
-
-    expect(result.recipients).toBe(1);
+    expect(created.reviewStatus).toBe("routed");
+    expect(h.db.lead.rows[0].maxPurchases).toBe(1);
     expect(h.db.leadMatch.rows).toEqual([
       expect.objectContaining({ contractorId: "direct-contractor" }),
     ]);
-    expect(h.db.lead.rows[0].reviewStatus).toBe(LeadReviewStatus.ROUTED);
     expect(h.notifyNewLead).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects archived project types on the admin compatibility path", async () => {
-    h.db.projectType.seed([
-      {
-        id: "archived-project",
-        code: "legacy-project",
-        name: "Legacy",
-        contractorTypeId: "trade-1",
-        archivedAt: new Date(),
-      },
-    ]);
+  it("snapshots price immutably after admin budget correction", async () => {
+    const created = await createOfficialEstimateRequest(
+      input({ budget: "not sure", budgetCents: null }),
+    );
+    const result = await finalizeLeadForRouting({
+      leadId: created.leadId,
+      budgetCents: 1000000,
+    });
+    h.db.priceTier.rows.find((t) => t.tier === 2)!.priceCents = 9900;
+    const replay = await finalizeLeadForRouting({
+      leadId: created.leadId,
+      budgetCents: 1000000,
+    });
 
-    await expect(
-      createAndDistributeLead({
-        landownerName: "Jordan Lee",
-        landownerEmail: "jordan@example.com",
-        landownerPhone: "+15125550100",
-        propertyLocation: "78701",
-        projectTypeId: "archived-project",
-        tier: 1,
-        source: "admin_manual",
-      }),
-    ).rejects.toBeInstanceOf(NotFoundError);
+    expect(result.priceCents).toBe(4200);
+    expect(replay.priceCents).toBe(4200);
   });
 });

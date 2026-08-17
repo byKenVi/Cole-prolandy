@@ -83,9 +83,11 @@ export async function POST(request: NextRequest) {
       landTypeCode: payload.landTypeCode,
       projectTypeCode: payload.projectTypeCode,
       budget: payload.budget,
+      budgetCents: payload.budgetCents,
       timeline: new Date(`${payload.timeline}T00:00:00.000Z`),
       urgency: payload.urgency,
       description: payload.description,
+      attachments: payload.attachments,
       source: WIX_ESTIMATE_SOURCE,
       externalRequestId: payload.externalRequestId,
       payloadHash: wixEstimatePayloadHash(payload),
@@ -109,7 +111,7 @@ export async function POST(request: NextRequest) {
           blockers: result.blockers,
         },
       },
-      { status: 202 },
+      { status: result.reviewStatus === "routed" ? 201 : 202 },
     );
   } catch (error) {
     if (error instanceof LeadIntakeConflictError) {
