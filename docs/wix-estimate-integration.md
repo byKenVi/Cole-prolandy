@@ -3,9 +3,19 @@
 Status: `IMPLEMENTED` in Landy's Pro. Production use remains disabled until
 credentials, active taxonomy codes, and an end-to-end Wix test are verified.
 
-Contract version: `1.1.0`
+Contract version: `2.0.0`
 
-Contract date: `2026-08-10`
+Contract date: `2026-08-17`
+
+> **Final contract summary:** see [wix-final-integration-contract.md](./wix-final-integration-contract.md)
+
+## v2 changes (2026-08-17)
+
+- **`budgetCents`** (integer cents) is the preferred budget field; tier is derived automatically
+- **`attachments[]`** supported (HTTPS `downloadUrl`, max 5 × 20MB)
+- **`externalContractorId`** on direct requests must be Wix `_id`
+- Valid general leads auto-route when budget resolves; blockers use `budget_review` not manual tier
+- Landy's Pro distributes to **all** eligible contractors; first **N** purchasers win (default 3)
 
 ## Endpoint
 
@@ -30,8 +40,7 @@ receive `422` / `schema_version_required`.
 
 ## Request
 
-The JSON object is strict. Undocumented properties, including any attachment or
-upload property, are rejected.
+The JSON object is strict. Undocumented top-level properties are rejected.
 
 Required fields:
 
@@ -42,12 +51,19 @@ Required fields:
 - `propertyZip`: US five-digit ZIP or ZIP+4
 - `landTypeCode`: active Landy's Pro land-type code
 - `projectTypeCode`: active Landy's Pro project-type code
-- `budget`: free text, 1–280 chars
+- `budget`: display/compat text, 1–280 chars
+- `budgetCents`: **recommended** integer project budget in cents (e.g. `1000000`)
 - `timeline`: calendar date in `YYYY-MM-DD`
 - `urgency`: free text, 1–280 chars
 - `description`: project description, 10–4000 chars
 
 Optional fields:
+
+- `budgetCents`: when present, used for automatic tier resolution
+- `attachments`: array (max 5) of `{ downloadUrl, fileName, mimeType?, sizeBytes? }`
+- `contractorCategoryCode`: active contractor category code
+- `firstName`, `lastName`, `phone`
+- `externalContractorId`: **required** for direct requests — Wix `_id` UUID
 
 - `firstName`: string or `null`, maximum 80 chars
 - `lastName`: string or `null`, maximum 80 chars

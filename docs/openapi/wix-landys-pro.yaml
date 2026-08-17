@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: Landy's Pro Wix Estimate Intake
-  version: 1.1.0
+  version: 2.0.0
   description: >
-    Implemented server-to-server estimate request endpoint. Attachments and
-    contractor synchronization endpoints are not implemented.
+    Server-to-server estimate intake with automatic budget tiers, attachments,
+    and contractor sync. See docs/wix-final-integration-contract.md.
 servers:
   - url: https://{landysProHost}
     variables:
@@ -143,6 +143,27 @@ components:
           type: string
           minLength: 1
           maxLength: 280
+        budgetCents:
+          type: integer
+          minimum: 1
+          description: Project budget in integer cents (preferred for tier resolution).
+        attachments:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [downloadUrl, fileName]
+            properties:
+              downloadUrl:
+                type: string
+                format: uri
+              fileName:
+                type: string
+              mimeType:
+                type: string
+              sizeBytes:
+                type: integer
+                maximum: 20971520
         timeline:
           type: string
           format: date
@@ -199,14 +220,15 @@ components:
               type: boolean
             reviewStatus:
               type: string
-              const: pending_review
+              enum: [pending_review, routed]
             blockers:
               type: array
               items:
                 type: string
                 enum:
-                  - tier_review
+                  - budget_review
                   - contractor_review
+                  - attachment_ingestion
     ErrorResponse:
       type: object
       additionalProperties: false
