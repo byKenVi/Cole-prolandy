@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/supabase-storage", () => ({
+  getStorageAdmin: vi.fn(() => null),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     leadMatch: {
