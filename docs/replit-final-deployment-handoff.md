@@ -2,18 +2,9 @@
 
 ## Commit
 
-Deploy the commit containing message:
+**SHA:** `2eaadfb14359210487ca2bf87159cf3795c97730`
 
-`feat: finalize wix sync and lead marketplace flow`
-
-Run locally before deploy:
-
-```bash
-cd artifacts/landys-pro
-git rev-parse HEAD
-```
-
-Record that SHA here after commit.
+Message: `feat: finalize wix sync and lead marketplace flow`
 
 ## Migrations
 
