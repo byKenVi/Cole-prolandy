@@ -1,0 +1,217 @@
+FINAL PRE-CURSOR SNAPSHOT — LANDY'S PRO PRODUCTION
+
+We are about to move the current Replit version to GitHub, then perform the
+final taxonomy/matching adaptation in Cursor.
+
+DO NOT change business logic.
+
+DO NOT refactor.
+
+DO NOT mutate Wix.
+
+DO NOT create leads.
+
+DO NOT send notifications.
+
+Your task is to capture the current production reality in a sanitized
+repository document so Cursor can base the next implementation on observed
+data instead of assumptions.
+
+============================================================
+1. VERIFY CURRENT SOURCE
+============================================================
+
+From artifacts/landys-pro report:
+
+git branch
+git rev-parse HEAD
+git status
+
+Confirm the production migration:
+
+20260817140000_lead_marketplace_final
+
+is applied.
+
+Confirm current production pages no longer fail because of missing:
+
+Lead.budgetCents
+PriceTier.maxBudgetCents
+maxLeadPurchases
+
+============================================================
+2. CAPTURE LIVE WIX LEAD VALUES
+============================================================
+
+Read the most recent Wix-created TEST leads from production.
+
+DO NOT include:
+
+- names
+- emails
+- phone numbers
+- descriptions containing PII
+- uploaded documents
+
+Extract only technical/source fields and DISTINCT observed values such as:
+
+source
+contractorCategoryCode / contractor category raw value
+landTypeCode / land type raw value
+projectTypeCode / project type raw value
+budget
+budgetCents if present
+timeline
+urgency
+externalContractorId format
+reviewStatus
+blockers
+
+We need to know exactly what the CURRENT Wix integration is sending.
+
+Do not infer values from documentation.
+
+Use actual stored test leads.
+
+============================================================
+3. CAPTURE LIVE CONTRACTOR TAXONOMY VALUES
+============================================================
+
+Use the existing Wix AllContractors read integration.
+
+Read-only.
+
+Capture distinct raw values for:
+
+contractorsCategory[]
+secondaryCategories[]
+projectType[]
+landTypes[]
+status
+
+Also capture:
+
+total Wix records fetched
+how many currently sync successfully
+how many have no category
+how many have no project type
+how many have unresolved categories
+how many have unresolved project types
+how many have unresolved land types
+
+Do not include contractor PII.
+
+============================================================
+4. CAPTURE CURRENT LOCAL TAXONOMY / PRICING STATE
+============================================================
+
+Document the current active and legacy:
+
+ContractorCategory values
+ProjectType values
+LandType values
+
+Document:
+
+how PriceTier is currently keyed
+number of configured lead prices
+whether every existing ProjectType has Tier 1/2/3 prices
+whether any global/default lead prices exist
+
+DO NOT change prices.
+
+This is important because the next migration must not invent financial values.
+
+============================================================
+5. WRITE OBSERVATION DOCUMENT
+============================================================
+
+Create:
+
+docs/production-wix-live-observations.md
+
+It must contain:
+
+CURRENT SHA
+
+CURRENT WIX FORM / LEAD VALUES OBSERVED
+
+CURRENT ALLCONTRACTORS VALUES OBSERVED
+
+CURRENT SYNC COUNTS
+
+CURRENT ACTIVE TAXONOMIES
+
+CURRENT PRICING STRUCTURE
+
+KNOWN MISMATCHES
+
+NO SECRETS
+NO PII
+
+Clearly distinguish:
+
+OBSERVED
+vs
+INFERRED
+
+Do not put recommendations in this file.
+
+============================================================
+6. VALIDATION
+============================================================
+
+Run:
+
+pnpm test
+pnpm typecheck
+pnpm lint
+
+Do not modify code to make tests pass unless the repository is already broken.
+
+============================================================
+7. GIT
+============================================================
+
+If there are legitimate Replit fixes that are not yet committed:
+
+review them first.
+
+Do not commit temporary logs or secrets.
+
+Commit the current safe state plus the observation document.
+
+Suggested message:
+
+chore: snapshot production wix integration state
+
+Push to:
+
+origin/main
+
+Do not force push.
+
+============================================================
+FINAL REPORT
+============================================================
+
+Return:
+
+SHA PUSHED
+PRODUCTION MIGRATION APPLIED
+RECENT WIX TEST LEADS INSPECTED
+DISTINCT CATEGORY VALUES
+DISTINCT PROJECT TYPE VALUES
+DISTINCT LAND TYPE VALUES
+DISTINCT BUDGET VALUES
+DISTINCT TIMELINE VALUES
+DISTINCT URGENCY VALUES
+WIX CONTRACTORS FETCHED
+CONTRACTORS WITHOUT CATEGORY
+CONTRACTORS WITHOUT PROJECT TYPE
+UNRESOLVED CATEGORY COUNT
+UNRESOLVED PROJECT COUNT
+UNRESOLVED LAND TYPE COUNT
+PRICING MODEL SUMMARY
+OBSERVATION DOC PATH
+PUSH STATUS
