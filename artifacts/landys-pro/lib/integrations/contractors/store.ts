@@ -34,8 +34,8 @@ export type ContractorSyncWrite = {
     aboutSection: string | null;
     businessHours: string | null;
   };
-  contractorCategoryId: string;
-  contractorCategoryCode: string;
+  contractorCategoryId: string | null;
+  contractorCategoryCode: string | null;
   projects: Array<{
     projectTypeCode: string;
     contractorTypeId: string;

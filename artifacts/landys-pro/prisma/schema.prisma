@@ -111,7 +111,7 @@ model Contractor {
   businessHours                String?
   // Explicit primary project used for display. Eligibility uses `projects`;
   // assignment is multi-project and admin-controlled.
-  contractorTypeId             String
+  contractorTypeId             String?
   contractorCategoryId         String?
   isPro                        Boolean   @default(false)
   walletBalanceCents           Int       @default(0)
@@ -133,7 +133,7 @@ model Contractor {
   createdAt                    DateTime  @default(now())
   updatedAt                    DateTime  @updatedAt
 
-  contractorType     ContractorType      @relation(fields: [contractorTypeId], references: [id])
+  contractorType     ContractorType?     @relation(fields: [contractorTypeId], references: [id])
   contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
   categoryMemberships ContractorCategoryMembership[]
   projects           ContractorProject[]

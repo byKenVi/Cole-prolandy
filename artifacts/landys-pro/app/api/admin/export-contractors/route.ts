@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
         c.name,
         c.email,
         c.phone ?? "",
-        c.contractorType.name,
+        c.contractorType?.name ?? "",
         formatMoney(c.walletBalanceCents),
         c.deactivatedAt ? "Archived" : c.isPro ? "Pro" : "Free",
         formatDate(c.createdAt),

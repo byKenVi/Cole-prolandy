@@ -149,18 +149,8 @@ export async function syncContractor(
   if (!target.name) reasons.push("A contractor name is required for creation.");
   if (!target.email) reasons.push("A contractor email is required for creation.");
   if (!target.phone) reasons.push("A contractor phone is required for creation.");
-  if (!target.contractorCategoryCode) reasons.push("An active contractor category is required.");
-  if (target.projectTypeCodes.length === 0) {
-    reasons.push("At least one active project type is required.");
-  }
   if (!existing) {
-    for (const required of [
-      "name",
-      "email",
-      "phone",
-      "contractorCategory",
-      "projects",
-    ] as const) {
+    for (const required of ["name", "email", "phone"] as const) {
       if (!writable.has(required)) {
         reasons.push(`Creation policy must explicitly own ${required}.`);
       }
@@ -168,24 +158,7 @@ export async function syncContractor(
   }
   if (reasons.length > 0) return unresolved(record, dryRun, [...new Set(reasons)]);
 
-  const taxonomy = await store.resolveTaxonomies(
-    target.contractorCategoryCode ?? undefined,
-    target.projectTypeCodes,
-  );
-  if (
-    taxonomy.unresolvedCodes.length > 0 ||
-    !taxonomy.contractorCategoryId ||
-    !taxonomy.contractorCategoryCode ||
-    !taxonomy.projects ||
-    taxonomy.projects.length === 0
-  ) {
-    return unresolved(record, dryRun, [
-      ...taxonomy.unresolvedCodes.map((code) => `Unknown or archived taxonomy code: ${code}`),
-      ...(!taxonomy.contractorCategoryId ? ["Contractor category could not be resolved."] : []),
-      ...(!taxonomy.projects?.length ? ["Project types could not be resolved."] : []),
-    ]);
-  }
-
+  // Check unchanged before resolving taxonomy to avoid unnecessary DB queries.
   const payloadHash = contractorSyncPayloadHash(input);
   if (existing && changes.length === 0) {
     return {
@@ -199,6 +172,13 @@ export async function syncContractor(
     };
   }
 
+  // Taxonomy is field-level: apply what resolves, skip what doesn't.
+  // An unresolved taxonomy value never blocks contractor creation or update.
+  const taxonomy = await store.resolveTaxonomies(
+    target.contractorCategoryCode ?? undefined,
+    target.projectTypeCodes,
+  );
+
   const write: ContractorSyncWrite = {
     source: record.source,
     externalId: record.externalId,
@@ -210,9 +190,9 @@ export async function syncContractor(
       aboutSection: target.aboutSection,
       businessHours: target.businessHours,
     },
-    contractorCategoryId: taxonomy.contractorCategoryId,
-    contractorCategoryCode: taxonomy.contractorCategoryCode,
-    projects: taxonomy.projects,
+    contractorCategoryId: taxonomy.contractorCategoryId ?? null,
+    contractorCategoryCode: taxonomy.contractorCategoryCode ?? null,
+    projects: taxonomy.projects ?? [],
     changes,
   };
 

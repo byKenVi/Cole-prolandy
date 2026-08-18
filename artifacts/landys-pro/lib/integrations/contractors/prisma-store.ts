@@ -93,7 +93,7 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
     write: ContractorSyncWrite,
   ): Promise<{ contractorId: string }> {
     return this.db.$transaction(async (tx) => {
-      const primaryProject = write.projects[0]!;
+      const primaryProject = write.projects[0];
       const contractor = await tx.contractor.create({
         data: {
           name: write.profile.name,
@@ -101,13 +101,17 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
           phone: write.profile.phone,
           aboutSection: write.profile.aboutSection,
           businessHours: write.profile.businessHours,
-          contractorTypeId: primaryProject.contractorTypeId,
+          contractorTypeId: primaryProject?.contractorTypeId ?? null,
           contractorCategoryId: write.contractorCategoryId,
-          projects: {
-            create: write.projects.map((project) => ({
-              contractorTypeId: project.contractorTypeId,
-            })),
-          },
+          ...(write.projects.length > 0
+            ? {
+                projects: {
+                  create: write.projects.map((project) => ({
+                    contractorTypeId: project.contractorTypeId,
+                  })),
+                },
+              }
+            : {}),
         },
         select: { id: true },
       });
@@ -153,19 +157,21 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
           businessHours: write.profile.businessHours,
           contractorCategoryId: write.contractorCategoryId,
           ...(write.changes.includes("projects")
-            ? { contractorTypeId: write.projects[0]!.contractorTypeId }
+            ? { contractorTypeId: write.projects[0]?.contractorTypeId ?? null }
             : {}),
         },
       });
 
       if (write.changes.includes("projects")) {
         await tx.contractorProject.deleteMany({ where: { contractorId } });
-        await tx.contractorProject.createMany({
-          data: write.projects.map((project) => ({
-            contractorId,
-            contractorTypeId: project.contractorTypeId,
-          })),
-        });
+        if (write.projects.length > 0) {
+          await tx.contractorProject.createMany({
+            data: write.projects.map((project) => ({
+              contractorId,
+              contractorTypeId: project.contractorTypeId,
+            })),
+          });
+        }
       }
 
       await tx.externalContractorIdentity.update({

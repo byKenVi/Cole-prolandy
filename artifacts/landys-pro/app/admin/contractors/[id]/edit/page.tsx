@@ -31,7 +31,7 @@ export default async function EditContractorPage({
   if (!contractor) notFound();
 
   const projectIds = [
-    contractor.contractorTypeId,
+    ...(contractor.contractorTypeId ? [contractor.contractorTypeId] : []),
     ...contractor.projects
       .map((p) => p.contractorTypeId)
       .filter((pid) => pid !== contractor.contractorTypeId),

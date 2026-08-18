@@ -9,6 +9,7 @@ import type { ContractorSyncResult } from "@/lib/integrations/contractors/contra
 import type { ContractorSyncOwnershipPolicy } from "@/lib/integrations/contractors/contract";
 import {
   normalizeWixContractorRecord,
+  parseWixDate,
   resolveOfficialCategoryCode,
   type WixAllContractorItem,
 } from "@/lib/integrations/wix/contractor-adapter";
@@ -29,10 +30,12 @@ export const WIX_CONTRACTOR_SYNC_POLICY: ContractorSyncOwnershipPolicy = {
 
 export type WixContractorSyncSummary = {
   dryRun: boolean;
+  fetched: number;
   created: number;
   updated: number;
   unchanged: number;
-  unresolved: number;
+  /** Records skipped due to invalid identity (missing _id, missing required profile fields). */
+  invalidIdentity: number;
   deactivated: number;
   reactivated: number;
   errors: string[];
@@ -53,10 +56,11 @@ export async function runWixContractorSync(options: {
   const store = new PrismaContractorSyncStore(prisma);
   const summary: WixContractorSyncSummary = {
     dryRun,
+    fetched: 0,
     created: 0,
     updated: 0,
     unchanged: 0,
-    unresolved: 0,
+    invalidIdentity: 0,
     deactivated: 0,
     reactivated: 0,
     errors: [],
@@ -95,10 +99,13 @@ export async function runWixContractorSync(options: {
     throw error;
   }
 
+  summary.fetched = items.length;
+
   for (const raw of items) {
     const item = raw as WixAllContractorItem;
     if (!item._id) {
       summary.skipped.push({ externalId: "unknown", reason: "Missing Wix _id." });
+      summary.invalidIdentity += 1;
       continue;
     }
 
@@ -107,12 +114,13 @@ export async function runWixContractorSync(options: {
     summary.unresolvedProjectTypes.push(...normalized.unresolvedProjectTypes);
     summary.unresolvedLandTypes.push(...normalized.unresolvedLandTypes);
 
+    // Skip inactive contractors that have no name — they cannot be meaningfully created.
     if (!normalized.isActive && !normalized.record.profile?.name) {
       summary.skipped.push({
         externalId: item._id,
-        reason: "Inactive contractor missing required profile fields.",
+        reason: "Inactive contractor with no name skipped.",
       });
-      summary.unresolved += 1;
+      summary.invalidIdentity += 1;
       continue;
     }
 
@@ -131,12 +139,12 @@ export async function runWixContractorSync(options: {
     if (result.status === "created") summary.created += 1;
     else if (result.status === "updated") summary.updated += 1;
     else if (result.status === "unchanged") summary.unchanged += 1;
-    else summary.unresolved += 1;
-
-    if (result.status === "unresolved") {
+    else {
+      // Unresolved = missing required profile fields (name/email/phone).
+      summary.invalidIdentity += 1;
       summary.skipped.push({
         externalId: item._id,
-        reason: result.reasons.join("; ") || "Unresolved",
+        reason: result.reasons.join("; ") || "Missing required profile fields.",
       });
       continue;
     }
@@ -147,7 +155,7 @@ export async function runWixContractorSync(options: {
         externalId: item._id,
         isActive: normalized.isActive,
         metadata: normalized.metadata,
-        sourceUpdatedAt: item._updatedDate ? new Date(item._updatedDate) : null,
+        sourceUpdatedAt: parseWixDate(item._updatedDate) ? new Date(parseWixDate(item._updatedDate)!) : null,
         categoryLabels: item.contractorsCategory ?? [],
       });
 

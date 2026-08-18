@@ -1079,7 +1079,7 @@ export async function syncWixContractors(dryRun = false): Promise<
     return {
       ok: true,
       message: dryRun
-        ? `Dry run: ${summary.created} create, ${summary.updated} update, ${summary.unresolved} unresolved.`
+        ? `Dry run: ${summary.created} create, ${summary.updated} update, ${summary.invalidIdentity} invalid identity.`
         : `Sync complete: ${summary.created} created, ${summary.updated} updated.`,
       summary: summary as unknown as Record<string, unknown>,
     };

@@ -222,7 +222,7 @@ export default async function AdminContractors({
                     )}
                   </div>
                   <p style={{ margin: "5px 0 0", font: "400 13px/1 'Inter'", color: "var(--ink2)" }}>
-                    {c.contractorCategory?.name ?? "No category"} · {c.contractorType.name} ·{" "}
+                    {c.contractorCategory?.name ?? "No category"} · {c.contractorType?.name ?? "No type"} ·{" "}
                     <span style={{ color: "var(--ink3)" }}>{c.email}</span>
                   </p>
                 </div>

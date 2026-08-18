@@ -146,7 +146,7 @@ describe("provider-neutral contractor synchronization", () => {
     expect(store.updateCount).toBe(1);
   });
 
-  it("returns unresolved for incomplete creates and unknown taxonomies", async () => {
+  it("returns unresolved when required profile fields are missing for creation", async () => {
     const store = new MemoryStore();
     const incomplete = await syncContractor(
       store,
@@ -154,17 +154,26 @@ describe("provider-neutral contractor synchronization", () => {
       FULL_POLICY,
       { dryRun: false },
     );
-    const unknown = await syncContractor(
+
+    expect(incomplete.status).toBe("unresolved");
+    expect(store.createCount).toBe(0);
+  });
+
+  it("creates contractor even when taxonomy is unresolved (field-level, not record-level)", async () => {
+    const store = new MemoryStore();
+    const result = await syncContractor(
       store,
       { ...RECORD, projectTypeCodes: ["unknown-project"] },
       FULL_POLICY,
       { dryRun: false },
     );
 
-    expect(incomplete.status).toBe("unresolved");
-    expect(unknown).toMatchObject({ status: "unresolved" });
-    expect(unknown.reasons[0]).toContain("unknown-project");
-    expect(store.createCount).toBe(0);
+    // Taxonomy failure must not block contractor creation.
+    expect(result.status).toBe("created");
+    expect(store.createCount).toBe(1);
+    // Contractor created with no resolved projects (taxonomy applied where possible).
+    const stored = store.identities.get("directory:external-1");
+    expect(stored?.projectTypeCodes).toEqual([]);
   });
 
   it("still evaluates deactivated contractors for profile sync updates", async () => {

@@ -1,11 +1,21 @@
 import type { NormalizedContractorSyncRecord } from "@/lib/integrations/contractors/contract";
 
+/** Wix returns dates as either a plain ISO string or a `{ $date: string }` object. */
+export type WixDateValue = string | { $date: string };
+
+/** Extract an ISO date string from whatever format Wix uses for date fields. */
+export function parseWixDate(value: WixDateValue | undefined): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === "string") return value;
+  return value.$date;
+}
+
 export type WixAllContractorItem = {
   _id: string;
   contractorId?: string;
   proPortalId?: string;
-  _createdDate?: string;
-  _updatedDate?: string;
+  _createdDate?: WixDateValue;
+  _updatedDate?: WixDateValue;
   companyName?: string;
   email?: string;
   phone?: string;
@@ -103,14 +113,22 @@ export function normalizeWixContractorRecord(item: WixAllContractorItem): {
     .filter((code): code is string => Boolean(code));
 
   const unresolvedProjectTypes: string[] = [];
-  const projectTypeCodes = (item.projectType ?? [])
+  const inputProjectTypes = item.projectType ?? [];
+  const resolvedProjectCodes = inputProjectTypes
     .map((label) => {
-      const normalized = normalizeLabel(label);
-      const code = OFFICIAL_PROJECT_TYPES.get(normalized) ?? resolveOfficialProjectTypeCode(label);
+      const code = OFFICIAL_PROJECT_TYPES.get(normalizeLabel(label));
       if (!code) unresolvedProjectTypes.push(label);
       return code;
     })
     .filter((code): code is string => Boolean(code));
+
+  // If Wix provided project type labels but none resolved to an official code,
+  // pass undefined so the sync service treats it as "no field update" rather
+  // than clearing the contractor's existing project memberships.
+  const projectTypeCodes: string[] | undefined =
+    inputProjectTypes.length > 0 && resolvedProjectCodes.length === 0
+      ? undefined
+      : [...new Set(resolvedProjectCodes)];
 
   const unresolvedLandTypes = (item.landTypes ?? []).map((v) => v.trim()).filter(Boolean);
   const sourceStatus = item.status?.trim() ?? null;
@@ -138,8 +156,8 @@ export function normalizeWixContractorRecord(item: WixAllContractorItem): {
     metadata: {
       contractorId: item.contractorId ?? null,
       proPortalId: item.proPortalId ?? null,
-      wixCreatedDate: item._createdDate ?? null,
-      wixUpdatedDate: item._updatedDate ?? null,
+      wixCreatedDate: parseWixDate(item._createdDate) ?? null,
+      wixUpdatedDate: parseWixDate(item._updatedDate) ?? null,
       secondaryCategories: item.secondaryCategories ?? [],
       landTypes: item.landTypes ?? [],
       websiteUrl: item.websiteUrl ?? null,
