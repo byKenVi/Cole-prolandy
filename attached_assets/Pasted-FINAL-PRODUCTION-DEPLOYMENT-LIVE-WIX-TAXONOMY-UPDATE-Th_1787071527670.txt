@@ -1,0 +1,398 @@
+FINAL PRODUCTION DEPLOYMENT — LIVE WIX TAXONOMY UPDATE
+
+The final live Wix taxonomy implementation has been pushed to origin/main.
+
+Do NOT redesign or modify business logic.
+
+Follow:
+
+docs/replit-final-deployment-handoff.md
+docs/live-wix-taxonomy-v3.md
+
+============================================================
+1. SOURCE
+============================================================
+
+Report:
+
+git rev-parse HEAD
+git status
+
+Confirm HEAD equals the latest Cursor commit from origin/main.
+
+============================================================
+2. INSTALL / PRISMA
+============================================================
+
+From:
+
+artifacts/landys-pro
+
+run:
+
+pnpm install
+npx prisma generate
+npx prisma migrate status
+
+Then safely deploy pending migrations:
+
+npx prisma migrate deploy
+
+Then:
+
+npx prisma generate
+npx prisma migrate status
+
+Never use:
+
+prisma migrate reset
+prisma db push
+prisma migrate dev
+
+============================================================
+3. VALIDATION
+============================================================
+
+Run:
+
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+
+All must pass before deployment.
+
+============================================================
+4. DEPLOY / RESTART
+============================================================
+
+Deploy/restart the production application.
+
+Verify production URL:
+
+https://cole-prolandy-project.replit.app
+
+============================================================
+5. BASIC PRODUCTION ROUTES
+============================================================
+
+Verify:
+
+Admin Settings loads
+Admin Pricing loads
+Admin Leads loads
+Lead detail loads
+Admin Contractors loads
+
+No server-side exceptions.
+
+============================================================
+6. VERIFY LIVE TAXONOMY
+============================================================
+
+Read the database.
+
+Confirm the new active intake taxonomy exists:
+
+CONTRACTOR CATEGORIES:
+
+General Contractor
+Roofing
+Plumbing
+Electrical
+HVAC
+Landscaping
+Flooring
+Painting
+Kitchen & Bath
+Foundation & Concrete
+Other
+
+WORK TYPES:
+
+New Build
+Renovation / Remodel
+Repair
+Addition
+Installation
+Maintenance
+Inspection
+
+LAND TYPES:
+
+Residential
+Commercial
+Multi-family
+Rural / Land
+
+BUDGET BANDS:
+
+Under $5K
+$5–15K
+$15–50K
+$50K+
+
+Confirm historical taxonomy records remain present for historical data.
+
+============================================================
+7. RE-RUN WIX CONTRACTOR SYNC
+============================================================
+
+Run:
+
+Sync Wix Contractors Now
+
+Do not mutate Wix.
+
+Report independently:
+
+Fetched
+Created
+Updated
+Unchanged
+Deactivated
+Missing Category
+Missing Work Type
+Unresolved Categories
+Unresolved Work Types
+Unresolved Land Types
+Errors
+
+IMPORTANT:
+
+A contractor with unresolved taxonomy must still exist locally.
+
+A contractor with no category must still exist locally.
+
+Do not treat Missing Category as a sync failure.
+
+============================================================
+8. VERIFY NEW RESOLUTION
+============================================================
+
+Specifically check that Wix raw values which now match the live taxonomy are
+resolved.
+
+Examples:
+
+Landscaping -> resolved category
+General Contractor -> resolved category
+Roofing -> resolved category
+
+Do not fuzzy map unrelated values.
+
+Inspect at least several synced contractors.
+
+Confirm:
+
+Wix `_id` canonical identity preserved.
+
+============================================================
+9. SECOND SYNC — IDEMPOTENCY
+============================================================
+
+Run the sync again.
+
+Expected:
+
+Created: 0
+
+unless Wix genuinely added a contractor between runs.
+
+Verify:
+
+duplicate contractors = 0
+
+No duplicate ExternalContractorIdentity rows.
+
+============================================================
+10. MATCHING READINESS
+============================================================
+
+Without creating a real lead or sending notifications:
+
+calculate/report how many ACTIVE contractors are currently:
+
+A. eligible for general matching because they have a valid category
+
+B. category generalists:
+   category present
+   no work type
+
+C. explicitly work-type restricted
+
+D. missing category
+
+E. direct-only due to missing category
+
+Also report counts by category.
+
+Do NOT send emails/SMS during this inspection.
+
+============================================================
+11. RECENT WIX TEST LEAD NORMALIZATION
+============================================================
+
+Read the most recent existing Wix TEST lead.
+
+Do not expose PII.
+
+Verify its stored/normalized:
+
+source
+category
+work type
+land type
+budget band / budget
+timeline
+urgency
+tier
+pricing state
+maxPurchases
+
+Do not create a new lead.
+
+If it was created before the new migration, do not rewrite historical snapshots
+unless the implementation explicitly supports safe re-resolution of pending
+test leads.
+
+============================================================
+12. PRICING
+============================================================
+
+Verify Budget Band -> Tier mappings exist.
+
+Report whether current live taxonomy has complete lead pricing.
+
+If any price configuration is missing:
+
+list only:
+
+category/work type
+tier
+missing configuration
+
+Do not invent a price.
+
+Do not silently fallback.
+
+============================================================
+13. OTHER
+============================================================
+
+Verify the application can represent:
+
+category = Other
+
+Confirm:
+
+if eligible Other contractors exist:
+normal matching is possible
+
+if none exist:
+lead can enter the explicit classification-required state
+
+Do not create a real Other lead yet.
+
+============================================================
+14. FIRST-3 REGRESSION
+============================================================
+
+Do NOT charge real contractors.
+
+Use automated tests only to reconfirm:
+
+5 concurrent attempts
+3 successful purchases
+3 wallet charges
+4th/5th not charged
+
+Report result.
+
+============================================================
+15. CRON
+============================================================
+
+Test the Wix contractor sync cron safely using CRON_SECRET.
+
+Do not reveal the secret.
+
+Verify:
+
+GET /api/cron/wix-contractor-sync
+
+runs successfully.
+
+Report whether hourly scheduling itself still needs to be configured in Replit.
+
+============================================================
+FINAL REPORT
+============================================================
+
+DEPLOYMENT
+- SHA:
+- migration:
+- production URL:
+
+CHECKS
+- tests:
+- typecheck:
+- lint:
+- build:
+
+PRODUCTION ROUTES
+- settings:
+- pricing:
+- leads:
+- lead detail:
+- contractors:
+
+WIX SYNC #1
+- fetched:
+- created:
+- updated:
+- unchanged:
+- missing category:
+- missing work type:
+- unresolved category:
+- unresolved work type:
+- unresolved land type:
+- errors:
+
+WIX SYNC #2
+- created:
+- duplicates:
+
+MATCHING READINESS
+- active synced contractors:
+- eligible by category:
+- category generalists:
+- work-type restricted:
+- missing category:
+- counts by category:
+
+LIVE TAXONOMY
+- categories:
+- work types:
+- land types:
+- budget bands:
+
+PRICING
+- budget-band mappings complete:
+- lead prices complete:
+- missing financial configuration:
+
+CRON
+- manual test:
+- hourly scheduler:
+
+READY FOR MANUAL PROFILE ESTIMATE:
+YES/NO
+
+READY FOR MANUAL GENERAL ESTIMATE:
+YES/NO
+
+If General Estimate is NOT ready, state the exact reason.
+
+Do not send live notifications or charge contractor wallets during this
+automated deployment validation.

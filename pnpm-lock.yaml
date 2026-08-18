@@ -152,7 +152,9 @@ overrides:
   rollup>@rollup/rollup-win32-x64-msvc: '-'
 
 patchedDependencies:
-  '@clerk/shared@3.47.8': 2c7c5c3f1b3116a9ad328f4320d914a6891265fefd033b80893c23500416a67c
+  '@clerk/shared@3.47.8':
+    hash: 2c7c5c3f1b3116a9ad328f4320d914a6891265fefd033b80893c23500416a67c
+    path: patches/@clerk__shared@3.47.8.patch
 
 importers:
 
