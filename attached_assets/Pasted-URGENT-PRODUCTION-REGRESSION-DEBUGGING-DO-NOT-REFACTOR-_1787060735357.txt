@@ -1,0 +1,494 @@
+URGENT PRODUCTION REGRESSION DEBUGGING — DO NOT REFACTOR
+
+The final Landy's Pro marketplace/Wix implementation has been pulled to Replit,
+but production has regressions.
+
+CURRENT OBSERVED FAILURES:
+
+1. Admin -> "Sync Wix Contractors Now"
+   returns:
+   "Wix query failed with status 400."
+
+2. Opening a Lead detail page returns a blank production error page:
+
+   Application error:
+   a server-side exception has occurred while loading
+   cole-prolandy-project.replit.app
+
+   Digest: 1159233552
+
+3. Admin Pricing page produces the same server-side application error.
+
+4. Admin Settings page produces the same server-side application error.
+
+DO NOT make speculative changes.
+
+DO NOT redesign anything.
+
+DO NOT change business rules.
+
+DO NOT mutate Wix.
+
+DO NOT delete or reset production data.
+
+Your task is:
+
+A. identify the exact root cause(s)
+B. prove them with logs/schema/config inspection
+C. apply the smallest safe fixes
+D. validate production again
+
+======================================================================
+PHASE 1 — SOURCE + DATABASE DEPLOYMENT VERIFICATION
+======================================================================
+
+From the active application directory:
+
+artifacts/landys-pro
+
+Report:
+
+git rev-parse HEAD
+git status
+
+Confirm code includes the final implementation through e100f26 or later.
+
+Then run:
+
+npx prisma generate
+npx prisma migrate status
+
+Inspect whether:
+
+20260817140000_lead_marketplace_final
+
+is actually APPLIED to the PRODUCTION DATABASE used by the deployed app.
+
+Do not infer this from git files.
+
+Verify against the real DATABASE_URL environment used by production.
+
+Then inspect the actual production schema READ-ONLY.
+
+Confirm the database physically contains all fields/tables/enums introduced by
+the final migration, including as applicable:
+
+Lead:
+- budgetCents
+- maxPurchases
+- acceptedCount
+- soldOutAt
+- new marketplace/review fields
+
+PriceTier:
+- maxBudgetCents
+
+Lead / LeadMatch statuses:
+- SOLD_OUT where implemented
+
+contractor category membership changes
+
+Wix sync metadata/state tables or columns
+
+attachment-related metadata
+
+Do not expose PII.
+
+If the migration is pending:
+
+STOP diagnosis there and report that first.
+
+Then safely run:
+
+npx prisma migrate deploy
+npx prisma generate
+
+Never use:
+
+prisma migrate reset
+prisma db push
+prisma migrate dev
+
+After deploy:
+
+npx prisma migrate status
+
+must show no pending production migrations.
+
+======================================================================
+PHASE 2 — EXACT SERVER EXCEPTIONS
+======================================================================
+
+Use Replit production/server logs.
+
+Reproduce each failing route independently:
+
+A. Lead detail
+B. Admin Pricing
+C. Admin Settings
+
+Capture the FULL server-side exception and stack trace for each.
+
+Do not rely on browser digest alone.
+
+For Digest:
+
+1159233552
+
+find the corresponding production exception if possible.
+
+Report:
+
+ROUTE
+EXCEPTION TYPE
+MESSAGE
+FIRST APPLICATION STACK FRAME
+ROOT CAUSE
+
+Determine whether the three routes share one common cause.
+
+Pay special attention to:
+
+- Prisma column/table missing errors
+- stale Prisma generated client
+- null assumptions on migrated historical rows
+- missing AppSetting keys
+- undefined relation access
+- enum mismatches
+- new PriceTier.maxBudgetCents assumptions
+- old defaultLeadTier/maxLeadRecipients references
+- new maxLeadPurchases assumptions
+- serialization errors
+- server component queries selecting nonexistent fields
+
+DO NOT patch pages individually if they all share the same database/config
+root cause.
+
+Fix the underlying cause once.
+
+======================================================================
+PHASE 3 — REQUIRED SETTINGS VALIDATION
+======================================================================
+
+Read production AppSetting rows safely.
+
+Verify whether these settings exist and have valid values:
+
+maxLeadPurchases = 3
+leadExpiryHours
+and any other setting newly required by the final implementation
+
+Check whether legacy:
+
+maxLeadRecipients
+defaultLeadTier
+
+still exists.
+
+Do NOT delete legacy settings unless code no longer needs them and deletion is
+explicitly safe.
+
+The new application must not crash merely because a historical setting is
+missing.
+
+If a required new setting should have been seeded by migration but is absent,
+identify why and fix via a safe idempotent migration or seed path.
+
+Do not manually edit production data without documenting it.
+
+======================================================================
+PHASE 4 — PRICING DATA VALIDATION
+======================================================================
+
+Read-only inspect all 14 official Project Types and their PriceTier records.
+
+Verify:
+
+- 3 PriceTier records per project where required
+- tier 1 maxBudgetCents present
+- tier 2 maxBudgetCents present
+- Tier 3 treated as open-ended
+- existing lead prices were preserved
+- no unexpected null causes Pricing page to crash
+
+Report any project with incomplete pricing configuration.
+
+Do NOT invent missing lead prices.
+
+Threshold seed values may be restored from the final specification if the
+migration was supposed to create them.
+
+======================================================================
+PHASE 5 — WIX 400 ROOT CAUSE
+======================================================================
+
+Do NOT change the Wix API until you inspect the exact outgoing request.
+
+The correct Wix read endpoint is:
+
+POST https://www.wixapis.com/wix-data/v2/items/query
+
+Collection:
+
+AllContractors
+
+We have ALREADY successfully queried this live Wix collection manually using
+Postman.
+
+A known-good conceptual payload is:
+
+{
+  "dataCollectionId": "AllContractors",
+  "query": {
+    "paging": {
+      "limit": 50,
+      "offset": 0
+    }
+  },
+  "consistentRead": true
+}
+
+Inspect the ACTUAL request generated by the new Wix client.
+
+Log safely, WITHOUT credentials:
+
+- method
+- URL
+- header NAMES only
+- dataCollectionId
+- sanitized JSON body
+- HTTP status
+- full Wix error response body
+
+Never log WIX_API_AUTHORIZATION.
+
+Compare the application request to the known-good request.
+
+Specifically verify:
+
+1. Endpoint is /wix-data/v2/items/query
+   NOT /wix-data/v2/items
+
+2. HTTP method is POST.
+
+3. Content-Type is application/json.
+
+4. wix-site-id header exists and is exactly sourced from WIX_SITE_ID.
+
+5. Authorization header uses exactly the configured
+   WIX_API_AUTHORIZATION value.
+
+   DO NOT automatically prepend "Bearer " unless that is what the configured
+   working credential actually requires.
+
+6. dataCollectionId resolves exactly to:
+   AllContractors
+
+7. Paging uses valid Wix Query Data Items syntax.
+
+   Prefer:
+   "paging": {
+     "limit": 50,
+     "offset": 0
+   }
+
+   Do not use "skip".
+
+8. Remove unsupported/undefined properties from the request JSON.
+
+9. If incremental sync adds an _updatedDate filter, temporarily compare:
+
+   a. baseline query WITHOUT the filter
+   b. incremental query WITH the filter
+
+   If baseline succeeds and filtered query fails, isolate the filter syntax as
+   the cause rather than breaking full sync.
+
+IMPORTANT:
+
+The sync MUST always be capable of falling back to a paginated FULL sync if
+incremental filtering is invalid.
+
+A bad incremental filter must not make the entire integration unusable.
+
+======================================================================
+PHASE 6 — LIVE READ-ONLY WIX PROBES
+======================================================================
+
+Using production Wix secrets, without revealing them:
+
+TEST W1 — baseline:
+
+POST /wix-data/v2/items/query
+
+{
+  "dataCollectionId": "AllContractors",
+  "query": {
+    "paging": {
+      "limit": 1,
+      "offset": 0
+    }
+  },
+  "consistentRead": true
+}
+
+Expected:
+HTTP 200
+at least one dataItem if collection has records
+
+TEST W2 — application client:
+
+Run the exact same operation THROUGH the application Wix client.
+
+Expected:
+same HTTP success.
+
+If W1 succeeds and W2 fails:
+the bug is definitely in our client/request construction.
+
+TEST W3 — pagination:
+query next page safely if enough records exist.
+
+TEST W4 — incremental filter:
+only after W1/W2 succeed.
+
+Do not mutate Wix.
+
+======================================================================
+PHASE 7 — FIXES
+======================================================================
+
+Apply only fixes directly supported by the evidence above.
+
+Examples:
+
+- deploy missing production migration
+- regenerate stale Prisma client
+- handle historical null/default state safely
+- fix missing seeded setting
+- fix Wix request body
+- fix Wix Authorization formatting
+- fix Wix _updatedDate filter
+- fix incorrect field selection
+
+Do NOT:
+
+- alter marketplace business rules
+- revert first-3 purchase behavior
+- revert budget tiers
+- revert Wix _id canonical identity
+- introduce mock Wix results
+- bypass validation
+- hardcode production secrets
+
+======================================================================
+PHASE 8 — REGRESSION VALIDATION
+======================================================================
+
+After fixes:
+
+Run:
+
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+
+Then redeploy production if code changed.
+
+Production smoke test:
+
+1. /admin/settings loads
+2. /admin/pricing loads
+3. lead list loads
+4. at least one lead detail loads
+5. contractor list loads
+6. Wix Sync button runs successfully
+
+Do NOT create a new general lead yet.
+Do NOT notify contractors yet.
+Do NOT charge any wallet.
+
+======================================================================
+PHASE 9 — WIX SYNC TEST
+======================================================================
+
+Once the button works:
+
+Run first sync.
+
+Report:
+
+fetched
+created
+updated
+unchanged
+deactivated
+unresolved category values
+unresolved project values
+errors
+
+Then run a SECOND sync.
+
+Verify:
+
+duplicate contractors created = 0
+
+canonical identity = Wix _id
+
+No modifications to:
+
+wallet
+Stripe IDs
+Clerk IDs
+transactions
+accepted leads
+financial history
+
+======================================================================
+FINAL REPORT
+======================================================================
+
+Return:
+
+ROOT CAUSE 1 — SERVER PAGES
+- exact cause:
+- evidence:
+- affected routes:
+- fix:
+
+ROOT CAUSE 2 — WIX 400
+- exact Wix response body:
+- exact cause:
+- fix:
+
+DATABASE
+- final migration applied: YES/NO
+- Prisma client regenerated: YES/NO
+- missing settings found:
+- pricing configuration valid:
+
+PRODUCTION ROUTES
+- Settings: PASS/FAIL
+- Pricing: PASS/FAIL
+- Lead detail: PASS/FAIL
+- Contractors: PASS/FAIL
+
+WIX
+- direct baseline query: PASS/FAIL
+- application Wix client query: PASS/FAIL
+- Sync Wix Contractors button: PASS/FAIL
+- first sync:
+- second sync duplicates: 0 / number
+
+CHECKS
+- tests:
+- typecheck:
+- lint:
+- build:
+
+READY FOR E2E LEAD TESTS:
+YES / NO
+
+Do not say READY unless all listed production pages load and Wix contractor
+sync succeeds.
