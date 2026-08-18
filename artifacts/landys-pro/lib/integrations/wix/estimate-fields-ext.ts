@@ -14,5 +14,6 @@ export type WixEstimateAttachment = z.infer<typeof WixAttachmentSchema>;
 
 export const WixEstimateFieldsSchema = EstimateFieldsSchema.extend({
   budgetCents: z.number().int().positive().optional(),
+  budgetBand: z.string().trim().max(80).optional().nullable(),
   attachments: z.array(WixAttachmentSchema).max(5).optional(),
 }).strict();

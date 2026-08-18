@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { formatMoney } from "@/lib/money";
+import { leadCategoryLabel, leadScopeLabel } from "@/lib/resolved-lead";
 
 export type SearchHit =
   | {
@@ -34,11 +35,8 @@ export async function adminSearchSuggest(query: string): Promise<SearchHit[]> {
           { propertyLocation: { contains: q, mode: "insensitive" } },
           { landownerEmail: { contains: q, mode: "insensitive" } },
           { projectType: { name: { contains: q, mode: "insensitive" } } },
-          {
-            projectType: {
-              contractorType: { name: { contains: q, mode: "insensitive" } },
-            },
-          },
+          { workType: { name: { contains: q, mode: "insensitive" } } },
+          { contractorCategory: { name: { contains: q, mode: "insensitive" } } },
         ],
       },
       orderBy: { createdAt: "desc" },
@@ -48,6 +46,8 @@ export async function adminSearchSuggest(query: string): Promise<SearchHit[]> {
         propertyLocation: true,
         priceCents: true,
         projectType: { select: { name: true, contractorType: { select: { name: true } } } },
+        workType: { select: { name: true } },
+        contractorCategory: { select: { name: true } },
       },
     }),
     prisma.contractor.findMany({
@@ -74,8 +74,8 @@ export async function adminSearchSuggest(query: string): Promise<SearchHit[]> {
     kind: "lead",
     id: l.id,
     href: `/admin/leads/${l.id}`,
-    title: l.projectType.name,
-    subtitle: `${l.projectType.contractorType.name} · ${l.propertyLocation} · ${
+    title: leadScopeLabel(l),
+    subtitle: `${leadCategoryLabel(l)} · ${l.propertyLocation} · ${
       l.priceCents === null ? "Pending review" : formatMoney(l.priceCents)
     }`,
   }));

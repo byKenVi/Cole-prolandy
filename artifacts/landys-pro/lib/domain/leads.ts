@@ -25,9 +25,28 @@ export type DistributeLeadResult = {
   }[];
 };
 
+function categoryFilter(categoryId: string): Prisma.ContractorWhereInput {
+  return {
+    OR: [
+      { contractorCategoryId: categoryId },
+      { categoryMemberships: { some: { categoryId } } },
+    ],
+  };
+}
+
+function contractorMatchesWorkType(
+  contractor: { workTypes: Array<{ workTypeId: string }> },
+  workTypeId: string | null,
+): boolean {
+  if (contractor.workTypes.length === 0) return true;
+  if (!workTypeId) return false;
+  return contractor.workTypes.some((entry) => entry.workTypeId === workTypeId);
+}
+
 /**
  * Distribute a lead to ALL eligible contractors by creating PENDING LeadMatch rows.
- * Eligibility: active, assigned to lead project type, and (when set) contractor category.
+ * Live intake: category required; work type optional on contractor (empty = generalist).
+ * Legacy intake: project assignment + optional category filter.
  */
 export async function distributeLead(
   db: DbClient,
@@ -35,7 +54,7 @@ export async function distributeLead(
 ): Promise<DistributeLeadResult> {
   const lead = await db.lead.findUnique({
     where: { id: leadId },
-    include: { projectType: true, matches: true },
+    include: { projectType: true, workType: true, matches: true },
   });
   if (!lead) throw new NotFoundError("Lead");
   if (
@@ -44,6 +63,7 @@ export async function distributeLead(
     lead.expiresAt === null ||
     lead.tierReviewRequired ||
     lead.budgetReviewRequired ||
+    lead.pricingReviewRequired ||
     lead.contractorReviewRequired
   ) {
     throw new InvalidStateError("This lead is still awaiting intake review.");
@@ -52,32 +72,56 @@ export async function distributeLead(
     throw new InvalidStateError("This lead is no longer available for distribution.");
   }
 
-  const projectId = lead.projectType.contractorTypeId;
   const alreadyMatchedIds = new Set(lead.matches.map((m) => m.contractorId));
+  let candidates: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    workTypes?: Array<{ workTypeId: string }>;
+  }>;
 
-  const categoryFilter = lead.contractorCategoryId
-    ? {
-        OR: [
-          { contractorCategoryId: lead.contractorCategoryId },
-          {
-            categoryMemberships: {
-              some: { categoryId: lead.contractorCategoryId },
-            },
-          },
-        ],
-      }
-    : {};
-
-  const candidates = await db.contractor.findMany({
-    where: {
-      deactivatedAt: null,
-      id: { notIn: Array.from(alreadyMatchedIds) },
-      projects: { some: { contractorTypeId: projectId } },
-      ...categoryFilter,
-    },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, name: true, email: true, phone: true },
-  });
+  if (lead.workTypeId) {
+    if (!lead.contractorCategoryId) {
+      throw new InvalidStateError("General live leads require a contractor category.");
+    }
+    const rows = await db.contractor.findMany({
+      where: {
+        deactivatedAt: null,
+        id: { notIn: Array.from(alreadyMatchedIds) },
+        ...categoryFilter(lead.contractorCategoryId),
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        workTypes: { select: { workTypeId: true } },
+      },
+    });
+    candidates = rows.filter((contractor) =>
+      contractorMatchesWorkType(contractor, lead.workTypeId),
+    );
+  } else {
+    if (!lead.projectType) {
+      throw new InvalidStateError("Legacy leads require a project type.");
+    }
+    const projectId = lead.projectType.contractorTypeId;
+    const legacyCategoryFilter = lead.contractorCategoryId
+      ? categoryFilter(lead.contractorCategoryId)
+      : {};
+    candidates = await db.contractor.findMany({
+      where: {
+        deactivatedAt: null,
+        id: { notIn: Array.from(alreadyMatchedIds) },
+        projects: { some: { contractorTypeId: projectId } },
+        ...legacyCategoryFilter,
+      },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, email: true, phone: true },
+    });
+  }
 
   const matches: DistributeLeadResult["matches"] = [];
   for (const c of candidates) {

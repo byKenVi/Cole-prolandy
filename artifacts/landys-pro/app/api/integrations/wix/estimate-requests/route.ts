@@ -84,7 +84,11 @@ export async function POST(request: NextRequest) {
       projectTypeCode: payload.projectTypeCode,
       budget: payload.budget,
       budgetCents: payload.budgetCents,
-      timeline: new Date(`${payload.timeline}T00:00:00.000Z`),
+      budgetBand: payload.budgetBand,
+      timeline: /^\d{4}-\d{2}-\d{2}$/.test(payload.timeline)
+        ? new Date(`${payload.timeline}T00:00:00.000Z`)
+        : null,
+      timelineRaw: payload.timeline,
       urgency: payload.urgency,
       description: payload.description,
       attachments: payload.attachments,

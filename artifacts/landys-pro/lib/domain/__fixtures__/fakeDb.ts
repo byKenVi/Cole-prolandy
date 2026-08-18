@@ -60,6 +60,13 @@ function matchWhere(row: Row, where: Row | undefined): boolean {
       }
       continue;
     }
+    if (key === "workTypes" && cond && typeof cond === "object" && "some" in cond) {
+      const workTypes = (row.workTypes as Row[] | undefined) ?? [];
+      if (!workTypes.some((entry) => matchWhere(entry, (cond as { some: Row }).some))) {
+        return false;
+      }
+      continue;
+    }
     if (
       key === "walletBalanceCents" &&
       cond &&
@@ -294,6 +301,14 @@ function hydrate(base: Row, row: Row, include?: Row): Row {
   if (include.projectType && row.projectTypeId) {
     out.projectType = db.projectType.rows.find((p) => p.id === row.projectTypeId);
   }
+  if (include.workType && row.workTypeId) {
+    out.workType = db.workType.rows.find((w) => w.id === row.workTypeId);
+  }
+  if (include.contractorCategory && row.contractorCategoryId) {
+    out.contractorCategory = db.contractorCategory.rows.find(
+      (c) => c.id === row.contractorCategoryId,
+    );
+  }
   if (include.matches && row.id) {
     out.matches = db.leadMatch.rows.filter((m) => m.leadId === row.id);
   }
@@ -316,6 +331,7 @@ export class FakeDb {
   projectType = new Table("projecttype");
   landType = new Table("landtype");
   contractorCategory = new Table("contractorcategory");
+  workType = new Table("worktype");
   externalContractorIdentity = new Table("externalcontractoridentity");
   lead = new Table("lead");
   leadMatch = new Table("leadmatch");
@@ -342,6 +358,7 @@ export class FakeDb {
       this.projectType,
       this.landType,
       this.contractorCategory,
+      this.workType,
       this.externalContractorIdentity,
       this.lead,
       this.leadMatch,

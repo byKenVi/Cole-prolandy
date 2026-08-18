@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const timelineDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Please choose a valid timeline date")
+  .refine(
+    (value) => !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime()),
+    "Please choose a valid timeline date",
+  );
+
 /** Shared estimate field validation for public and Wix intake routes. */
 export const EstimateFieldsSchema = z.object({
   firstName: z.string().trim().max(80).optional().nullable(),
@@ -12,15 +20,14 @@ export const EstimateFieldsSchema = z.object({
     .regex(/^\d{5}(?:-\d{4})?$/, "Please enter a valid property ZIP"),
   contractorCategoryCode: z.string().trim().min(1).max(80).optional().nullable(),
   landTypeCode: z.string().trim().min(1, "Please choose a land type").max(80),
+  /// Accepts live work-type code/label or legacy project-type code/label.
   projectTypeCode: z.string().trim().min(1, "Please choose a project type").max(80),
   budget: z.string().trim().min(1, "Please enter a budget").max(280),
-  timeline: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Please choose a valid timeline date")
-    .refine(
-      (value) => !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime()),
-      "Please choose a valid timeline date",
-    ),
+  budgetBand: z.string().trim().max(80).optional().nullable(),
+  timeline: z.union([
+    timelineDateSchema,
+    z.string().trim().min(1, "Please choose a timeline").max(80),
+  ]),
   urgency: z.string().trim().min(1, "Please enter the urgency").max(280),
   description: z.string().trim().min(10, "Please describe the project").max(4000),
 });

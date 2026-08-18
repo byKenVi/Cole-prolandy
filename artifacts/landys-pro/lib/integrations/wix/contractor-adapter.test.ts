@@ -3,13 +3,15 @@ import {
   normalizeWixContractorRecord,
   resolveOfficialCategoryCode,
   resolveOfficialProjectTypeCode,
+  resolveOfficialWorkTypeCode,
 } from "@/lib/integrations/wix/contractor-adapter";
 
 describe("wix contractor adapter", () => {
-  it("maps official category and project labels exactly", () => {
+  it("maps live v3 and legacy category labels", () => {
     expect(resolveOfficialCategoryCode("Land Clearing")).toBe("land-clearing");
+    expect(resolveOfficialCategoryCode("Landscaping")).toBe("landscaping");
     expect(resolveOfficialProjectTypeCode("CABIN  CONSTRUCTION")).toBe("cabin-construction");
-    expect(resolveOfficialCategoryCode("Landscaping")).toBeNull();
+    expect(resolveOfficialWorkTypeCode("Repair")).toBe("repair");
   });
 
   it("uses Wix _id as canonical external id", () => {
@@ -22,12 +24,12 @@ describe("wix contractor adapter", () => {
       phone: "+15125550100",
       status: "Active",
       contractorsCategory: ["Builders"],
-      projectType: ["CULVERT INSTALL"],
+      projectType: ["Repair"],
     });
 
     expect(normalized.record.externalId).toBe("2f768032-8281-4a38-9d3c-bfc7cd499b74");
     expect(normalized.record.contractorCategoryCode).toBe("builders");
-    expect(normalized.record.projectTypeCodes).toEqual(["culvert-install"]);
+    expect(normalized.record.workTypeCodes).toEqual(["repair"]);
     expect(normalized.isActive).toBe(true);
     expect(normalized.metadata.contractorId).toBe("CTR-123");
   });
@@ -39,12 +41,12 @@ describe("wix contractor adapter", () => {
       email: "test@example.com",
       phone: "+15125550100",
       status: "Inactive",
-      contractorsCategory: ["Landscaping"],
-      projectType: ["Outdoor Construction"],
+      contractorsCategory: ["Outdoor Construction"],
+      projectType: ["Patio Installation"],
     });
 
-    expect(normalized.unresolvedCategories).toEqual(["Landscaping"]);
-    expect(normalized.unresolvedProjectTypes).toEqual(["Outdoor Construction"]);
+    expect(normalized.unresolvedCategories).toEqual(["Outdoor Construction"]);
+    expect(normalized.unresolvedWorkTypes).toEqual(["Patio Installation"]);
     expect(normalized.isActive).toBe(false);
   });
 });

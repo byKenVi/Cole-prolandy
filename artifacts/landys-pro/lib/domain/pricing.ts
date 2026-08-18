@@ -30,3 +30,25 @@ export async function resolvePrice(
   if (!tier) throw new PriceNotFoundError();
   return tier.priceCents;
 }
+
+export type ResolveWorkTypePriceParams = {
+  workTypeId: string;
+  tier: number;
+};
+
+export async function resolveWorkTypePrice(
+  db: DbClient,
+  params: ResolveWorkTypePriceParams,
+): Promise<number> {
+  const tier = await db.workTypePriceTier.findUnique({
+    where: {
+      workTypeId_tier: {
+        workTypeId: params.workTypeId,
+        tier: params.tier,
+      },
+    },
+    select: { priceCents: true },
+  });
+  if (!tier) throw new PriceNotFoundError();
+  return tier.priceCents;
+}

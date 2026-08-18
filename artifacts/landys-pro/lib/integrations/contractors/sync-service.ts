@@ -54,6 +54,9 @@ function canonicalRecord(record: NormalizedContractorSyncRecord) {
     projectTypeCodes: record.projectTypeCodes
       ? [...new Set(record.projectTypeCodes.map((code) => code.trim().toLowerCase()))].sort()
       : undefined,
+    workTypeCodes: record.workTypeCodes
+      ? [...new Set(record.workTypeCodes.map((code) => code.trim().toLowerCase()))].sort()
+      : undefined,
   };
 }
 
@@ -101,6 +104,7 @@ export async function syncContractor(
         businessHours: existing.businessHours,
         contractorCategoryCode: existing.contractorCategoryCode,
         projectTypeCodes: existing.projectTypeCodes,
+        workTypeCodes: existing.workTypeCodes,
       }
     : {
         name: "",
@@ -110,6 +114,7 @@ export async function syncContractor(
         businessHours: null,
         contractorCategoryCode: null,
         projectTypeCodes: [] as string[],
+        workTypeCodes: [] as string[],
       };
 
   const changes: ContractorSyncProfileField[] = [];
@@ -146,6 +151,15 @@ export async function syncContractor(
     changes.push("projects");
   }
 
+  if (
+    writable.has("workTypes") &&
+    record.workTypeCodes !== undefined &&
+    !sameStrings(target.workTypeCodes, record.workTypeCodes)
+  ) {
+    target.workTypeCodes = record.workTypeCodes;
+    changes.push("workTypes");
+  }
+
   if (!target.name) reasons.push("A contractor name is required for creation.");
   if (!target.email) reasons.push("A contractor email is required for creation.");
   if (!target.phone) reasons.push("A contractor phone is required for creation.");
@@ -177,6 +191,7 @@ export async function syncContractor(
   const taxonomy = await store.resolveTaxonomies(
     target.contractorCategoryCode ?? undefined,
     target.projectTypeCodes,
+    target.workTypeCodes,
   );
 
   const write: ContractorSyncWrite = {
@@ -193,6 +208,7 @@ export async function syncContractor(
     contractorCategoryId: taxonomy.contractorCategoryId ?? null,
     contractorCategoryCode: taxonomy.contractorCategoryCode ?? null,
     projects: taxonomy.projects ?? [],
+    workTypes: taxonomy.workTypes ?? [],
     changes,
   };
 

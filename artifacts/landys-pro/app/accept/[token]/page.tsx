@@ -6,7 +6,7 @@ import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import { timeUntil } from "@/lib/format";
-import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
+import { hasResolvedLeadSnapshot, leadCategoryIcon, leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
     include: {
       contractor: { select: { name: true, walletBalanceCents: true } },
       lead: {
-        include: { projectType: { include: { contractorType: true } }, landType: true },
+        include: leadDisplayInclude,
       },
     },
   });
@@ -55,9 +55,9 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
 
   const iconSrc = match
     ? iconSrcFor({
-        icon: match.lead.projectType.contractorType.icon,
-        category: match.lead.projectType.contractorType.name,
-        project: match.lead.projectType.name,
+        icon: leadCategoryIcon(match.lead),
+        category: leadCategoryLabel(match.lead),
+        project: leadScopeLabel(match.lead),
       })
     : null;
   const pill = match ? tierPill(match.lead.tier) : null;
@@ -120,7 +120,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
               </span>
               <div className="min-w-0">
                 <h1 className="font-fraunces text-[20px] font-medium leading-tight tracking-[-0.01em] text-[#3A352D]">
-                  {match.lead.projectType.name}
+                  {leadScopeLabel(match.lead)}
                 </h1>
                 <p className="mt-1 flex items-center gap-1 text-[13px] text-[#6B6459]">
                   <MapPin className="h-3.5 w-3.5 flex-none" strokeWidth={1.7} />

@@ -11,7 +11,7 @@ import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
-import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
+import { hasResolvedLeadSnapshot, leadCategoryIcon, leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 import { canRevealLeadContact } from "@/lib/lead-contact";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function LeadDetail({
     include: {
       contractor: true,
       lead: {
-        include: { projectType: { include: { contractorType: true } }, landType: true },
+        include: leadDisplayInclude,
       },
     },
   });
@@ -51,12 +51,12 @@ export default async function LeadDetail({
   const declined = match.status === "DECLINED";
   const actionable = !accepted && !declined && !expired;
   const hasSavedCard = Boolean(contractor.stripeDefaultPaymentMethodId);
-  const categoryName = lead.projectType.contractorType.name;
+  const categoryName = leadCategoryLabel(lead);
   const pill = tierPill(lead.tier);
   const iconSrc = iconSrcFor({
-    icon: lead.projectType.contractorType.icon,
+    icon: leadCategoryIcon(lead),
     category: categoryName,
-    project: lead.projectType.name,
+    project: leadScopeLabel(lead),
   });
 
   return (
@@ -91,7 +91,7 @@ export default async function LeadDetail({
               </span>
               <div>
                 <h1 className="font-fraunces text-[28px] font-medium tracking-[-0.01em] text-[#3A352D]">
-                  {lead.projectType.name}
+                  {leadScopeLabel(lead)}
                 </h1>
                 <p className="mt-1 flex items-center gap-1.5 text-[15px] text-[#6B6459]">
                   <MapPin className="h-4 w-4" strokeWidth={1.7} /> {lead.propertyLocation}

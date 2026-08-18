@@ -8,15 +8,21 @@ Message: `feat: finalize wix sync and lead marketplace flow`
 
 ## Migrations
 
-Apply additive migration:
+Apply additive migrations (in order):
 
-`20260817140000_lead_marketplace_final`
+1. `20260817140000_lead_marketplace_final`
+2. `20260818150000_nullable_contractor_type_id` (if not already applied)
+3. **`20260818180000_live_wix_taxonomy_v3`** — live categories, work types, budget bands, band→tier defaults
 
 ```bash
 cd artifacts/landys-pro
 npx prisma generate
 npx prisma migrate deploy
 ```
+
+See `docs/live-wix-taxonomy-v3.md` for taxonomy and matching rules.
+
+**Post-migrate:** configure **`WorkTypePriceTier`** prices in Admin → Pricing. Placeholder rows (`priceCents = 0`) block live lead routing with `PRICING_REQUIRED` until set.
 
 **Do not** run `prisma migrate reset` or `db push` against production.
 
@@ -75,8 +81,8 @@ Authorization: Bearer <CRON_SECRET>
 ## Smoke tests
 
 1. Admin → Contractors → **Sync Wix contractors now** — expect created/updated counts
-2. POST Wix estimate with `budgetCents` + optional `attachments[]` — expect auto-route or `budget_review` blocker
-3. General lead with 10+ eligible contractors — verify 10+ offers in Admin lead detail
+2. POST Wix estimate with budget band label (`Under $5K`) or `budgetCents` — expect auto-route when pricing configured, else `pricing_review` or `budget_review`
+3. General lead with category + eligible contractors — verify category-matched offers (work-type specialists + category generalists)
 4. Accept lead from 3 contractors — 4th must show sold out, no charge
 5. Direct request with Wix `_id` — exactly one offer, `maxPurchases = 1`
 

@@ -10,6 +10,7 @@ export type StoredContractorSyncView = {
   businessHours: string | null;
   contractorCategoryCode: string | null;
   projectTypeCodes: string[];
+  workTypeCodes: string[];
   lastPayloadHash: string | null;
 };
 
@@ -19,6 +20,10 @@ export type ResolvedContractorTaxonomies = {
   projects?: Array<{
     projectTypeCode: string;
     contractorTypeId: string;
+  }>;
+  workTypes?: Array<{
+    workTypeCode: string;
+    workTypeId: string;
   }>;
   unresolvedCodes: string[];
 };
@@ -40,6 +45,10 @@ export type ContractorSyncWrite = {
     projectTypeCode: string;
     contractorTypeId: string;
   }>;
+  workTypes: Array<{
+    workTypeCode: string;
+    workTypeId: string;
+  }>;
   changes: ContractorSyncProfileField[];
 };
 
@@ -51,6 +60,7 @@ export interface ContractorSyncStore {
   resolveTaxonomies(
     contractorCategoryCode: string | undefined,
     projectTypeCodes: readonly string[] | undefined,
+    workTypeCodes: readonly string[] | undefined,
   ): Promise<ResolvedContractorTaxonomies>;
   createContractor(write: ContractorSyncWrite): Promise<{ contractorId: string }>;
   updateContractor(

@@ -1,6 +1,8 @@
+import type { BudgetBand } from "@prisma/client";
 import type { DbClient } from "./types";
+import { inferBudgetBandFromCents } from "./budget";
 import { InvalidStateError, PriceNotFoundError } from "./errors";
-import { resolvePrice } from "./pricing";
+import { resolvePrice, resolveWorkTypePrice } from "./pricing";
 
 export type TierThresholds = {
   tier1MaxBudgetCents: number;
@@ -67,6 +69,28 @@ export async function resolveTierForBudget(
   return { ok: true, tier, thresholds };
 }
 
+export async function resolveTierForBudgetBand(
+  db: DbClient,
+  params: { workTypeId: string; budgetBand: BudgetBand },
+): Promise<{ ok: true; tier: 1 | 2 | 3 } | { ok: false; reason: string }> {
+  const mapping = await db.budgetBandTierMapping.findUnique({
+    where: {
+      workTypeId_budgetBand: {
+        workTypeId: params.workTypeId,
+        budgetBand: params.budgetBand,
+      },
+    },
+    select: { tier: true },
+  });
+  if (!mapping || mapping.tier < 1 || mapping.tier > 3) {
+    return {
+      ok: false,
+      reason: "Budget band tier mapping is not configured for this work type.",
+    };
+  }
+  return { ok: true, tier: mapping.tier as 1 | 2 | 3 };
+}
+
 export async function snapshotLeadPricing(
   db: DbClient,
   params: {
@@ -84,4 +108,38 @@ export async function snapshotLeadPricing(
   });
   if (priceCents < 0) throw new PriceNotFoundError();
   return { tier: resolved.tier, priceCents };
+}
+
+export async function snapshotLiveLeadPricing(
+  db: DbClient,
+  params: {
+    workTypeId: string;
+    budgetBand: BudgetBand;
+  },
+): Promise<{ tier: 1 | 2 | 3; priceCents: number; pricingRequired: boolean }> {
+  const resolved = await resolveTierForBudgetBand(db, params);
+  if (!resolved.ok) throw new InvalidStateError(resolved.reason);
+  const priceCents = await resolveWorkTypePrice(db, {
+    workTypeId: params.workTypeId,
+    tier: resolved.tier,
+  });
+  return {
+    tier: resolved.tier,
+    priceCents,
+    pricingRequired: priceCents <= 0,
+  };
+}
+
+export async function snapshotLiveLeadPricingFromExactBudget(
+  db: DbClient,
+  params: {
+    workTypeId: string;
+    budgetCents: number;
+  },
+): Promise<{ tier: 1 | 2 | 3; priceCents: number; pricingRequired: boolean }> {
+  const band = inferBudgetBandFromCents(params.budgetCents);
+  if (!band) {
+    throw new InvalidStateError("Budget could not be mapped to a configured budget band.");
+  }
+  return snapshotLiveLeadPricing(db, { workTypeId: params.workTypeId, budgetBand: band });
 }

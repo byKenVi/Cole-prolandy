@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
+import { leadScopeLabel } from "@/lib/resolved-lead";
 import { LeadEditForm } from "@/components/admin/lead-edit-form";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default async function EditLeadPage({ params }: { params: Promise<{ id: s
       landownerPhone: true,
       propertyLocation: true,
       projectType: { select: { name: true } },
+      workType: { select: { name: true } },
     },
   });
   if (!lead) notFound();
@@ -38,7 +40,7 @@ export default async function EditLeadPage({ params }: { params: Promise<{ id: s
           Edit lead
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
-          {lead.projectType.name}
+          {leadScopeLabel(lead)}
         </p>
       </header>
 

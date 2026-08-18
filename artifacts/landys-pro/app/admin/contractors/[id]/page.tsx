@@ -19,7 +19,7 @@ import { formatDate } from "@/lib/format";
 import { formatCardLabel } from "@/lib/card-display";
 import { cn } from "@/lib/utils";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
-import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
+import { hasResolvedLeadSnapshot, leadScopeLabel } from "@/lib/resolved-lead";
 
 export const dynamic = "force-dynamic";
 
@@ -109,7 +109,7 @@ export default async function ContractorDetail({
       ? [
           {
             matchId: m.id,
-            projectName: m.lead.projectType.name,
+            projectName: leadScopeLabel(m.lead),
             location: m.lead.propertyLocation,
             priceCents: m.lead.priceCents,
             alreadyRefunded: m.walletTransactions.some((t) => t.type === "REFUND"),
@@ -253,9 +253,9 @@ export default async function ContractorDetail({
                 key={m.id}
                 className="relative flex items-center justify-between px-5 py-3 transition-colors hover:bg-primary-soft"
               >
-                <RowLink href={`/admin/leads/${m.leadId}`} label={`Open ${m.lead.projectType.name} lead`} />
+                <RowLink href={`/admin/leads/${m.leadId}`} label={`Open ${leadScopeLabel(m.lead)} lead`} />
                 <div>
-                  <p className="font-medium text-text">{m.lead.projectType.name}</p>
+                  <p className="font-medium text-text">{leadScopeLabel(m.lead)}</p>
                   <p className="text-xs text-text-muted">{m.lead.propertyLocation}</p>
                 </div>
                 <div className="flex items-center gap-3">

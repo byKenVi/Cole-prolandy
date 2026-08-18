@@ -11,6 +11,7 @@ import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteLead } from "@/app/actions/admin";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
+import { leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 import { LeadReviewForm } from "@/components/admin/lead-review-form";
 
 export const dynamic = "force-dynamic";
@@ -130,8 +131,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
   const lead = await prisma.lead.findUnique({
     where: { id },
     include: {
-      projectType: { include: { contractorType: true } },
-      landType: true,
+      ...leadDisplayInclude,
       matches: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -171,10 +171,10 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             {lead.landownerName ?? "Name not provided"}
           </h1>
           <p className="mt-1 text-base font-medium" style={{ color: "var(--ink)" }}>
-            {lead.projectType.name}
+            {leadScopeLabel(lead)}
           </p>
           <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
-            {lead.projectType.contractorType.name} · {lead.propertyLocation}
+            {leadCategoryLabel(lead)} · {lead.propertyLocation}
           </p>
           <div className="mt-2 flex items-center gap-2">
             {lead.tier === null ? (
@@ -197,7 +197,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             label="Delete"
             confirmLabel="Delete lead"
             title="Delete this lead?"
-            description={`“${lead.projectType.name}” for ${lead.landownerName ?? lead.landownerEmail} will be removed permanently. This cannot be undone.`}
+            description={`“${leadScopeLabel(lead)}” for ${lead.landownerName ?? lead.landownerEmail} will be removed permanently. This cannot be undone.`}
             successMessage="Lead deleted."
           />
         </div>
@@ -225,8 +225,10 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <Field label="Landowner email" value={lead.landownerEmail} />
           <Field label="Property location" value={lead.propertyLocation} />
           <Field label="Project details" value={lead.description ?? "—"} />
-          <Field label="Project type" value={lead.projectType.name} />
+          <Field label="Category" value={lead.contractorCategory?.name ?? leadCategoryLabel(lead)} />
+          <Field label="Work / project type" value={leadScopeLabel(lead)} />
           <Field label="Land type" value={lead.landType?.name ?? "—"} />
+          <Field label="Budget band" value={lead.budgetBand ?? "—"} />
           <Field label="Budget" value={lead.budget ?? "—"} />
           <Field
             label="Normalized budget"
@@ -237,8 +239,9 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             label="Purchases"
             value={`${lead.acceptedCount} / ${lead.maxPurchases}${lead.soldOutAt ? " (sold out)" : ""}`}
           />
-          <Field label="Urgency" value={lead.urgency ?? "—"} />
-          <Field label="Timeline" value={lead.timeline ? formatDate(lead.timeline) : "—"} />
+          <Field label="Review blocker" value={lead.reviewBlocker ?? "—"} />
+          <Field label="Urgency" value={lead.urgencyCode ?? lead.urgency ?? "—"} />
+          <Field label="Timeline" value={lead.timelineCode ?? (lead.timeline ? formatDate(lead.timeline) : "—")} />
           <Field label="Source" value={lead.source} />
           <Field label="Created" value={formatDate(lead.createdAt)} />
           <Field label="Expires" value={lead.expiresAt ? formatDate(lead.expiresAt) : "Not started"} />

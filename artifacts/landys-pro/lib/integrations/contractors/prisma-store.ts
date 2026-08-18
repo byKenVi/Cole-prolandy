@@ -26,6 +26,9 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
                 },
               },
             },
+            workTypes: {
+              include: { workType: { select: { code: true } } },
+            },
           },
         },
       },
@@ -48,6 +51,9 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
             : [],
         )
         .sort(),
+      workTypeCodes: identity.contractor.workTypes
+        .map((entry) => entry.workType.code)
+        .sort(),
       lastPayloadHash: identity.lastPayloadHash,
     };
   }
@@ -55,12 +61,18 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
   async resolveTaxonomies(
     contractorCategoryCode: string | undefined,
     projectTypeCodes: readonly string[] | undefined,
+    workTypeCodes: readonly string[] | undefined,
   ): Promise<ResolvedContractorTaxonomies> {
     const requestedProjects = [...new Set(projectTypeCodes ?? [])];
-    const [category, projects] = await Promise.all([
+    const requestedWorkTypes = [...new Set(workTypeCodes ?? [])];
+    const [category, projects, workTypes] = await Promise.all([
       contractorCategoryCode
         ? this.db.contractorCategory.findFirst({
-            where: { code: contractorCategoryCode, archivedAt: null },
+            where: {
+              code: contractorCategoryCode,
+              archivedAt: null,
+              isActiveForNewIntake: true,
+            },
             select: { id: true, code: true },
           })
         : null,
@@ -70,12 +82,24 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
             select: { code: true, contractorTypeId: true },
           })
         : [],
+      requestedWorkTypes.length > 0
+        ? this.db.workType.findMany({
+            where: {
+              code: { in: requestedWorkTypes },
+              archivedAt: null,
+              isActiveForNewIntake: true,
+            },
+            select: { id: true, code: true },
+          })
+        : [],
     ]);
 
     const resolvedProjectCodes = new Set(projects.map((project) => project.code));
+    const resolvedWorkTypeCodes = new Set(workTypes.map((workType) => workType.code));
     const unresolvedCodes = [
       ...(contractorCategoryCode && !category ? [contractorCategoryCode] : []),
       ...requestedProjects.filter((code) => !resolvedProjectCodes.has(code)),
+      ...requestedWorkTypes.filter((code) => !resolvedWorkTypeCodes.has(code)),
     ];
 
     return {
@@ -84,6 +108,10 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
       projects: projects.map((project) => ({
         projectTypeCode: project.code,
         contractorTypeId: project.contractorTypeId,
+      })),
+      workTypes: workTypes.map((workType) => ({
+        workTypeCode: workType.code,
+        workTypeId: workType.id,
       })),
       unresolvedCodes,
     };
@@ -108,6 +136,15 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
                 projects: {
                   create: write.projects.map((project) => ({
                     contractorTypeId: project.contractorTypeId,
+                  })),
+                },
+              }
+            : {}),
+          ...(write.workTypes.length > 0
+            ? {
+                workTypes: {
+                  create: write.workTypes.map((workType) => ({
+                    workTypeId: workType.workTypeId,
                   })),
                 },
               }
@@ -169,6 +206,18 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
             data: write.projects.map((project) => ({
               contractorId,
               contractorTypeId: project.contractorTypeId,
+            })),
+          });
+        }
+      }
+
+      if (write.changes.includes("workTypes")) {
+        await tx.contractorWorkType.deleteMany({ where: { contractorId } });
+        if (write.workTypes.length > 0) {
+          await tx.contractorWorkType.createMany({
+            data: write.workTypes.map((workType) => ({
+              contractorId,
+              workTypeId: workType.workTypeId,
             })),
           });
         }

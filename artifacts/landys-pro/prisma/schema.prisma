@@ -55,25 +55,97 @@ model ProjectType {
 }
 
 model LandType {
-  id         String    @id @default(cuid())
-  name       String    @unique
+  id                   String    @id @default(cuid())
+  name                 String    @unique
   /// Immutable integration identifier. Display names may be edited.
-  code       String    @unique
-  archivedAt DateTime?
-  leads      Lead[]
+  code                 String    @unique
+  archivedAt           DateTime?
+  /// When false, excluded from new Wix intake selectors while remaining resolvable historically.
+  isActiveForNewIntake Boolean   @default(true)
+  leads                Lead[]
 
   @@index([archivedAt])
+}
+
+/// Generic work / project scope for live Wix intake (distinct from legacy land ProjectType).
+model WorkType {
+  id                   String    @id @default(cuid())
+  name                 String    @unique
+  code                 String    @unique
+  archivedAt           DateTime?
+  isActiveForNewIntake Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  leads                  Lead[]
+  contractorWorkTypes    ContractorWorkType[]
+  budgetBandTierMappings BudgetBandTierMapping[]
+  priceTiers             WorkTypePriceTier[]
+
+  @@index([archivedAt])
+}
+
+enum BudgetBand {
+  UNDER_5K
+  BETWEEN_5K_15K
+  BETWEEN_15K_50K
+  OVER_50K
+}
+
+/// Admin-configurable budget band → tier mapping per active work type.
+model BudgetBandTierMapping {
+  id         String     @id @default(cuid())
+  workTypeId String
+  budgetBand BudgetBand
+  tier       Int
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  workType WorkType @relation(fields: [workTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([workTypeId, budgetBand])
+  @@index([workTypeId])
+}
+
+/// Lead pricing for live work-type taxonomy (tier 1/2/3 per work type).
+model WorkTypePriceTier {
+  id         String   @id @default(cuid())
+  workTypeId String
+  tier       Int
+  priceCents Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workType WorkType @relation(fields: [workTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([workTypeId, tier])
+  @@index([workTypeId])
+}
+
+model ContractorWorkType {
+  id           String   @id @default(cuid())
+  contractorId String
+  workTypeId   String
+  createdAt    DateTime @default(now())
+
+  contractor Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  workType   WorkType   @relation(fields: [workTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([contractorId, workTypeId])
+  @@index([contractorId])
+  @@index([workTypeId])
 }
 
 /// Business directory category. This is intentionally separate from the
 /// legacy ContractorType project-routing compatibility entity.
 model ContractorCategory {
-  id         String    @id @default(cuid())
-  name       String    @unique
-  code       String    @unique
-  archivedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  name                 String    @unique
+  code                 String    @unique
+  archivedAt           DateTime?
+  isActiveForNewIntake Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   contractors Contractor[]
   leads       Lead[]
@@ -137,6 +209,7 @@ model Contractor {
   contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
   categoryMemberships ContractorCategoryMembership[]
   projects           ContractorProject[]
+  workTypes          ContractorWorkType[]
   externalIdentities ExternalContractorIdentity[]
   leadMatches        LeadMatch[]
   walletTransactions WalletTransaction[]
@@ -234,12 +307,21 @@ model Lead {
   description      String?
   budget           String?
   budgetCents      Int?
+  budgetBand       BudgetBand?
   timeline         DateTime?
+  timelineCode     String?
+  timelineRaw      String?
   urgency          String?
+  urgencyCode      String?
+  urgencyRaw       String?
   landTypeId       String?
   contractorCategoryId String?
-  projectTypeId    String
+  /// Legacy land-project routing (historical leads). Nullable for live work-type intake.
+  projectTypeId    String?
+  workTypeId       String?
   tier             Int? // 1 / 2 / 3 after budget resolution
+  /// Human-readable blocker when routing is held (e.g. OTHER_CATEGORY_CLASSIFICATION_REQUIRED).
+  reviewBlocker    String?
   priceCents       Int? // snapshotted from PriceTier exactly once
   maxPurchases     Int      @default(3)
   acceptedCount    Int      @default(0)
@@ -248,6 +330,7 @@ model Lead {
   reviewStatus     LeadReviewStatus @default(PENDING_REVIEW)
   tierReviewRequired Boolean @default(true)
   budgetReviewRequired Boolean @default(false)
+  pricingReviewRequired Boolean @default(false)
   contractorReviewRequired Boolean @default(false)
   routingMode      LeadRoutingMode @default(GENERAL)
   directContractorSource String?
@@ -262,12 +345,14 @@ model Lead {
 
   landType    LandType?   @relation(fields: [landTypeId], references: [id])
   contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
-  projectType ProjectType @relation(fields: [projectTypeId], references: [id])
+  projectType ProjectType? @relation(fields: [projectTypeId], references: [id])
+  workType    WorkType?   @relation(fields: [workTypeId], references: [id], onDelete: Restrict)
   matches     LeadMatch[]
   attachments LeadAttachment[]
 
   @@index([status])
   @@index([projectTypeId])
+  @@index([workTypeId])
   @@index([contractorCategoryId])
   @@index([reviewStatus])
   @@unique([source, externalRequestId])

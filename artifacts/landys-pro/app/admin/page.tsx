@@ -11,6 +11,7 @@ import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
 import { queryNetLeadRevenueCents } from "@/lib/finance";
 import { iconSrcFor } from "@/lib/project-icons";
+import { leadCategoryIcon, leadCategoryLabel, leadScopeLabel } from "@/lib/resolved-lead";
 import { leadStatusChip } from "@/lib/admin-display";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +86,8 @@ export default async function AdminDashboard({
         projectType: {
           select: { name: true, contractorType: { select: { name: true, icon: true } } },
         },
+        workType: { select: { name: true } },
+        contractorCategory: { select: { name: true } },
       },
     }),
   ]);
@@ -342,9 +345,9 @@ export default async function AdminDashboard({
             recentLeads.map((lead) => {
               const chip = leadStatusChip(lead.status);
               const src = iconSrcFor({
-                icon: lead.projectType.contractorType.icon,
-                category: lead.projectType.contractorType.name,
-                project: lead.projectType.name,
+                icon: leadCategoryIcon(lead),
+                category: leadCategoryLabel(lead),
+                project: leadScopeLabel(lead),
               });
               return (
                 <div
@@ -362,14 +365,14 @@ export default async function AdminDashboard({
                     borderBottom: "1px solid var(--line2)",
                   }}
                 >
-                  <RowLink href={`/admin/leads/${lead.id}`} label={`Open ${lead.projectType.name} lead`} />
+                  <RowLink href={`/admin/leads/${lead.id}`} label={`Open ${leadScopeLabel(lead)} lead`} />
                   <IconTile src={src} />
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
-                      {lead.projectType.name}
+                      {leadScopeLabel(lead)}
                     </p>
                     <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                      {lead.projectType.contractorType.name}
+                      {leadCategoryLabel(lead)}
                     </p>
                   </div>
                   <div

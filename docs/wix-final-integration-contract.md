@@ -33,9 +33,27 @@ Wix must **not** implement recipient selection or purchase limits.
 
 ### Budget
 
-- **Required going forward:** `budgetCents` (integer cents, e.g. `1000000` = $10,000)
-- **Compatibility:** plain `budget` text is parsed only for unambiguous single amounts (`$5,000`, `5000`, `5000.00`)
-- **Rejected:** ranges, fuzzy language (`10k`, `around`, `not sure`)
+Resolution order:
+
+1. **`budgetCents`** (integer cents) when provided — maps to band, then admin-configured band→tier
+2. **`budgetBand` or recognized band label** in `budget` (e.g. `Under $5K`, `$5,000–$15,000`) — band→tier mapping
+3. Otherwise lead is preserved with **`BUDGET_RESOLUTION_REQUIRED`** (no distribution)
+
+**Never** fabricates exact `budgetCents` from a band label.
+
+Legacy compatibility: unambiguous single amounts in `budget` (`$5,000`, `5000.00`) still parse to `budgetCents`.
+
+### Taxonomy (live v3)
+
+See `docs/live-wix-taxonomy-v3.md`. API fields accept **canonical codes or exact Wix labels**:
+
+- `contractorCategoryCode` — 11 live categories (e.g. `roofing`, `General Contractor`)
+- `projectTypeCode` — live **work types** (e.g. `repair`, `New Build`) — field name unchanged for Wix compatibility
+- `landTypeCode` — `residential`, `commercial`, `multi-family`, `rural-land`
+- `timeline` — structured labels (`ASAP`, `Within 2 weeks`, …) or legacy `YYYY-MM-DD`
+- `urgency` — `Emergency`, `High`, `Medium`, `Low`
+
+Historical land `ProjectType` values remain valid for legacy leads only.
 
 ### Attachments (optional)
 
@@ -59,8 +77,9 @@ Wix must **not** implement recipient selection or purchase limits.
 - **Collection:** `AllContractors`
 - **Query:** `POST https://www.wixapis.com/wix-data/v2/items/query`
 - **Canonical ID:** `_id`
-- **Categories:** use official Landy's labels in `contractorsCategory[]` (exact normalized match)
-- **Project types:** use official labels in `projectType[]` (exact normalized match)
+- **Categories:** live v3 labels in `contractorsCategory[]` (see `docs/live-wix-taxonomy-v3.md`)
+- **Work types:** live labels in `projectType[]` normalize to `WorkType` (contractors with no work types are category generalists)
+- Taxonomy gaps are field-level diagnostics — they **never** block contractor upsert
 - **Status:** `Active` / inactive semantics — inactive contractors are soft-deactivated locally (financial data preserved)
 
 ## Out of scope
@@ -72,5 +91,5 @@ Wix must **not** implement recipient selection or purchase limits.
 - Lead distribution
 - First-N purchase enforcement (concurrency-safe)
 - Wallet charging / Stripe
-- Admin pricing & budget tier thresholds
+- Admin pricing: legacy `ProjectType` matrix + live **`WorkTypePriceTier`** and **`BudgetBandTierMapping`**
 - Attachment ingestion & access control

@@ -8,6 +8,7 @@ import { PaginationControls } from "@/components/pagination-controls";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { iconSrcFor } from "@/lib/project-icons";
+import { leadCategoryIcon, leadCategoryLabel, leadScopeLabel } from "@/lib/resolved-lead";
 import { leadStatusChip, tierChip } from "@/lib/admin-display";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage, parsePageSize } from "@/lib/pagination";
 
@@ -81,6 +82,8 @@ export default async function AdminLeads({
       projectType: {
         select: { name: true, contractorType: { select: { name: true, icon: true } } },
       },
+      workType: { select: { name: true } },
+      contractorCategory: { select: { name: true } },
       _count: { select: { matches: true } },
     },
   });
@@ -89,8 +92,8 @@ export default async function AdminLeads({
 
   const rows: LeadRow[] = leads.map((l) => ({
     id: l.id,
-    title: l.projectType.name,
-    category: l.projectType.contractorType.name,
+    title: leadScopeLabel(l),
+    category: leadCategoryLabel(l),
     place: l.propertyLocation,
     recipients: l._count.matches,
     sent: formatDate(l.createdAt),
@@ -98,9 +101,9 @@ export default async function AdminLeads({
     price: l.priceCents === null ? "Pending" : formatMoney(l.priceCents),
     priceCents: l.priceCents,
     iconSrc: iconSrcFor({
-      icon: l.projectType.contractorType.icon,
-      category: l.projectType.contractorType.name,
-      project: l.projectType.name,
+      icon: leadCategoryIcon(l),
+      category: leadCategoryLabel(l),
+      project: leadScopeLabel(l),
     }),
     tier: tierChip(l.tier),
     tierNum: l.tier,

@@ -25,6 +25,7 @@ export const WIX_CONTRACTOR_SYNC_POLICY: ContractorSyncOwnershipPolicy = {
     "businessHours",
     "contractorCategory",
     "projects",
+    "workTypes",
   ],
 };
 

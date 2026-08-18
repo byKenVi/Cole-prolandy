@@ -5,7 +5,8 @@ export type ContractorSyncProfileField =
   | "aboutSection"
   | "businessHours"
   | "contractorCategory"
-  | "projects";
+  | "projects"
+  | "workTypes";
 
 export const PROTECTED_CONTRACTOR_FIELDS = [
   "walletBalanceCents",
@@ -37,6 +38,7 @@ export type NormalizedContractorSyncRecord = {
   };
   contractorCategoryCode?: string;
   projectTypeCodes?: string[];
+  workTypeCodes?: string[];
 };
 
 export type ContractorSyncOwnershipPolicy = {

@@ -1,3 +1,7 @@
+import {
+  normalizeLiveCategoryCode,
+  normalizeLiveWorkTypeCode,
+} from "@/lib/taxonomy/live-v3";
 import type { NormalizedContractorSyncRecord } from "@/lib/integrations/contractors/contract";
 
 /** Wix returns dates as either a plain ISO string or a `{ $date: string }` object. */
@@ -45,7 +49,7 @@ export type WixAllContractorItem = {
   googleReviewsUrl?: string;
 };
 
-const OFFICIAL_CATEGORIES = new Map<string, string>([
+const LEGACY_CATEGORIES = new Map<string, string>([
   ["land clearing", "land-clearing"],
   ["surveyors", "surveyors"],
   ["builders", "builders"],
@@ -60,7 +64,7 @@ const OFFICIAL_CATEGORIES = new Map<string, string>([
   ["land realtors", "land-realtors"],
 ]);
 
-const OFFICIAL_PROJECT_TYPES = new Map<string, string>([
+const LEGACY_PROJECT_TYPES = new Map<string, string>([
   ["culvert install", "culvert-install"],
   ["barndominium building", "barndominium-building"],
   ["brush hogging", "brush-hogging"],
@@ -82,11 +86,19 @@ function normalizeLabel(value: string): string {
 }
 
 export function resolveOfficialCategoryCode(label: string): string | null {
-  return OFFICIAL_CATEGORIES.get(normalizeLabel(label)) ?? null;
+  return (
+    normalizeLiveCategoryCode(label) ??
+    LEGACY_CATEGORIES.get(normalizeLabel(label)) ??
+    null
+  );
 }
 
 export function resolveOfficialProjectTypeCode(label: string): string | null {
-  return OFFICIAL_PROJECT_TYPES.get(normalizeLabel(label)) ?? null;
+  return LEGACY_PROJECT_TYPES.get(normalizeLabel(label)) ?? null;
+}
+
+export function resolveOfficialWorkTypeCode(label: string): string | null {
+  return normalizeLiveWorkTypeCode(label);
 }
 
 export function normalizeWixContractorStatus(status: string | undefined): "active" | "inactive" {
@@ -98,6 +110,7 @@ export function normalizeWixContractorRecord(item: WixAllContractorItem): {
   record: NormalizedContractorSyncRecord;
   unresolvedCategories: string[];
   unresolvedProjectTypes: string[];
+  unresolvedWorkTypes: string[];
   unresolvedLandTypes: string[];
   sourceStatus: string | null;
   isActive: boolean;
@@ -114,21 +127,18 @@ export function normalizeWixContractorRecord(item: WixAllContractorItem): {
 
   const unresolvedProjectTypes: string[] = [];
   const inputProjectTypes = item.projectType ?? [];
-  const resolvedProjectCodes = inputProjectTypes
+  const resolvedWorkCodes = inputProjectTypes
     .map((label) => {
-      const code = OFFICIAL_PROJECT_TYPES.get(normalizeLabel(label));
+      const code = resolveOfficialWorkTypeCode(label);
       if (!code) unresolvedProjectTypes.push(label);
       return code;
     })
     .filter((code): code is string => Boolean(code));
 
-  // If Wix provided project type labels but none resolved to an official code,
-  // pass undefined so the sync service treats it as "no field update" rather
-  // than clearing the contractor's existing project memberships.
-  const projectTypeCodes: string[] | undefined =
-    inputProjectTypes.length > 0 && resolvedProjectCodes.length === 0
+  const workTypeCodes: string[] | undefined =
+    inputProjectTypes.length > 0 && resolvedWorkCodes.length === 0
       ? undefined
-      : [...new Set(resolvedProjectCodes)];
+      : [...new Set(resolvedWorkCodes)];
 
   const unresolvedLandTypes = (item.landTypes ?? []).map((v) => v.trim()).filter(Boolean);
   const sourceStatus = item.status?.trim() ?? null;
@@ -146,10 +156,12 @@ export function normalizeWixContractorRecord(item: WixAllContractorItem): {
         businessHours: null,
       },
       contractorCategoryCode: categoryCodes[0],
-      projectTypeCodes: [...new Set(projectTypeCodes)],
+      workTypeCodes,
+      projectTypeCodes: [],
     },
     unresolvedCategories,
     unresolvedProjectTypes,
+    unresolvedWorkTypes: unresolvedProjectTypes,
     unresolvedLandTypes,
     sourceStatus,
     isActive,

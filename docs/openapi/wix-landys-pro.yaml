@@ -139,14 +139,20 @@ components:
           type: string
           minLength: 1
           maxLength: 80
+          description: Live work type code or Wix label (e.g. repair, New Build). Legacy land project codes still accepted for historical compatibility.
         budget:
           type: string
           minLength: 1
           maxLength: 280
+          description: Budget band label (Under $5K, $5,000–$15,000, …) or legacy exact amount.
+        budgetBand:
+          type: string
+          enum: [UNDER_5K, BETWEEN_5K_15K, BETWEEN_15K_50K, OVER_50K]
+          description: Optional structured band; normalized from budget label when omitted.
         budgetCents:
           type: integer
           minimum: 1
-          description: Project budget in integer cents (preferred for tier resolution).
+          description: Exact budget in integer cents (legacy compatibility).
         attachments:
           type: array
           maxItems: 5
@@ -166,11 +172,12 @@ components:
                 maximum: 20971520
         timeline:
           type: string
-          format: date
+          description: Structured timeline label (ASAP, Within 2 weeks, …) or legacy YYYY-MM-DD date.
         urgency:
           type: string
           minLength: 1
           maxLength: 280
+          description: Emergency, High, Medium, or Low (canonical codes also accepted).
         description:
           type: string
           minLength: 10
@@ -227,6 +234,8 @@ components:
                 type: string
                 enum:
                   - budget_review
+                  - pricing_review
+                  - category_review
                   - contractor_review
                   - attachment_ingestion
     ErrorResponse:

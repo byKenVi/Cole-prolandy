@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/money";
 import { LeadFeedCard } from "@/components/lead-feed-card";
 import { PaginationControls } from "@/components/pagination-controls";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
-import { hasResolvedLeadSnapshot } from "@/lib/resolved-lead";
+import { hasResolvedLeadSnapshot, leadCategoryIcon, leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,7 @@ export default async function MyLeadsPage({
     orderBy: { acceptedAt: "desc" },
     skip,
     take,
-    include: { lead: { include: { projectType: { include: { contractorType: true } } } } },
+    include: { lead: { include: leadDisplayInclude } },
   });
 
   const rows: Row[] = matches.flatMap((m) =>
@@ -61,9 +61,9 @@ export default async function MyLeadsPage({
       ? [
           {
             matchId: m.id,
-            projectTypeName: m.lead.projectType.name,
-            categoryName: m.lead.projectType.contractorType.name,
-            categoryIcon: m.lead.projectType.contractorType.icon,
+            projectTypeName: leadScopeLabel(m.lead),
+            categoryName: leadCategoryLabel(m.lead),
+            categoryIcon: leadCategoryIcon(m.lead) ?? null,
             location: m.lead.propertyLocation,
             tier: m.lead.tier,
             priceCents: m.lead.priceCents,
