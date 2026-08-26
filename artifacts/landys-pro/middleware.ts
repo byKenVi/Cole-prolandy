@@ -42,6 +42,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/integrations/wix/estimate-requests",
   "/api/stripe/webhook",
   "/api/cron/expire-leads",
+  "/api/cron/follow-ups",
   "/api/cron/wix-contractor-sync",
 ]);
 
