@@ -75,7 +75,24 @@ const SettingSchema = z.discriminatedUnion("key", [
     key: z.literal("leadExpiryHours"),
     value: z.coerce.number().int().min(1).max(8760),
   }),
+  z.object({
+    key: z.literal("followUpOutcomeDelayHours"),
+    value: z.coerce.number().int().min(1).max(8760),
+  }),
+  z.object({
+    key: z.literal("followUpPaymentDelayHours"),
+    value: z.coerce.number().int().min(1).max(8760),
+  }),
+  z.object({
+    key: z.literal("followUpPaymentRetryHours"),
+    value: z.coerce.number().int().min(1).max(8760),
+  }),
 ]);
+
+const BooleanSettingSchema = z.object({
+  key: z.literal("acceptanceUnlimited"),
+  value: z.enum(["true", "false"]),
+});
 
 export async function updateSetting(key: string, value: number): Promise<Result> {
   await requireAdmin();
@@ -99,6 +116,114 @@ export async function updateSetting(key: string, value: number): Promise<Result>
   });
   revalidatePath("/admin/settings");
   return { ok: true, message: "Saved" };
+}
+
+export async function updateBooleanSetting(key: string, value: boolean): Promise<Result> {
+  await requireAdmin();
+  const parsed = BooleanSettingSchema.safeParse({ key, value: value ? "true" : "false" });
+  if (!parsed.success) {
+    return { ok: false, message: "Unknown boolean setting." };
+  }
+  await prisma.appSetting.upsert({
+    where: { key: parsed.data.key },
+    update: { value: parsed.data.value },
+    create: { key: parsed.data.key, value: parsed.data.value },
+  });
+  await prisma.auditLog.create({
+    data: {
+      actorType: "admin",
+      action: "SETTING_UPDATED",
+      targetType: "AppSetting",
+      targetId: parsed.data.key,
+      metadata: { value: parsed.data.value },
+    },
+  });
+  revalidatePath("/admin/settings");
+  return { ok: true, message: "Saved" };
+}
+
+// ── Success fee tiers ──
+
+export async function updateSuccessFeeTiers(
+  tiers: Array<{ id: string; maxValueDollars?: number | null; ratePercent: number }>,
+): Promise<Result> {
+  const admin = await requireAdmin();
+  const { loadSuccessFeeTierRecords, updateSuccessFeeTier } = await import(
+    "@/lib/domain/success-fee"
+  );
+
+  try {
+    const existing = await loadSuccessFeeTierRecords(prisma);
+    if (existing.length !== tiers.length) {
+      return { ok: false, message: "All success fee tiers must be provided." };
+    }
+
+    const small = tiers.find((t) => existing.find((e) => e.id === t.id)?.sortOrder === 1);
+    const medium = tiers.find((t) => existing.find((e) => e.id === t.id)?.sortOrder === 2);
+    if (small?.maxValueDollars != null && medium?.maxValueDollars != null) {
+      if (Math.round(small.maxValueDollars * 100) >= Math.round(medium.maxValueDollars * 100)) {
+        return { ok: false, message: "Medium threshold must be higher than small threshold." };
+      }
+    }
+
+    for (const tier of tiers) {
+      const record = existing.find((e) => e.id === tier.id);
+      if (!record) return { ok: false, message: "Unknown success fee tier." };
+      const rateBasisPoints = Math.round(tier.ratePercent * 100);
+      const maxValueCents =
+        record.sortOrder === 3
+          ? null
+          : tier.maxValueDollars != null
+            ? Math.round(tier.maxValueDollars * 100)
+            : record.maxValueCents;
+
+      await updateSuccessFeeTier(prisma, {
+        id: tier.id,
+        maxValueCents,
+        rateBasisPoints,
+      });
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: "SUCCESS_FEE_TIERS_UPDATED",
+        targetType: "SuccessFeeTier",
+        metadata: { tiers: tiers.map((t) => ({ id: t.id, ratePercent: t.ratePercent })) },
+      },
+    });
+
+    revalidatePath("/admin/settings");
+    return { ok: true, message: "Success fee tiers saved." };
+  } catch (e) {
+    return {
+      ok: false,
+      message: e instanceof DomainError ? e.message : "Could not save success fee tiers.",
+    };
+  }
+}
+
+export async function resolveMismatchAction(
+  confirmationId: string,
+  note?: string,
+): Promise<Result> {
+  const admin = await requireAdmin();
+  try {
+    const { resolveLandownerMismatch } = await import("@/lib/domain/landowner-confirm");
+    await resolveLandownerMismatch({
+      confirmationId,
+      note: note ?? null,
+      adminId: admin.email ?? admin.userId ?? "admin",
+    });
+    revalidatePath("/admin/confirmations");
+    return { ok: true, message: "Mismatch marked reviewed." };
+  } catch (e) {
+    return {
+      ok: false,
+      message: e instanceof DomainError ? e.message : "Could not resolve mismatch.",
+    };
+  }
 }
 
 // ── Lead restitution (restore charge to contractor wallet) ──

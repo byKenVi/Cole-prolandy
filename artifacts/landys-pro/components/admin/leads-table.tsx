@@ -339,7 +339,7 @@ export function LeadsTable({
             <span style={HEAD_CELL}>Tier</span>
             <span style={HEAD_CELL}>Status</span>
             <SortButton label="Sent" sortKey="date" />
-            <SortButton label="Price" sortKey="value" align="right" />
+            <SortButton label="Est. value" sortKey="value" align="right" />
           </div>
 
           {shown.map((row) => (

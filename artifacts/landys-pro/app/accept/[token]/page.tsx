@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { AcceptTokenActions } from "@/components/accept-token-actions";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
-import { formatMoney } from "@/lib/money";
 import { timeUntil } from "@/lib/format";
 import { hasResolvedLeadSnapshot, leadCategoryIcon, leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 
@@ -35,7 +34,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
   const rawMatch = await prisma.leadMatch.findUnique({
     where: { acceptToken: token },
     include: {
-      contractor: { select: { name: true, walletBalanceCents: true } },
+      contractor: { select: { name: true } },
       lead: {
         include: leadDisplayInclude,
       },
@@ -67,7 +66,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
       <header className="px-4 pb-1 pt-5 text-center">
         <Wordmark />
         {pending && (
-          <p className="mt-2 text-[15px] text-[#6B6459]">You&apos;ve got a new lead near you.</p>
+          <p className="mt-2 text-[15px] text-[#6B6459]">You&apos;ve got a new opportunity near you.</p>
         )}
       </header>
 
@@ -146,18 +145,14 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
               </span>
             </div>
 
-            <p className="text-[12px] font-medium uppercase tracking-[0.05em] text-[#6B6459]">Lead price</p>
-            <p className="mt-0.5 text-[34px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#3A352D]">
-              {formatMoney(match.lead.priceCents)}
+            <p className="text-[12px] font-medium uppercase tracking-[0.05em] text-[#6B6459]">
+              Success fee if you win
             </p>
-            <div className="mb-4 mt-3 flex items-center justify-between border-y border-[#EBE3D4] py-3">
-              <span className="text-[14px] text-[#6B6459]">Your balance</span>
-              <span className="text-[16px] font-semibold tabular-nums text-[#3A352D]">
-                {formatMoney(match.contractor.walletBalanceCents)}
-              </span>
-            </div>
+            <p className="mt-0.5 text-[18px] font-semibold leading-snug text-[#3A352D]">
+              Pay only when you get paid — no upfront lead cost.
+            </p>
 
-            <AcceptTokenActions token={token} priceCents={match.lead.priceCents} />
+            <AcceptTokenActions token={token} />
 
             <p className="mt-3 flex items-center justify-center gap-1.5 text-[12px] text-[#A79E8D]">
               <Lock className="h-3.5 w-3.5" /> Contact unlocks after you accept

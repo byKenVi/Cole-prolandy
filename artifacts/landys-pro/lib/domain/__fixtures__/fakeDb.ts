@@ -113,6 +113,10 @@ const UNIQUE_FIELDS: Record<string, string[]> = {
   contractor: ["email", "clerkUserId"],
   wallettx: ["stripePaymentIntentId"],
   processedstripeevent: ["id"],
+  successfee: ["leadMatchId", "stripePaymentIntentId"],
+  successfeetier: ["sortOrder"],
+  followuptoken: ["token"],
+  landownerconfirmation: ["leadId", "token"],
 };
 
 class Table {
@@ -310,10 +314,38 @@ function hydrate(base: Row, row: Row, include?: Row): Row {
     );
   }
   if (include.matches && row.id) {
-    out.matches = db.leadMatch.rows.filter((m) => m.leadId === row.id);
+    const matchInclude =
+      include.matches && typeof include.matches === "object"
+        ? (include.matches as Row)
+        : undefined;
+    const matchesWhereClause = matchInclude?.where as Row | undefined;
+    out.matches = db.leadMatch.rows
+      .filter((m) => m.leadId === row.id)
+      .filter((m) => (matchesWhereClause ? matchWhere(m, matchesWhereClause) : true))
+      .map((m) => {
+        const projected = project(m, matchInclude?.select as Row | undefined);
+        if (matchInclude?.select && typeof matchInclude.select === "object") {
+          const sel = matchInclude.select as Row;
+          if (sel.contractor && m.contractorId) {
+            const contractor = db.contractor.rows.find((c) => c.id === m.contractorId);
+            if (contractor && typeof sel.contractor === "object") {
+              const contractorSel = (sel.contractor as Row).select as Row | undefined;
+              projected.contractor = project(contractor, contractorSel);
+            }
+          }
+        }
+        return projected;
+      });
   }
   if (include.lead && row.leadId) {
-    out.lead = db.lead.rows.find((l) => l.id === row.leadId);
+    const leadRow = db.lead.rows.find((l) => l.id === row.leadId);
+    if (leadRow) {
+      if (typeof include.lead === "object" && (include.lead as Row).include) {
+        out.lead = hydrate({ ...leadRow }, leadRow, (include.lead as Row).include as Row);
+      } else {
+        out.lead = leadRow;
+      }
+    }
   }
   if (include.walletTransactions && row.id) {
     out.walletTransactions = db.walletTransaction.rows.filter(
@@ -341,6 +373,11 @@ export class FakeDb {
   auditLog = new Table("audit");
   processedStripeEvent = new Table("processedstripeevent");
 
+  successFeeTier = new Table("successfeetier");
+  successFee = new Table("successfee");
+  followUpToken = new Table("followuptoken");
+  landownerConfirmation = new Table("landownerconfirmation");
+
   private transactionChain: Promise<unknown> = Promise.resolve();
 
   constructor() {
@@ -348,6 +385,10 @@ export class FakeDb {
     this.appSetting.seed([
       { key: "maxLeadPurchases", value: "3" },
       { key: "leadExpiryHours", value: "48" },
+      { key: "acceptanceUnlimited", value: "false" },
+      { key: "followUpOutcomeDelayHours", value: "72" },
+      { key: "followUpPaymentDelayHours", value: "336" },
+      { key: "followUpPaymentRetryHours", value: "168" },
     ]);
   }
 
@@ -367,6 +408,10 @@ export class FakeDb {
       this.appSetting,
       this.auditLog,
       this.processedStripeEvent,
+      this.successFeeTier,
+      this.successFee,
+      this.followUpToken,
+      this.landownerConfirmation,
     ];
   }
 

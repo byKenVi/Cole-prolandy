@@ -21,13 +21,35 @@ export async function getOptionalStringSetting(
   return row?.value ?? null;
 }
 
-/** Maximum successful purchases per general lead (snapshotted onto each lead at creation). */
+/** Maximum successful acceptances per general lead (snapshotted onto each lead at creation). */
 export async function getMaxLeadPurchases(db: DbClient): Promise<number> {
   const n = await getIntSetting(db, APP_SETTING_KEYS.maxLeadPurchases);
   return Math.max(1, n);
 }
 
+export async function getAcceptanceUnlimited(db: DbClient): Promise<boolean> {
+  const row = await db.appSetting.findUnique({
+    where: { key: APP_SETTING_KEYS.acceptanceUnlimited },
+  });
+  return row?.value === "true";
+}
+
 export async function getLeadExpiryHours(db: DbClient): Promise<number> {
   const n = await getIntSetting(db, APP_SETTING_KEYS.leadExpiryHours);
+  return Math.max(1, n);
+}
+
+export async function getFollowUpOutcomeDelayHours(db: DbClient): Promise<number> {
+  const n = await getIntSetting(db, APP_SETTING_KEYS.followUpOutcomeDelayHours);
+  return Math.max(1, n);
+}
+
+export async function getFollowUpPaymentDelayHours(db: DbClient): Promise<number> {
+  const n = await getIntSetting(db, APP_SETTING_KEYS.followUpPaymentDelayHours);
+  return Math.max(1, n);
+}
+
+export async function getFollowUpPaymentRetryHours(db: DbClient): Promise<number> {
+  const n = await getIntSetting(db, APP_SETTING_KEYS.followUpPaymentRetryHours);
   return Math.max(1, n);
 }

@@ -6,7 +6,6 @@ import { ContractorFilters } from "@/components/admin/contractor-filters";
 import { ContractorRowActions } from "@/components/admin/contractor-row-actions";
 import { RowLink } from "@/components/admin/row-link";
 import { PaginationControls } from "@/components/pagination-controls";
-import { formatMoney } from "@/lib/money";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage, parsePageSize } from "@/lib/pagination";
 import { WixContractorSyncPanel } from "@/components/admin/wix-contractor-sync-panel";
 import { APP_SETTING_KEYS } from "@/lib/domain/types";
@@ -46,12 +45,12 @@ export default async function AdminContractors({
   if (filter === "deactivated") where.deactivatedAt = { not: null };
   else where.deactivatedAt = null;
 
-  const [filteredCount, totalCount, proCount, walletAgg, lastSuccessAt, lastAttemptAt, lastResultRaw] =
+  const [filteredCount, totalCount, proCount, activeCount, lastSuccessAt, lastAttemptAt, lastResultRaw] =
     await Promise.all([
     prisma.contractor.count({ where }),
     prisma.contractor.count(),
     prisma.contractor.count({ where: { isPro: true } }),
-    prisma.contractor.aggregate({ _sum: { walletBalanceCents: true } }),
+    prisma.contractor.count({ where: { deactivatedAt: null } }),
     getOptionalStringSetting(prisma, APP_SETTING_KEYS.wixContractorSyncLastSuccessAt),
     getOptionalStringSetting(prisma, APP_SETTING_KEYS.wixContractorSyncLastAttemptAt),
     getOptionalStringSetting(prisma, APP_SETTING_KEYS.wixContractorSyncLastResult),
@@ -105,7 +104,7 @@ export default async function AdminContractors({
       <PageHeader
         kicker="Network"
         title="Contractors"
-        subtitle="The pros who receive and accept your leads."
+        subtitle="Contractors who receive and accept land-service opportunities."
         action={
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <a
@@ -141,10 +140,7 @@ export default async function AdminContractors({
       >
         <StatCard label="Total contractors" value={String(totalCount)} />
         <StatCard label="On Pro plan" value={String(proCount)} valueColor="var(--sageFg)" />
-        <StatCard
-          label="Wallet balances"
-          value={formatMoney(walletAgg._sum.walletBalanceCents ?? 0)}
-        />
+        <StatCard label="Active" value={String(activeCount)} valueColor="var(--sageFg)" />
       </div>
 
       <ContractorFilters q={q ?? ""} filter={filter ?? ""} />
@@ -227,22 +223,7 @@ export default async function AdminContractors({
                   </p>
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, flex: "none" }}>
-                <div style={{ textAlign: "right", minWidth: 82 }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      font: "600 15px/1 var(--display)",
-                      color: "var(--ink)",
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {formatMoney(c.walletBalanceCents)}
-                  </p>
-                  <p style={{ margin: "3px 0 0", font: "400 11px/1 'Inter'", color: "var(--ink3)" }}>
-                    balance
-                  </p>
-                </div>
+              <div style={{ flex: "none" }}>
                 <ContractorRowActions
                   contractorId={c.id}
                   contractorName={c.name}

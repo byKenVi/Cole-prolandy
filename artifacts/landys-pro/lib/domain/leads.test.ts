@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { LeadMatchStatus, LeadStatus, WalletTransactionType } from "@prisma/client";
 import { createFakeDb, type FakeDb } from "./__fixtures__/fakeDb";
 
-// Mock the prisma singleton so domain functions that open their own transaction
-// operate on a fresh in-memory fake per test.
 const h = vi.hoisted(() => ({ db: null as unknown as FakeDb }));
 vi.mock("@/lib/prisma", () => ({
   prisma: new Proxy({} as Record<string, unknown>, {
@@ -15,6 +13,10 @@ vi.mock("@/lib/prisma", () => ({
   }),
 }));
 
+vi.mock("@/lib/services/landowner-confirmation", () => ({
+  maybeNotifyLandownerAfterAccept: vi.fn().mockResolvedValue(undefined),
+}));
+
 import type { PrismaClient } from "@prisma/client";
 import {
   acceptLeadMatch,
@@ -23,15 +25,12 @@ import {
   expireLeads,
   distributeLead,
 } from "./leads";
+import { InvalidStateError, LeadExpiredError } from "./errors";
 
 const asDb = (db: FakeDb) => db as unknown as PrismaClient;
-import { InsufficientBalanceError, InvalidStateError, LeadExpiredError } from "./errors";
-
 const HOUR = 3600 * 1000;
 
 function seedScenario(opts: {
-  balances: Record<string, number>;
-  priceCents: number;
   expiresInMs?: number;
   leadStatus?: LeadStatus;
 }) {
@@ -39,10 +38,10 @@ function seedScenario(opts: {
   h.db = db;
 
   db.projectType.seed([{ id: "pt1", contractorTypeId: "ct1" }]);
-
-  Object.entries(opts.balances).forEach(([id, bal]) =>
-    db.contractor.seed([{ id, walletBalanceCents: bal, contractorTypeId: "ct1" }]),
-  );
+  db.contractor.seed([
+    { id: "c1", walletBalanceCents: 0, contractorTypeId: "ct1", deactivatedAt: null, createdAt: new Date() },
+    { id: "c2", walletBalanceCents: 0, contractorTypeId: "ct1", deactivatedAt: null, createdAt: new Date(1) },
+  ]);
 
   db.lead.seed([
     {
@@ -53,7 +52,7 @@ function seedScenario(opts: {
       propertyLocation: "Austin, TX",
       projectTypeId: "pt1",
       tier: 2,
-      priceCents: opts.priceCents,
+      priceCents: null,
       maxPurchases: 3,
       acceptedCount: 0,
       status: opts.leadStatus ?? LeadStatus.DISTRIBUTED,
@@ -75,15 +74,16 @@ function seedMatch(db: FakeDb, id: string, contractorId: string, token: string) 
       status: LeadMatchStatus.PENDING,
       acceptToken: token,
       acceptedAt: null,
+      jobOutcome: "OPEN",
     },
   ]);
 }
 
-describe("acceptLeadMatch — shared lead, multi-accept", () => {
+describe("acceptLeadMatch — success-fee model (no wallet charge)", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("lets multiple contractors accept the same lead and charges each", async () => {
-    const db = seedScenario({ balances: { c1: 20000, c2: 20000 }, priceCents: 4000 });
+  it("lets multiple contractors accept and reveals contact without charging", async () => {
+    const db = seedScenario({});
     seedMatch(db, "lm1", "c1", "tok1");
     seedMatch(db, "lm2", "c2", "tok2");
 
@@ -92,65 +92,38 @@ describe("acceptLeadMatch — shared lead, multi-accept", () => {
 
     expect(r1.status).toBe("accepted");
     expect(r2.status).toBe("accepted");
-    expect(r1.newBalanceCents).toBe(16000);
-    expect(r2.newBalanceCents).toBe(16000);
-    // Contact revealed to both.
     expect(r1.contact.landownerPhone).toBe("+15550001111");
-    // Both matches accepted, both charged.
     expect(db.leadMatch.rows.every((m) => m.status === LeadMatchStatus.ACCEPTED)).toBe(true);
-    expect(
-      db.walletTransaction.rows.filter((t) => t.type === WalletTransactionType.LEAD_CHARGE),
-    ).toHaveLength(2);
-  });
-
-  it("blocks accept and does not charge when balance is too low", async () => {
-    const db = seedScenario({ balances: { c1: 1000 }, priceCents: 4000 });
-    seedMatch(db, "lm1", "c1", "tok1");
-
-    await expect(acceptLeadMatch({ leadMatchId: "lm1" })).rejects.toBeInstanceOf(
-      InsufficientBalanceError,
-    );
-    expect(db.contractor.rows[0].walletBalanceCents).toBe(1000);
-    expect(db.leadMatch.rows[0].status).toBe(LeadMatchStatus.PENDING);
     expect(db.walletTransaction.rows).toHaveLength(0);
   });
 
-  it("money-safety: two CONCURRENT accepts of the SAME match charge exactly once", async () => {
-    // Our two accept surfaces (SMS token link + in-app tap) can hit the same
-    // LeadMatch at the same time. Run both as OVERLAPPING transactions via
-    // Promise.all — with the fake, each `await` yields, so both read PENDING
-    // before either claims. The guarded UPDATE must let exactly one win.
-    const db = seedScenario({ balances: { c1: 20000 }, priceCents: 4000 });
+  it("accepts without wallet balance (no insufficient balance gate)", async () => {
+    const db = seedScenario({});
+    seedMatch(db, "lm1", "c1", "tok1");
+
+    const res = await acceptLeadMatch({ leadMatchId: "lm1" });
+    expect(res.status).toBe("accepted");
+    expect(db.walletTransaction.rows).toHaveLength(0);
+  });
+
+  it("two concurrent accepts of the same match succeed idempotently", async () => {
+    const db = seedScenario({});
     seedMatch(db, "lm1", "c1", "tok1");
 
     const [a, b] = await Promise.all([
-      acceptLeadMatch({ leadMatchId: "lm1" }), // in-app tap
-      acceptLeadMatch({ acceptToken: "tok1" }), // SMS link — SAME match
+      acceptLeadMatch({ leadMatchId: "lm1" }),
+      acceptLeadMatch({ acceptToken: "tok1" }),
     ]);
 
     const statuses = [a.status, b.status].sort();
     expect(statuses).toEqual(["accepted", "already_accepted"]);
-
-    // Charged exactly once.
-    expect(
-      db.walletTransaction.rows.filter((t) => t.type === WalletTransactionType.LEAD_CHARGE),
-    ).toHaveLength(1);
-
-    // Wallet debited exactly once (20000 - 4000), not twice.
-    expect(db.contractor.rows[0].walletBalanceCents).toBe(16000);
-
-    // Match ends ACCEPTED, and both surfaces report the same final balance.
-    expect(db.leadMatch.rows[0].status).toBe(LeadMatchStatus.ACCEPTED);
-    expect(a.newBalanceCents).toBe(16000);
-    expect(b.newBalanceCents).toBe(16000);
-
-    // Both surfaces reveal the landowner contact; the loser is NOT an error.
+    expect(db.walletTransaction.rows).toHaveLength(0);
     expect(a.contact.landownerPhone).toBe("+15550001111");
     expect(b.contact.landownerPhone).toBe("+15550001111");
   });
 
-  it("is idempotent: a second accept does not double-charge", async () => {
-    const db = seedScenario({ balances: { c1: 20000 }, priceCents: 4000 });
+  it("is idempotent on repeat accept", async () => {
+    const db = seedScenario({});
     seedMatch(db, "lm1", "c1", "tok1");
 
     const first = await acceptLeadMatch({ leadMatchId: "lm1" });
@@ -158,15 +131,11 @@ describe("acceptLeadMatch — shared lead, multi-accept", () => {
 
     expect(first.status).toBe("accepted");
     expect(second.status).toBe("already_accepted");
-    expect(second.newBalanceCents).toBe(16000);
-    expect(
-      db.walletTransaction.rows.filter((t) => t.type === WalletTransactionType.LEAD_CHARGE),
-    ).toHaveLength(1);
   });
 });
 
 describe("safe intake distribution gate", () => {
-  it("creates no matches while tier, price, and expiry are unresolved", async () => {
+  it("creates no matches while tier and expiry are unresolved", async () => {
     const db = createFakeDb();
     db.projectType.seed([{ id: "pt-review", contractorTypeId: "ct-review" }]);
     db.lead.seed([
@@ -190,6 +159,7 @@ describe("safe intake distribution gate", () => {
         phone: "+15125550100",
         createdAt: new Date(),
         deactivatedAt: null,
+        projects: [{ contractorTypeId: "ct-review" }],
       },
     ]);
 
@@ -198,38 +168,26 @@ describe("safe intake distribution gate", () => {
     );
     expect(db.leadMatch.rows).toHaveLength(0);
   });
-
 });
 
 describe("declineLeadMatch", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("declines a pending match for free", async () => {
-    const db = seedScenario({ balances: { c1: 20000 }, priceCents: 4000 });
+  it("declines a pending match", async () => {
+    const db = seedScenario({});
     seedMatch(db, "lm1", "c1", "tok1");
 
     const res = await declineLeadMatch({ leadMatchId: "lm1" });
     expect(res.status).toBe("declined");
     expect(db.leadMatch.rows[0].status).toBe(LeadMatchStatus.DECLINED);
-    expect(db.walletTransaction.rows).toHaveLength(0);
   });
 
   it("cannot decline after acceptance", async () => {
-    const db = seedScenario({ balances: { c1: 20000 }, priceCents: 4000 });
+    const db = seedScenario({});
     seedMatch(db, "lm1", "c1", "tok1");
     await acceptLeadMatch({ leadMatchId: "lm1" });
 
     await expect(declineLeadMatch({ leadMatchId: "lm1" })).rejects.toBeInstanceOf(
-      InvalidStateError,
-    );
-  });
-
-  it("cannot accept after declining", async () => {
-    const db = seedScenario({ balances: { c1: 20000 }, priceCents: 4000 });
-    seedMatch(db, "lm1", "c1", "tok1");
-    await declineLeadMatch({ leadMatchId: "lm1" });
-
-    await expect(acceptLeadMatch({ leadMatchId: "lm1" })).rejects.toBeInstanceOf(
       InvalidStateError,
     );
   });
@@ -238,31 +196,13 @@ describe("declineLeadMatch", () => {
 describe("expireLeads", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("expires stale leads and their pending matches; accept then fails", async () => {
-    const db = seedScenario({
-      balances: { c1: 20000 },
-      priceCents: 4000,
-      expiresInMs: -HOUR, // already past
-    });
+  it("expires stale leads and their pending matches", async () => {
+    const db = seedScenario({ expiresInMs: -HOUR });
     seedMatch(db, "lm1", "c1", "tok1");
 
     const res = await expireLeads(asDb(db));
     expect(res.expiredLeads).toBe(1);
     expect(res.expiredMatches).toBe(1);
-    expect(db.leadMatch.rows[0].status).toBe(LeadMatchStatus.EXPIRED);
-
-    await expect(acceptLeadMatch({ leadMatchId: "lm1" })).rejects.toBeInstanceOf(
-      LeadExpiredError,
-    );
-  });
-
-  it("rejects accepting a lead that is past expiry even before the sweep", async () => {
-    const db = seedScenario({
-      balances: { c1: 20000 },
-      priceCents: 4000,
-      expiresInMs: -HOUR,
-    });
-    seedMatch(db, "lm1", "c1", "tok1");
 
     await expect(acceptLeadMatch({ leadMatchId: "lm1" })).rejects.toBeInstanceOf(
       LeadExpiredError,
@@ -270,21 +210,31 @@ describe("expireLeads", () => {
   });
 });
 
-describe("refundLeadMatch", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("refunds an accepted lead charge and blocks a double refund", async () => {
-    const db = seedScenario({ balances: { c1: 20000 }, priceCents: 4000 });
+describe("refundLeadMatch (legacy pay-per-lead only)", () => {
+  it("requires a legacy lead charge to refund", async () => {
+    const db = seedScenario({});
     seedMatch(db, "lm1", "c1", "tok1");
     await acceptLeadMatch({ leadMatchId: "lm1" });
-    expect(db.contractor.rows[0].walletBalanceCents).toBe(16000);
-
-    const refund = await refundLeadMatch({ leadMatchId: "lm1", reason: "test" });
-    expect(refund.refundedCents).toBe(4000);
-    expect(refund.newBalanceCents).toBe(20000);
 
     await expect(refundLeadMatch({ leadMatchId: "lm1" })).rejects.toBeInstanceOf(
       InvalidStateError,
     );
+  });
+
+  it("refunds when a legacy charge exists", async () => {
+    const db = seedScenario({});
+    seedMatch(db, "lm1", "c1", "tok1");
+    await db.walletTransaction.create({
+      data: {
+        contractorId: "c1",
+        amountCents: -4000,
+        type: WalletTransactionType.LEAD_CHARGE,
+        leadMatchId: "lm1",
+      },
+    });
+    db.leadMatch.rows[0].status = LeadMatchStatus.ACCEPTED;
+
+    const refund = await refundLeadMatch({ leadMatchId: "lm1", reason: "test" });
+    expect(refund.refundedCents).toBe(4000);
   });
 });

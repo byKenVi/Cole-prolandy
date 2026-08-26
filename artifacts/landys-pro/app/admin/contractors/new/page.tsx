@@ -33,9 +33,8 @@ export default async function NewContractorPage() {
           New contractor
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
-          Enter the contractor&apos;s details and assign the projects they receive leads for.
-          They can hold a wallet balance right away — no login required. When they sign in with
-          this email, their profile links automatically.
+          Enter the contractor&apos;s details and assign the projects they receive opportunities for.
+          When they sign in with this email, their profile links automatically.
         </p>
       </header>
 

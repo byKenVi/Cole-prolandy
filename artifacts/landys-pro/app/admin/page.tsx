@@ -9,7 +9,6 @@ import {
 import { PageHeader, GoldButtonLink, Panel, IconTile, Chip } from "@/components/admin/ui";
 import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
-import { queryNetLeadRevenueCents } from "@/lib/finance";
 import { iconSrcFor } from "@/lib/project-icons";
 import { leadCategoryIcon, leadCategoryLabel, leadScopeLabel } from "@/lib/resolved-lead";
 import { leadStatusChip } from "@/lib/admin-display";
@@ -52,10 +51,13 @@ export default async function AdminDashboard({
     acceptedMatches,
     declinedMatches,
     expiredMatches,
-    chargedLeadCount,
-    leadRevenueAllTime,
-    charges,
-    refunds,
+    wonJobs,
+    feesDue,
+    feesAwaiting,
+    feesPaidCount,
+    successFeesAllTimeCents,
+    mismatches,
+    paidFees,
     recentLeads,
   ] = await Promise.all([
     prisma.contractor.count({ where: { deactivatedAt: null } }),
@@ -65,15 +67,17 @@ export default async function AdminDashboard({
     prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
     prisma.leadMatch.count({ where: { status: "DECLINED" } }),
     prisma.leadMatch.count({ where: { status: "EXPIRED" } }),
-    prisma.walletTransaction.count({ where: { type: "LEAD_CHARGE" } }),
-    queryNetLeadRevenueCents(prisma),
-    prisma.walletTransaction.findMany({
-      where: { type: "LEAD_CHARGE", createdAt: { gte: start365 } },
-      select: { amountCents: true, createdAt: true, leadMatchId: true },
-    }),
-    prisma.walletTransaction.findMany({
-      where: { type: "REFUND", createdAt: { gte: start365 } },
-      select: { amountCents: true, createdAt: true, leadMatchId: true },
+    prisma.leadMatch.count({ where: { jobOutcome: "WON" } }),
+    prisma.successFee.count({ where: { status: "DUE" } }),
+    prisma.successFee.count({ where: { status: "AWAITING_CONTRACTOR_PAYMENT" } }),
+    prisma.successFee.count({ where: { status: "PAID" } }),
+    prisma.successFee
+      .aggregate({ where: { status: "PAID" }, _sum: { feeAmountCents: true } })
+      .then((r) => r._sum.feeAmountCents ?? 0),
+    prisma.landownerConfirmation.count({ where: { mismatchFlagged: true } }),
+    prisma.successFee.findMany({
+      where: { status: "PAID", paidAt: { gte: start365 } },
+      select: { feeAmountCents: true, paidAt: true },
     }),
     prisma.lead.findMany({
       orderBy: { createdAt: "desc" },
@@ -81,6 +85,7 @@ export default async function AdminDashboard({
       select: {
         id: true,
         status: true,
+        budgetCents: true,
         priceCents: true,
         createdAt: true,
         projectType: {
@@ -98,13 +103,10 @@ export default async function AdminDashboard({
     return x.toISOString().slice(0, 10);
   };
   const byDay = new Map<string, number>();
-  for (const c of charges) {
-    const day = dailyKey(c.createdAt);
-    byDay.set(day, (byDay.get(day) ?? 0) + Math.abs(c.amountCents));
-  }
-  for (const r of refunds) {
-    const day = dailyKey(r.createdAt);
-    byDay.set(day, (byDay.get(day) ?? 0) - Math.max(0, r.amountCents));
+  for (const fee of paidFees) {
+    if (!fee.paidAt) continue;
+    const day = dailyKey(fee.paidAt);
+    byDay.set(day, (byDay.get(day) ?? 0) + fee.feeAmountCents);
   }
   const dailySeries = (days: number): RevenuePoint[] => {
     const base = new Date();
@@ -127,15 +129,10 @@ export default async function AdminDashboard({
   };
   const byHour = new Map<string, number>();
   const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  for (const c of charges) {
-    if (c.createdAt < since24h) continue;
-    const key = hourKey(c.createdAt);
-    byHour.set(key, (byHour.get(key) ?? 0) + Math.abs(c.amountCents));
-  }
-  for (const r of refunds) {
-    if (r.createdAt < since24h) continue;
-    const key = hourKey(r.createdAt);
-    byHour.set(key, (byHour.get(key) ?? 0) - Math.max(0, r.amountCents));
+  for (const fee of paidFees) {
+    if (!fee.paidAt || fee.paidAt < since24h) continue;
+    const key = hourKey(fee.paidAt);
+    byHour.set(key, (byHour.get(key) ?? 0) + fee.feeAmountCents);
   }
   const hourlySeries24h = (): RevenuePoint[] => {
     const start = new Date(now);
@@ -176,7 +173,7 @@ export default async function AdminDashboard({
       <PageHeader
         kicker={`Command center · ${dateStr}`}
         title={greeting()}
-        subtitle="Your marketplace at a glance."
+        subtitle="Success-fee operations at a glance."
         titleSize={38}
         action={<GoldButtonLink href="/admin/leads/new">New lead</GoldButtonLink>}
       />
@@ -215,7 +212,7 @@ export default async function AdminDashboard({
                 opacity: 0.85,
               }}
             >
-              Lead revenue · all time
+              Success fees · all time
             </p>
             <p
               style={{
@@ -226,15 +223,19 @@ export default async function AdminDashboard({
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {formatMoney(leadRevenueAllTime)}
+              {formatMoney(successFeesAllTimeCents)}
             </p>
             <p style={{ margin: "6px 0 0", font: "500 12px/1 'Inter'", color: "var(--sageFg)", opacity: 0.8 }}>
-              Charged on {chargedLeadCount} accepted lead{chargedLeadCount === 1 ? "" : "s"}
+              {feesPaidCount} paid · {feesDue} due · {mismatches} mismatch{mismatches === 1 ? "" : "es"}
             </p>
           </div>
           <div className="admin-grid-tight" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <MiniStat label="Open leads" value={String(openLeads)} sub={`${pendingMatches} awaiting a match`} />
-            <MiniStat label="Contractors" value={String(contractors)} sub={`${proContractors} on Pro plan`} />
+            <MiniStat label="Fees due" value={String(feesDue)} sub={`${feesAwaiting} awaiting contractor payment`} />
+            <MiniStat label="Won jobs" value={String(wonJobs)} sub={`${acceptedMatches} accepted opportunities`} />
+          </div>
+          <div className="admin-grid-tight" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+            <MiniStat label="Open estimates" value={String(openLeads)} sub={`${pendingMatches} pending responses`} />
+            <MiniStat label="Contractors" value={String(contractors)} sub={`${proContractors} on Pro`} />
           </div>
         </div>
       </div>
@@ -395,7 +396,10 @@ export default async function AdminDashboard({
                         textAlign: "right",
                       }}
                     >
-                      {lead.priceCents === null ? "Pending review" : formatMoney(lead.priceCents)}
+                      {(() => {
+                        const est = lead.budgetCents ?? lead.priceCents;
+                        return est ? formatMoney(est) : "Pending review";
+                      })()}
                     </span>
                   </div>
                 </div>

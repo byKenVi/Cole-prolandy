@@ -6,9 +6,9 @@ import { clerkAppearance } from "@/lib/clerk-appearance";
 import { CheckCircle2 } from "lucide-react";
 
 const FEATURE_BULLETS = [
-  "New leads delivered straight to your inbox",
-  "Accept jobs in one tap, no back-and-forth",
-  "Wallet top-ups and payouts all in one place",
+  "New opportunities delivered straight to your phone",
+  "Accept jobs in one tap — no upfront lead fees",
+  "Pay Landy's only after the landowner pays you",
 ];
 
 export default function SignInPage() {
@@ -43,8 +43,8 @@ export default function SignInPage() {
               do less admin.
             </h1>
             <p className="mt-4 text-base text-white/70 leading-relaxed">
-              The platform built for landscape contractors who want quality leads without the
-              paperwork.
+              Quality land-service opportunities without paying for leads or managing a
+              subscription.
             </p>
           </div>
 

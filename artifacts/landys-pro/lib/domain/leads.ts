@@ -3,6 +3,7 @@ import { LeadMatchStatus, LeadStatus, WalletTransactionType } from "@prisma/clie
 import { prisma } from "@/lib/prisma";
 import { generateAcceptToken } from "@/lib/tokens";
 import type { DbClient } from "./types";
+import { getAcceptanceUnlimited } from "./settings";
 import { applyWalletTransactionInTx } from "./wallet";
 import {
   InvalidStateError,
@@ -58,12 +59,9 @@ export async function distributeLead(
   });
   if (!lead) throw new NotFoundError("Lead");
   if (
-    lead.tier === null ||
-    lead.priceCents === null ||
     lead.expiresAt === null ||
     lead.tierReviewRequired ||
     lead.budgetReviewRequired ||
-    lead.pricingReviewRequired ||
     lead.contractorReviewRequired
   ) {
     throw new InvalidStateError("This lead is still awaiting intake review.");
@@ -147,10 +145,7 @@ export async function distributeLead(
   return { leadId, matches };
 }
 
-// ─────────────────────────────────────────────────────────────
-// Charge (used inside accept)
-// ─────────────────────────────────────────────────────────────
-
+/** @deprecated Legacy pay-per-lead charge — inactive in success-fee model. */
 export async function chargeForLead(
   tx: Prisma.TransactionClient,
   params: { contractorId: string; leadMatchId: string; priceCents: number },
@@ -177,7 +172,6 @@ export type AcceptLeadMatchInput = {
 export type AcceptLeadMatchResult = {
   status: "accepted" | "already_accepted";
   leadMatchId: string;
-  newBalanceCents: number;
   contact: {
     landownerName: string | null;
     landownerEmail: string;
@@ -186,10 +180,19 @@ export type AcceptLeadMatchResult = {
   };
 };
 
+async function isAcceptanceCapReached(
+  tx: Prisma.TransactionClient,
+  lead: { id: string; acceptedCount: number; maxPurchases: number; status: LeadStatus },
+): Promise<boolean> {
+  const unlimited = await getAcceptanceUnlimited(tx);
+  if (unlimited) return false;
+  return lead.status === LeadStatus.SOLD_OUT || lead.acceptedCount >= lead.maxPurchases;
+}
+
 export async function acceptLeadMatch(
   input: AcceptLeadMatchInput,
 ): Promise<AcceptLeadMatchResult> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const match = await findMatch(tx, input);
 
     const contractor = await tx.contractor.findUnique({
@@ -211,10 +214,10 @@ export async function acceptLeadMatch(
     };
 
     if (match.status === LeadMatchStatus.ACCEPTED) {
-      return alreadyAcceptedResult(tx, match, contactPayload);
+      return { status: "already_accepted" as const, leadMatchId: match.id, contact: contactPayload };
     }
     if (match.status === LeadMatchStatus.DECLINED) {
-      throw new InvalidStateError("This lead was already passed on.");
+      throw new InvalidStateError("This opportunity was already passed on.");
     }
     if (match.status === LeadMatchStatus.SOLD_OUT) {
       throw new LeadSoldOutError();
@@ -235,7 +238,7 @@ export async function acceptLeadMatch(
       throw new LeadExpiredError();
     }
 
-    if (lead.status === LeadStatus.SOLD_OUT || lead.acceptedCount >= lead.maxPurchases) {
+    if (await isAcceptanceCapReached(tx, lead)) {
       if (match.status === LeadMatchStatus.PENDING) {
         await tx.leadMatch.update({
           where: { id: match.id },
@@ -254,77 +257,54 @@ export async function acceptLeadMatch(
       const fresh = await tx.leadMatch.findUnique({ where: { id: match.id } });
       if (!fresh) throw new NotFoundError("Lead invite");
       if (fresh.status === LeadMatchStatus.ACCEPTED) {
-        return alreadyAcceptedResult(tx, fresh, contactPayload);
+        return { status: "already_accepted" as const, leadMatchId: match.id, contact: contactPayload };
       }
       if (fresh.status === LeadMatchStatus.SOLD_OUT) throw new LeadSoldOutError();
       if (fresh.status === LeadMatchStatus.DECLINED) {
-        throw new InvalidStateError("This lead was already passed on.");
+        throw new InvalidStateError("This opportunity was already passed on.");
       }
       throw new LeadExpiredError();
     }
 
-    const slot = await tx.lead.updateMany({
-      where: {
-        id: lead.id,
-        acceptedCount: { lt: lead.maxPurchases },
-        status: { in: [LeadStatus.NEW, LeadStatus.DISTRIBUTED] },
-      },
-      data: { acceptedCount: { increment: 1 } },
-    });
-
-    if (slot.count === 0) {
-      await tx.leadMatch.update({
-        where: { id: match.id },
-        data: { status: LeadMatchStatus.PENDING, acceptedAt: null },
+    const unlimited = await getAcceptanceUnlimited(tx);
+    if (!unlimited) {
+      const slot = await tx.lead.updateMany({
+        where: {
+          id: lead.id,
+          acceptedCount: { lt: lead.maxPurchases },
+          status: { in: [LeadStatus.NEW, LeadStatus.DISTRIBUTED] },
+        },
+        data: { acceptedCount: { increment: 1 } },
       });
-      throw new LeadSoldOutError();
-    }
 
-    if (lead.priceCents === null) {
+      if (slot.count === 0) {
+        await tx.leadMatch.update({
+          where: { id: match.id },
+          data: { status: LeadMatchStatus.PENDING, acceptedAt: null },
+        });
+        throw new LeadSoldOutError();
+      }
+
+      const updatedLead = await tx.lead.findUnique({ where: { id: lead.id } });
+      if (
+        updatedLead &&
+        updatedLead.acceptedCount >= updatedLead.maxPurchases &&
+        updatedLead.status !== LeadStatus.SOLD_OUT
+      ) {
+        const now = new Date();
+        await tx.lead.update({
+          where: { id: lead.id },
+          data: { status: LeadStatus.SOLD_OUT, soldOutAt: now },
+        });
+        await tx.leadMatch.updateMany({
+          where: { leadId: lead.id, status: LeadMatchStatus.PENDING },
+          data: { status: LeadMatchStatus.SOLD_OUT },
+        });
+      }
+    } else {
       await tx.lead.update({
         where: { id: lead.id },
-        data: { acceptedCount: { decrement: 1 } },
-      });
-      await tx.leadMatch.update({
-        where: { id: match.id },
-        data: { status: LeadMatchStatus.PENDING, acceptedAt: null },
-      });
-      throw new InvalidStateError("This lead has no resolved price snapshot.");
-    }
-
-    let charge;
-    try {
-      charge = await chargeForLead(tx, {
-        contractorId: match.contractorId,
-        leadMatchId: match.id,
-        priceCents: lead.priceCents,
-      });
-    } catch (error) {
-      await tx.lead.update({
-        where: { id: lead.id },
-        data: { acceptedCount: { decrement: 1 } },
-      });
-      await tx.leadMatch.update({
-        where: { id: match.id },
-        data: { status: LeadMatchStatus.PENDING, acceptedAt: null },
-      });
-      throw error;
-    }
-
-    const updatedLead = await tx.lead.findUnique({ where: { id: lead.id } });
-    if (
-      updatedLead &&
-      updatedLead.acceptedCount >= updatedLead.maxPurchases &&
-      updatedLead.status !== LeadStatus.SOLD_OUT
-    ) {
-      const now = new Date();
-      await tx.lead.update({
-        where: { id: lead.id },
-        data: { status: LeadStatus.SOLD_OUT, soldOutAt: now },
-      });
-      await tx.leadMatch.updateMany({
-        where: { leadId: lead.id, status: LeadMatchStatus.PENDING },
-        data: { status: LeadMatchStatus.SOLD_OUT },
+        data: { acceptedCount: { increment: 1 } },
       });
     }
 
@@ -334,33 +314,26 @@ export async function acceptLeadMatch(
       action: "LEAD_ACCEPTED",
       targetType: "LeadMatch",
       targetId: match.id,
-      metadata: { leadId: lead.id, priceCents: lead.priceCents },
+      metadata: { leadId: lead.id },
     });
 
-    return {
-      status: "accepted",
-      leadMatchId: match.id,
-      newBalanceCents: charge.newBalanceCents,
-      contact: contactPayload,
-    };
+    return { status: "accepted" as const, leadMatchId: match.id, contact: contactPayload };
   });
-}
 
-async function alreadyAcceptedResult(
-  tx: Prisma.TransactionClient,
-  match: { id: string; contractorId: string },
-  contact: AcceptLeadMatchResult["contact"],
-): Promise<AcceptLeadMatchResult> {
-  const contractor = await tx.contractor.findUnique({
-    where: { id: match.contractorId },
-    select: { walletBalanceCents: true },
-  });
-  return {
-    status: "already_accepted",
-    leadMatchId: match.id,
-    newBalanceCents: contractor?.walletBalanceCents ?? 0,
-    contact,
-  };
+  if (result.status === "accepted") {
+    const { schedulePostAcceptFollowUp } = await import("./job-outcome");
+    const { maybeNotifyLandownerAfterAccept } = await import("@/lib/services/landowner-confirmation");
+    await schedulePostAcceptFollowUp(result.leadMatchId).catch(() => undefined);
+    const match = await prisma.leadMatch.findUnique({
+      where: { id: result.leadMatchId },
+      select: { leadId: true },
+    });
+    if (match) {
+      await maybeNotifyLandownerAfterAccept(match.leadId).catch(() => undefined);
+    }
+  }
+
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -377,7 +350,7 @@ export async function declineLeadMatch(
       return { status: "already_declined", leadMatchId: match.id };
     }
     if (match.status === LeadMatchStatus.ACCEPTED) {
-      throw new InvalidStateError("This lead was already accepted.");
+      throw new InvalidStateError("This opportunity was already accepted.");
     }
     if (match.status === LeadMatchStatus.SOLD_OUT) {
       throw new LeadSoldOutError();
@@ -402,7 +375,7 @@ export async function declineLeadMatch(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Refund (admin)
+// Refund (admin — legacy pay-per-lead only)
 // ─────────────────────────────────────────────────────────────
 
 export async function refundLeadMatch(params: {
@@ -420,6 +393,13 @@ export async function refundLeadMatch(params: {
       throw new InvalidStateError("Only accepted leads can be refunded.");
     }
 
+    const charge = match.walletTransactions.find(
+      (t) => t.type === WalletTransactionType.LEAD_CHARGE,
+    );
+    if (!charge) {
+      throw new InvalidStateError("No legacy lead charge exists for this match.");
+    }
+
     const alreadyRefunded = match.walletTransactions.some(
       (t) => t.type === WalletTransactionType.REFUND,
     );
@@ -427,13 +407,7 @@ export async function refundLeadMatch(params: {
       throw new InvalidStateError("This lead charge was already refunded.");
     }
 
-    const charge = match.walletTransactions.find(
-      (t) => t.type === WalletTransactionType.LEAD_CHARGE,
-    );
-    const refundCents = charge ? Math.abs(charge.amountCents) : match.lead.priceCents;
-    if (refundCents === null) {
-      throw new InvalidStateError("This lead has no price snapshot to refund.");
-    }
+    const refundCents = Math.abs(charge.amountCents);
 
     let res;
     try {
@@ -499,10 +473,6 @@ export async function expireLeads(
 
   return { expiredLeads: leadRes.count, expiredMatches: matchRes.count };
 }
-
-// ─────────────────────────────────────────────────────────────
-// helpers
-// ─────────────────────────────────────────────────────────────
 
 async function findMatch(
   tx: Prisma.TransactionClient,

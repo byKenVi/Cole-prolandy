@@ -258,3 +258,99 @@ function isUniqueViolation(err: unknown): boolean {
     (err as { code?: string }).code === "P2002"
   );
 }
+
+export type SuccessFeePaymentEvent = {
+  eventId: string;
+  eventType: string;
+  leadMatchId: string;
+  contractorId: string;
+  amountCents: number;
+  paymentIntentId: string | null;
+};
+
+export function parseSuccessFeeEvent(event: Stripe.Event): SuccessFeePaymentEvent | null {
+  if (event.type === "checkout.session.completed") {
+    const s = event.data.object as Stripe.Checkout.Session;
+    if (s.mode === "setup") return null;
+    if (s.metadata?.purpose !== "success_fee") return null;
+    const leadMatchId = s.metadata?.leadMatchId ?? "";
+    if (!leadMatchId) return null;
+    return {
+      eventId: event.id,
+      eventType: event.type,
+      leadMatchId,
+      contractorId: s.metadata?.contractorId ?? "",
+      amountCents: s.amount_total ?? 0,
+      paymentIntentId:
+        typeof s.payment_intent === "string"
+          ? s.payment_intent
+          : (s.payment_intent?.id ?? null),
+    };
+  }
+  if (event.type === "payment_intent.succeeded") {
+    const pi = event.data.object as Stripe.PaymentIntent;
+    if (pi.metadata?.purpose !== "success_fee") return null;
+    const leadMatchId = pi.metadata?.leadMatchId ?? "";
+    if (!leadMatchId) return null;
+    return {
+      eventId: event.id,
+      eventType: event.type,
+      leadMatchId,
+      contractorId: pi.metadata?.contractorId ?? "",
+      amountCents: pi.amount_received ?? pi.amount ?? 0,
+      paymentIntentId: pi.id,
+    };
+  }
+  return null;
+}
+
+export async function confirmSuccessFeePayment(
+  e: SuccessFeePaymentEvent,
+): Promise<CreditResult> {
+  if (!e.leadMatchId || !e.paymentIntentId || e.amountCents <= 0) {
+    return { status: "ignored" };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.processedStripeEvent.create({ data: { id: e.eventId, type: e.eventType } });
+      const fee = await tx.successFee.findUnique({ where: { leadMatchId: e.leadMatchId } });
+      if (!fee) throw new Error("Success fee not found");
+      if (fee.status === "PAID") return;
+      if (fee.status !== "DUE") {
+        throw new Error("Success fee is not due");
+      }
+      if (fee.feeAmountCents !== e.amountCents) {
+        throw new Error("Payment amount mismatch");
+      }
+      await tx.successFee.update({
+        where: { id: fee.id },
+        data: {
+          status: "PAID",
+          paidAt: new Date(),
+          paymentMethod: "stripe",
+          stripePaymentIntentId: e.paymentIntentId,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorType: "system",
+          actorId: e.contractorId || null,
+          action: "SUCCESS_FEE_PAID",
+          targetType: "SuccessFee",
+          targetId: fee.id,
+          metadata: {
+            leadMatchId: e.leadMatchId,
+            paymentMethod: "stripe",
+            feeAmountCents: fee.feeAmountCents,
+            eventId: e.eventId,
+          },
+        },
+      });
+    });
+    return { status: "credited" };
+  } catch (err) {
+    if (isUniqueViolation(err)) return { status: "duplicate" };
+    throw err;
+  }
+}

@@ -15,11 +15,15 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import Stripe from "stripe";
+import { SuccessFeeStatus } from "@prisma/client";
 import {
   creditTopUp,
   parseTopUpEvent,
   constructStripeEvent,
+  parseSuccessFeeEvent,
+  confirmSuccessFeePayment,
   type TopUpEvent,
+  type SuccessFeePaymentEvent,
 } from "./stripe-webhook";
 
 function seedContractor(balance = 0) {
@@ -167,6 +171,97 @@ describe("parseTopUpEvent", () => {
   it("returns null for unrelated event types", () => {
     expect(
       parseTopUpEvent({ id: "evt_3", type: "invoice.paid", data: { object: {} } } as unknown as Stripe.Event),
+    ).toBeNull();
+  });
+});
+
+function seedDueSuccessFee(amountCents = 40_000) {
+  const db = createFakeDb();
+  h.db = db;
+  db.successFee.seed([
+    {
+      id: "sf1",
+      leadMatchId: "match1",
+      status: SuccessFeeStatus.DUE,
+      feeAmountCents: amountCents,
+      rateBasisPoints: 500,
+      finalContractValueCents: 800_000,
+    },
+  ]);
+  return db;
+}
+
+const successFeeEvent = (over: Partial<SuccessFeePaymentEvent> = {}): SuccessFeePaymentEvent => ({
+  eventId: "evt_sf_1",
+  eventType: "checkout.session.completed",
+  leadMatchId: "match1",
+  contractorId: "c1",
+  amountCents: 40_000,
+  paymentIntentId: "pi_sf_1",
+  ...over,
+});
+
+describe("confirmSuccessFeePayment — Stripe to PAID", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("marks a due success fee as PAID with audit trail", async () => {
+    const db = seedDueSuccessFee();
+
+    const res = await confirmSuccessFeePayment(successFeeEvent());
+
+    expect(res.status).toBe("credited");
+    expect(db.successFee.rows[0].status).toBe(SuccessFeeStatus.PAID);
+    expect(db.successFee.rows[0].paymentMethod).toBe("stripe");
+    expect(db.successFee.rows[0].stripePaymentIntentId).toBe("pi_sf_1");
+    expect(db.auditLog.rows.some((r) => r.action === "SUCCESS_FEE_PAID")).toBe(true);
+    expect(db.processedStripeEvent.rows).toHaveLength(1);
+  });
+
+  it("is idempotent for duplicate Stripe event delivery", async () => {
+    const db = seedDueSuccessFee();
+
+    const first = await confirmSuccessFeePayment(successFeeEvent());
+    const second = await confirmSuccessFeePayment(successFeeEvent());
+
+    expect(first.status).toBe("credited");
+    expect(second.status).toBe("duplicate");
+    expect(db.successFee.rows[0].status).toBe(SuccessFeeStatus.PAID);
+    expect(db.processedStripeEvent.rows).toHaveLength(1);
+  });
+});
+
+describe("parseSuccessFeeEvent", () => {
+  it("maps checkout.session.completed for success_fee purpose", () => {
+    const parsed = parseSuccessFeeEvent({
+      id: "evt_sf",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          mode: "payment",
+          metadata: { purpose: "success_fee", leadMatchId: "m1", contractorId: "c1" },
+          amount_total: 40_000,
+          payment_intent: "pi_abc",
+        },
+      },
+    } as unknown as Stripe.Event);
+
+    expect(parsed).toEqual({
+      eventId: "evt_sf",
+      eventType: "checkout.session.completed",
+      leadMatchId: "m1",
+      contractorId: "c1",
+      amountCents: 40_000,
+      paymentIntentId: "pi_abc",
+    });
+  });
+
+  it("returns null for unrelated checkout sessions", () => {
+    expect(
+      parseSuccessFeeEvent({
+        id: "evt_x",
+        type: "checkout.session.completed",
+        data: { object: { mode: "payment", metadata: {}, amount_total: 1000 } },
+      } as unknown as Stripe.Event),
     ).toBeNull();
   });
 });

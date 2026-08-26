@@ -125,7 +125,7 @@ describe("official estimate intake", () => {
     h.ingestLeadAttachments.mockResolvedValue({ ingested: 0, failed: 0, hasFailures: false });
   });
 
-  it("auto-routes when budgetCents resolves tier and price", async () => {
+  it("auto-routes when budgetCents resolves tier", async () => {
     h.db.contractor.seed(
       Array.from({ length: 10 }, (_, index) => ({
         id: `contractor-${index}`,
@@ -147,7 +147,6 @@ describe("official estimate intake", () => {
       expect.objectContaining({
         budgetCents: 1000000,
         tier: 2,
-        priceCents: 4200,
         maxPurchases: 3,
       }),
     );
@@ -252,7 +251,7 @@ describe("official estimate intake", () => {
     expect(h.notifyNewLead).toHaveBeenCalledTimes(1);
   });
 
-  it("snapshots price immutably after admin budget correction", async () => {
+  it("snapshots tier immutably after admin budget correction", async () => {
     const created = await createOfficialEstimateRequest(
       input({ budget: "not sure", budgetCents: null }),
     );
@@ -266,7 +265,8 @@ describe("official estimate intake", () => {
       budgetCents: 1000000,
     });
 
-    expect(result.priceCents).toBe(4200);
-    expect(replay.priceCents).toBe(4200);
+    expect(result.recipients).toBeGreaterThanOrEqual(0);
+    expect(h.db.lead.rows[0].tier).toBe(2);
+    expect(replay.recipients).toBe(0);
   });
 });

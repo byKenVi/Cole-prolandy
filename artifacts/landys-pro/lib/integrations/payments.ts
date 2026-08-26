@@ -444,6 +444,75 @@ export const payments: PaymentsProvider = {
   refundToCard: (params) => getPaymentsProvider().refundToCard(params),
 };
 
+export type CreateSuccessFeeCheckoutParams = {
+  leadMatchId: string;
+  contractorId: string;
+  amountCents: number;
+  stripeCustomerId?: string | null;
+  contractorEmail?: string | null;
+  contractorName?: string | null;
+  successUrl: string;
+  cancelUrl: string;
+};
+
+/** One-time Stripe Checkout for a due Landy's success fee. */
+export async function createSuccessFeeCheckout(
+  params: CreateSuccessFeeCheckoutParams,
+): Promise<CreateTopUpResult> {
+  if (isMock()) {
+    const paymentIntentId = `pi_mock_fee_${Date.now()}`;
+    const url = new URL(params.successUrl);
+    url.searchParams.set("mock", "1");
+    url.searchParams.set("leadMatchId", params.leadMatchId);
+    url.searchParams.set("pi", paymentIntentId);
+    return { checkoutUrl: url.toString(), paymentIntentId, customerId: null, mocked: true };
+  }
+
+  const stripe = await getStripe();
+  let customerId = params.stripeCustomerId ?? null;
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      email: params.contractorEmail ?? undefined,
+      name: params.contractorName ?? undefined,
+      metadata: { contractorId: params.contractorId },
+    });
+    customerId = customer.id;
+  }
+
+  const metadata = {
+    contractorId: params.contractorId,
+    leadMatchId: params.leadMatchId,
+    purpose: "success_fee",
+  };
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    customer: customerId,
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          unit_amount: params.amountCents,
+          product_data: { name: "Landy's Pro success fee" },
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+    metadata,
+    payment_intent_data: { metadata },
+  });
+
+  if (!session.url) throw new Error("Stripe did not return a checkout URL.");
+  return {
+    checkoutUrl: session.url,
+    paymentIntentId: null,
+    customerId,
+    mocked: false,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────
 // Read-only reporting helpers (admin "Cash & revenue" view).
 // These NEVER move money — they only read Stripe's live balance and

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +48,6 @@ export async function GET(req: NextRequest) {
       name: true,
       email: true,
       phone: true,
-      walletBalanceCents: true,
       isPro: true,
       deactivatedAt: true,
       createdAt: true,
@@ -58,15 +56,15 @@ export async function GET(req: NextRequest) {
   });
 
   const lines: string[] = [
-    csvRow(["Name", "Email", "Phone", "Company / Type", "Wallet Balance", "Status", "Registration Date"]),
+    csvRow(["Name", "Email", "Phone", "Company / Type", "Plan", "Status", "Registration Date"]),
     ...contractors.map((c) =>
       csvRow([
         c.name,
         c.email,
         c.phone ?? "",
         c.contractorType?.name ?? "",
-        formatMoney(c.walletBalanceCents),
-        c.deactivatedAt ? "Archived" : c.isPro ? "Pro" : "Free",
+        c.isPro ? "Pro" : "Free",
+        c.deactivatedAt ? "Archived" : "Active",
         formatDate(c.createdAt),
       ]),
     ),

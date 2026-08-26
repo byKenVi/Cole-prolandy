@@ -286,6 +286,26 @@ enum LeadMatchStatus {
   SOLD_OUT
 }
 
+enum JobOutcome {
+  OPEN
+  WON
+  LOST
+}
+
+enum SuccessFeeStatus {
+  /// Fee snapshotted after Won; waiting for contractor to receive landowner payment.
+  AWAITING_CONTRACTOR_PAYMENT
+  /// Contractor confirmed paid; Landy's success fee is owed.
+  DUE
+  PAID
+}
+
+enum FollowUpAction {
+  REPORT_OUTCOME
+  CONFIRM_PAID
+  LANDOWNER_HIRED
+}
+
 enum WalletTransactionType {
   TOPUP // real money in via the contractor's card (Stripe)
   LEAD_CHARGE // spend: accepting a lead
@@ -347,8 +367,10 @@ model Lead {
   contractorCategory ContractorCategory? @relation(fields: [contractorCategoryId], references: [id], onDelete: Restrict)
   projectType ProjectType? @relation(fields: [projectTypeId], references: [id])
   workType    WorkType?   @relation(fields: [workTypeId], references: [id], onDelete: Restrict)
-  matches     LeadMatch[]
-  attachments LeadAttachment[]
+  matches               LeadMatch[]
+  attachments           LeadAttachment[]
+  landownerConfirmation LandownerConfirmation?
+  followUpTokens        FollowUpToken[]
 
   @@index([status])
   @@index([projectTypeId])
@@ -379,8 +401,7 @@ model LeadAttachment {
   @@index([leadId])
 }
 
-// This join row lets multiple contractors independently accept the SAME lead;
-// each tracks its own state and its own wallet charge.
+// Each eligible contractor gets an independent opportunity row for the same lead.
 model LeadMatch {
   id           String          @id @default(cuid())
   leadId       String
@@ -388,15 +409,98 @@ model LeadMatch {
   status       LeadMatchStatus @default(PENDING)
   acceptToken  String          @unique @default(cuid()) // tokenized SMS link
   acceptedAt   DateTime?
+  jobOutcome   JobOutcome      @default(OPEN)
+  finalContractValueCents Int?
+  outcomeReportedAt DateTime?
+  followUpStage     String?
+  followUpNextAt    DateTime?
   createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   lead               Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
   contractor         Contractor          @relation(fields: [contractorId], references: [id], onDelete: Cascade)
   walletTransactions WalletTransaction[]
+  successFee         SuccessFee?
+  followUpTokens     FollowUpToken[]
+  landownerHiredFor  LandownerConfirmation[] @relation("LandownerHiredMatch")
 
   @@unique([leadId, contractorId])
   @@index([contractorId])
   @@index([leadId])
+  @@index([followUpNextAt])
+  @@index([jobOutcome])
+}
+
+/// Snapshotted success fee for a won job. Immutable rate/amount once created.
+model SuccessFee {
+  id                    String           @id @default(cuid())
+  leadMatchId           String           @unique
+  finalValueCents       Int
+  rateBasisPoints       Int
+  feeAmountCents        Int
+  status                SuccessFeeStatus @default(AWAITING_CONTRACTOR_PAYMENT)
+  dueAt                 DateTime?
+  stripePaymentIntentId String?          @unique
+  paidAt                DateTime?
+  paymentMethod         String?
+  paidByAdminId         String?
+  manualPaymentNote     String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  leadMatch LeadMatch @relation(fields: [leadMatchId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+/// Admin-configurable success-fee tiers. Edits apply to new Won jobs only.
+model SuccessFeeTier {
+  id              String   @id @default(cuid())
+  sortOrder       Int
+  /// Upper inclusive bound in cents; null = no upper limit (top tier).
+  maxValueCents   Int?
+  rateBasisPoints Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([sortOrder])
+}
+
+/// Lightweight landowner confirmation (no account required).
+model LandownerConfirmation {
+  id               String    @id @default(cuid())
+  leadId           String    @unique
+  token            String    @unique
+  hired            Boolean?
+  hiredLeadMatchId String?
+  respondedAt      DateTime?
+  mismatchFlagged  Boolean   @default(false)
+  mismatchReason   String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  lead           Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  hiredLeadMatch LeadMatch? @relation("LandownerHiredMatch", fields: [hiredLeadMatchId], references: [id], onDelete: SetNull)
+
+  @@index([token])
+}
+
+/// Secure one-click follow-up links (SMS/email).
+model FollowUpToken {
+  id          String         @id @default(cuid())
+  token       String         @unique
+  action      FollowUpAction
+  leadMatchId String?
+  leadId      String?
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime       @default(now())
+
+  leadMatch LeadMatch? @relation(fields: [leadMatchId], references: [id], onDelete: Cascade)
+  lead      Lead?      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expiresAt])
 }
 
 // ─────────────────────────────────────────────────────────────

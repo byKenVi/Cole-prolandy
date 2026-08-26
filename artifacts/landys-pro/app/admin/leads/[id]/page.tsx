@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TierBadge } from "@/components/tier-badge";
 import { LeadStatusBadge, LeadMatchStatusBadge } from "@/components/status-badge";
-import { RefundButton } from "@/components/admin/refund-button";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteLead } from "@/app/actions/admin";
 import { formatMoney } from "@/lib/money";
@@ -214,9 +213,13 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
 
       <Card className="flex flex-col gap-5 p-6">
         <div>
-          <p className="text-xs uppercase tracking-wide text-text-muted">Lead price</p>
+          <p className="text-xs uppercase tracking-wide text-text-muted">Est. project value</p>
           <p className="mt-1 text-3xl font-semibold leading-tight tabular-nums text-text">
-            {lead.priceCents === null ? "Pending review" : formatMoney(lead.priceCents)}
+            {lead.budgetCents != null
+              ? formatMoney(lead.budgetCents)
+              : lead.priceCents === null
+                ? "Pending review"
+                : formatMoney(lead.priceCents)}
           </p>
         </div>
         <dl className="grid gap-5 sm:grid-cols-2">
@@ -236,7 +239,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           />
           <Field label="Resolved tier" value={lead.tier != null ? `Tier ${lead.tier}` : "—"} />
           <Field
-            label="Purchases"
+            label="Acceptances"
             value={`${lead.acceptedCount} / ${lead.maxPurchases}${lead.soldOutAt ? " (sold out)" : ""}`}
           />
           <Field label="Review blocker" value={lead.reviewBlocker ?? "—"} />
@@ -248,7 +251,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
         </dl>
       </Card>
 
-      {/* Distributed contractors + refund */}
+      {/* Distributed contractors */}
       <Card className="flex flex-col gap-4 p-6">
         <h2 className="font-display text-xl font-semibold text-text">
           Distributed to {lead.matches.length} contractor(s)
@@ -270,7 +273,6 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
                 </div>
                 <span className="flex items-center gap-3">
                   <LeadMatchStatusBadge status={m.status} />
-                  {m.status === "ACCEPTED" && <RefundButton leadMatchId={m.id} />}
                 </span>
               </li>
             ))}

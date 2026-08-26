@@ -5,6 +5,8 @@ import {
   parseTopUpEvent,
   creditTopUp,
   persistCardFromSetupSession,
+  parseSuccessFeeEvent,
+  confirmSuccessFeePayment,
 } from "@/lib/services/stripe-webhook";
 import { getStripeWebhookSecret } from "@/lib/integrations/stripe-client";
 
@@ -77,17 +79,26 @@ export async function POST(req: NextRequest) {
     }
 
     const parsed = parseTopUpEvent(event);
-    if (!parsed) {
-      // Event type we don't act on — acknowledge so Stripe stops retrying.
-      console.log(`[stripe-webhook] event ignored — type=${event.type} id=${event.id}`);
-      return NextResponse.json({ received: true, ignored: event.type });
+    if (parsed) {
+      const result = await creditTopUp(parsed);
+      console.log(
+        `[stripe-webhook] top-up ${result.status} — event=${event.id} type=${event.type} contractor=${parsed.contractorId} amountCents=${parsed.amountCents}`,
+      );
+      return NextResponse.json({ received: true, status: result.status });
     }
 
-    const result = await creditTopUp(parsed);
-    console.log(
-      `[stripe-webhook] top-up ${result.status} — event=${event.id} type=${event.type} contractor=${parsed.contractorId} amountCents=${parsed.amountCents}`,
-    );
-    return NextResponse.json({ received: true, status: result.status });
+    const feeParsed = parseSuccessFeeEvent(event);
+    if (feeParsed) {
+      const result = await confirmSuccessFeePayment(feeParsed);
+      console.log(
+        `[stripe-webhook] success-fee ${result.status} — event=${event.id} leadMatch=${feeParsed.leadMatchId}`,
+      );
+      return NextResponse.json({ received: true, status: result.status, kind: "success_fee" });
+    }
+
+    // Event type we don't act on — acknowledge so Stripe stops retrying.
+    console.log(`[stripe-webhook] event ignored — type=${event.type} id=${event.id}`);
+    return NextResponse.json({ received: true, ignored: event.type });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(

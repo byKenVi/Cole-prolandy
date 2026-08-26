@@ -36,8 +36,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: "/admin-icons/dashboard.png" },
   { href: "/admin/leads", label: "Leads", icon: "/admin-icons/leads.png" },
   { href: "/admin/contractors", label: "Contractors", icon: "/admin-icons/contractors.png" },
-  { href: "/admin/finance", label: "Finance", icon: "/admin-icons/finance.png" },
-  { href: "/admin/pricing", label: "Pricing", icon: "/admin-icons/pricing.png" },
+  { href: "/admin/fees", label: "Success fees", icon: "__fees__" },
+  { href: "/admin/confirmations", label: "Confirmations", icon: "__confirm__" },
   { href: "/admin/settings", label: "Settings", icon: "/admin-icons/settings.png" },
 ];
 
@@ -67,12 +67,54 @@ function TeamIcon() {
   );
 }
 
+function FeesIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 2v20" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  );
+}
+
+function ConfirmIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  );
+}
+
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link href={item.href} className="admin-navitem" data-active={active} title={item.label}>
       <span className="admin-nav-icon">
         {item.icon === "__team__" ? (
           <TeamIcon />
+        ) : item.icon === "__fees__" ? (
+          <FeesIcon />
+        ) : item.icon === "__confirm__" ? (
+          <ConfirmIcon />
         ) : (
           <Image
             src={item.icon}
@@ -149,8 +191,8 @@ function Chevron({ collapsed }: { collapsed: boolean }) {
 }
 
 function Sidebar({
-  leadRevenue,
-  chargedLeads,
+  successFeesTotal,
+  paidFeesCount,
   collapsed,
   onToggleCollapse,
   onCloseMobile,
@@ -158,8 +200,8 @@ function Sidebar({
   identity,
   isOwner,
 }: {
-  leadRevenue: string;
-  chargedLeads: number;
+  successFeesTotal: string;
+  paidFeesCount: number;
   collapsed: boolean;
   onToggleCollapse: () => void;
   onCloseMobile: () => void;
@@ -242,7 +284,7 @@ function Sidebar({
               color: "#9BB09F",
             }}
           >
-            Lead revenue
+            Success fees collected
           </p>
           <p
             style={{
@@ -253,10 +295,10 @@ function Sidebar({
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            {leadRevenue}
+            {successFeesTotal}
           </p>
           <p style={{ margin: 0, font: "500 12px/1 'Inter'", color: "#8FA592" }}>
-            from {chargedLeads} charged lead{chargedLeads === 1 ? "" : "s"}
+            from {paidFeesCount} paid fee{paidFeesCount === 1 ? "" : "s"}
           </p>
         </div>
         <svg
@@ -405,8 +447,8 @@ function Topbar({
 export function AdminShell({
   initialTheme,
   initialCollapsed = false,
-  leadRevenue,
-  chargedLeads,
+  successFeesTotal,
+  paidFeesCount,
   userMenu,
   showSignOut = false,
   identity,
@@ -415,8 +457,8 @@ export function AdminShell({
 }: {
   initialTheme: AdminTheme;
   initialCollapsed?: boolean;
-  leadRevenue: string;
-  chargedLeads: number;
+  successFeesTotal: string;
+  paidFeesCount: number;
   userMenu?: React.ReactNode;
   showSignOut?: boolean;
   identity: AdminIdentity;
@@ -451,8 +493,8 @@ export function AdminShell({
           data-mobile-open={mobileOpen}
         >
           <Sidebar
-            leadRevenue={leadRevenue}
-            chargedLeads={chargedLeads}
+            successFeesTotal={successFeesTotal}
+            paidFeesCount={paidFeesCount}
             collapsed={collapsed}
             onToggleCollapse={toggleCollapse}
             onCloseMobile={() => setMobileOpen(false)}

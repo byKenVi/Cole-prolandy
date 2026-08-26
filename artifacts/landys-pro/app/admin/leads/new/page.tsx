@@ -30,8 +30,8 @@ export default async function NewLeadPage() {
           New lead
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
-          Manually create an operations lead with an explicit tier. Price is snapshotted from the
-          pricing matrix and the lead is distributed immediately.
+          Manually create an estimate request with an explicit tier. It is distributed to matched
+          contractors immediately — no upfront fee to accept.
         </p>
       </div>
       <Card className="p-8 md:p-10">

@@ -5,15 +5,12 @@ import Image from "next/image";
 import { MapPin, Phone, Mail, Hammer } from "lucide-react";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
-import { formatMoney } from "@/lib/money";
 import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { OneClickAccept } from "@/components/one-click-accept";
+import { OneClickPass } from "@/components/one-click-pass";
 
 /**
- * Stacked lead card for the mobile (< md) contractor feed and "My leads"
- * views. Mirrors the warm Landys palette of the desktop table rows. Renders a
- * tappable link to the lead when pending, or a static "contact unlocked" card
- * once accepted.
+ * Stacked opportunity card for mobile contractor feeds and "My jobs" views.
  */
 export type FeedLead = {
   matchId: string;
@@ -23,17 +20,25 @@ export type FeedLead = {
   categoryIcon?: string | null;
   location: string;
   tier: number;
-  priceCents: number;
+  feeRatePercent?: number;
+  estimatedValueLabel?: string | null;
   receivedAt?: Date | string | null;
   expiresAt?: Date | string | null;
-  walletCents?: number | null;
-  hasSavedCard?: boolean;
   contact?: {
     name: string;
     phone: string;
     email?: string;
   } | null;
 };
+
+function formatFeeRate(rate: number | undefined): string {
+  if (rate == null) return "—";
+  return rate % 1 === 0 ? `${rate.toFixed(0)}%` : `${rate.toFixed(1)}%`;
+}
+
+function detailHref(lead: FeedLead): string {
+  return lead.status === "ACCEPTED" ? `/jobs/${lead.matchId}` : `/opportunities/${lead.matchId}`;
+}
 
 function CardIcon({ lead }: { lead: FeedLead }) {
   const src = iconSrcFor({
@@ -66,6 +71,7 @@ function TierPill({ tier }: { tier: number }) {
 
 export function LeadFeedCard({ lead }: { lead: FeedLead }) {
   const accepted = lead.status === "ACCEPTED";
+  const href = detailHref(lead);
 
   const head = (
     <div className="flex items-start gap-[13px]">
@@ -81,6 +87,16 @@ export function LeadFeedCard({ lead }: { lead: FeedLead }) {
           <MapPin className="h-[14px] w-[14px] flex-none text-[#B0A691]" strokeWidth={1.7} aria-hidden />
           <span className="truncate">{lead.location}</span>
         </p>
+        {lead.estimatedValueLabel && (
+          <p className="mt-1.5 text-[14px] font-semibold text-[#4A3E2D]">
+            Est. {lead.estimatedValueLabel}
+            {lead.feeRatePercent != null && (
+              <span className="ml-2 text-[13px] font-medium text-[#8A7E68]">
+                · {formatFeeRate(lead.feeRatePercent)} success fee
+              </span>
+            )}
+          </p>
+        )}
       </div>
       {!accepted && lead.expiresAt && (
         <ExpiryCountdown expiresAt={lead.expiresAt} variant="badge" />
@@ -91,9 +107,8 @@ export function LeadFeedCard({ lead }: { lead: FeedLead }) {
   if (accepted) {
     return (
       <div className="relative rounded-[16px] border border-[#EBE3D4] bg-white p-4 shadow-[0_2px_8px_rgba(58,53,45,0.05)] transition-colors hover:bg-[#FBF6EC]">
-        {/* Full-card hit target — contact tel/mailto sit above it with z-10. */}
         <Link
-          href={`/leads/${lead.matchId}`}
+          href={href}
           className="absolute inset-0 z-0 rounded-[16px]"
           aria-label={`View ${lead.projectTypeName}`}
         />
@@ -121,42 +136,36 @@ export function LeadFeedCard({ lead }: { lead: FeedLead }) {
         )}
         <div className="relative z-[1] mt-3 flex items-center justify-between gap-3 border-t border-[#F2EBDD] pt-3 pointer-events-none">
           <TierPill tier={lead.tier} />
-          <span className="text-[19px] font-semibold tabular-nums text-[#3A352D]">
-            {formatMoney(lead.priceCents)}
-          </span>
+          {lead.feeRatePercent != null && (
+            <span className="text-[15px] font-semibold text-[#4A3E2D]">
+              {formatFeeRate(lead.feeRatePercent)} fee
+            </span>
+          )}
         </div>
       </div>
     );
   }
 
-  // Pending card — header links to detail, footer has View + Accept actions.
   return (
     <div className="rounded-[16px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)] transition-colors hover:bg-[#FBF6EC]">
-      <Link href={`/leads/${lead.matchId}`} className="block p-4 pb-3">
+      <Link href={href} className="block p-4 pb-3">
         {head}
       </Link>
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5 border-t border-[#F2EBDD] px-4 pb-4 pt-3">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex flex-col gap-3 border-t border-[#F2EBDD] px-4 pb-4 pt-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <TierPill tier={lead.tier} />
-          <span className="text-[19px] font-semibold tabular-nums text-[#3A352D]">
-            {formatMoney(lead.priceCents)}
-          </span>
-        </div>
-        <div className="flex flex-none items-center gap-2">
-          <Link
-            href={`/leads/${lead.matchId}`}
-            className="inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-[10px] border border-[#EAD9BC] bg-[#FBF3E6] px-[13px] text-[13px] font-semibold text-[#9A6E2E] transition-colors hover:border-[#C0803C] hover:bg-[#C0803C] hover:text-white"
-          >
-            View
-          </Link>
-          {lead.walletCents != null && (
-            <OneClickAccept
-              matchId={lead.matchId}
-              priceCents={lead.priceCents}
-              walletCents={lead.walletCents}
-              hasSavedCard={lead.hasSavedCard ?? false}
-            />
+          {!lead.estimatedValueLabel && lead.feeRatePercent != null && (
+            <span className="text-[17px] font-semibold tabular-nums text-[#4A3E2D]">
+              {formatFeeRate(lead.feeRatePercent)} fee
+            </span>
           )}
+        </div>
+        <div className="flex flex-none items-center gap-2.5">
+          <Link href={href} className="contractor-action-secondary hidden min-w-[88px] sm:inline-flex">
+            Details
+          </Link>
+          <OneClickPass matchId={lead.matchId} />
+          <OneClickAccept matchId={lead.matchId} />
         </div>
       </div>
     </div>

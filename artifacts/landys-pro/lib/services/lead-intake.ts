@@ -160,7 +160,7 @@ export async function createAndDistributeLead(
     projectTypeName: projectType.name,
     propertyLocation: lead.propertyLocation,
     tier: input.tier,
-    priceCents,
+    estimatedValueCents: input.budgetCents ?? null,
   });
   await writeLeadAudit("LEAD_CREATED", lead.id, {
     source: lead.source,
@@ -517,9 +517,6 @@ async function autoRouteLead(params: {
     if (!lead) throw new NotFoundError("Lead");
 
     if (lead.reviewStatus === LeadReviewStatus.ROUTED) {
-      if (lead.priceCents === null) {
-        throw new InvalidStateError("A routed lead is missing its price snapshot.");
-      }
       return {
         lead,
         matches: [],
@@ -537,27 +534,7 @@ async function autoRouteLead(params: {
     }
 
     const pricing = await resolveLeadPricingSnapshot(tx, lead);
-    const priceCents = lead.priceCents ?? pricing.priceCents;
     const tier = lead.tier ?? pricing.tier;
-    const pricingRequired = pricing.pricingRequired || priceCents <= 0;
-
-    if (pricingRequired) {
-      const held = await tx.lead.update({
-        where: { id: lead.id },
-        data: {
-          tier,
-          priceCents: priceCents > 0 ? priceCents : null,
-          tierReviewRequired: false,
-          budgetReviewRequired: false,
-          pricingReviewRequired: true,
-          reviewBlocker: REVIEW_BLOCKERS.PRICING_REQUIRED,
-          reviewStatus: LeadReviewStatus.PENDING_REVIEW,
-          expiresAt: null,
-        },
-        include: { projectType: true, workType: true },
-      });
-      return { lead: held, matches: [], recipients: 0, heldForReview: true };
-    }
 
     if (
       lead.routingMode === LeadRoutingMode.DIRECT &&
@@ -582,7 +559,6 @@ async function autoRouteLead(params: {
           where: { id: lead.id },
           data: {
             tier,
-            priceCents,
             tierReviewRequired: false,
             budgetReviewRequired: false,
             pricingReviewRequired: false,
@@ -600,7 +576,7 @@ async function autoRouteLead(params: {
             action: "lead.routing.held",
             targetType: "Lead",
             targetId: lead.id,
-            metadata: { reason: "direct_contractor_unresolved", priceCents },
+            metadata: { reason: "direct_contractor_unresolved" },
           },
         });
         return { lead: held, matches: [], recipients: 0, heldForReview: true };
@@ -629,7 +605,6 @@ async function autoRouteLead(params: {
         where: { id: lead.id },
         data: {
           tier,
-          priceCents,
           tierReviewRequired: false,
           budgetReviewRequired: false,
           pricingReviewRequired: false,
@@ -656,7 +631,6 @@ async function autoRouteLead(params: {
         where: { id: lead.id },
         data: {
           tier,
-          priceCents,
           reviewBlocker: REVIEW_BLOCKERS.MISSING_CONTRACTOR_CATEGORY,
           reviewStatus: LeadReviewStatus.PENDING_REVIEW,
           expiresAt: null,
@@ -673,7 +647,6 @@ async function autoRouteLead(params: {
           where: { id: lead.id },
           data: {
             tier,
-            priceCents,
             reviewBlocker: REVIEW_BLOCKERS.OTHER_CATEGORY_CLASSIFICATION_REQUIRED,
             reviewStatus: LeadReviewStatus.PENDING_REVIEW,
             expiresAt: null,
@@ -694,7 +667,6 @@ async function autoRouteLead(params: {
       where: { id: lead.id },
       data: {
         tier,
-        priceCents,
         tierReviewRequired: false,
         budgetReviewRequired: false,
         pricingReviewRequired: false,
@@ -730,18 +702,14 @@ async function autoRouteLead(params: {
     }
   }
 
-  if (
-    !result.heldForReview &&
-    result.lead.tier !== null &&
-    result.lead.priceCents !== null
-  ) {
+  if (!result.heldForReview && result.lead.tier !== null) {
     await notifyMatches(result.matches, {
       leadId: result.lead.id,
       projectTypeName:
         result.lead.workType?.name ?? result.lead.projectType?.name ?? "Project",
       propertyLocation: result.lead.propertyLocation,
       tier: result.lead.tier,
-      priceCents: result.lead.priceCents,
+      estimatedValueCents: result.lead.budgetCents,
     });
   }
   await writeLeadAudit("lead.routing.finalized", result.lead.id, {
@@ -754,8 +722,8 @@ async function autoRouteLead(params: {
     reviewBlocker: result.lead.reviewBlocker,
   });
 
-  if (!result.heldForReview && result.lead.priceCents === null) {
-    throw new InvalidStateError("Lead price snapshot is unresolved.");
+  if (!result.heldForReview && result.lead.tier === null) {
+    throw new InvalidStateError("Lead tier is unresolved.");
   }
   return {
     leadId: result.lead.id,
@@ -875,7 +843,7 @@ async function notifyMatches(
     projectTypeName: string;
     propertyLocation: string;
     tier: number;
-    priceCents: number;
+    estimatedValueCents?: number | null;
   },
 ) {
   await Promise.allSettled(
@@ -886,7 +854,7 @@ async function notifyMatches(
         projectTypeName: lead.projectTypeName,
         propertyLocation: lead.propertyLocation,
         tier: lead.tier,
-        priceCents: lead.priceCents,
+        estimatedValueCents: lead.estimatedValueCents,
         leadId: lead.leadId,
         contractorId: match.contractorId,
       }),

@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import {
+  getAcceptanceUnlimited,
+  getFollowUpOutcomeDelayHours,
+  getFollowUpPaymentDelayHours,
+  getFollowUpPaymentRetryHours,
   getLeadExpiryHours,
   getMaxLeadPurchases,
 } from "@/lib/domain/settings";
+import { loadSuccessFeeTierRecords } from "@/lib/domain/success-fee";
 import { getSession } from "@/lib/auth";
 import { SettingsForm } from "@/components/admin/settings-form";
+import { SuccessFeeTiersForm } from "@/components/admin/success-fee-tiers-form";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { LandTypesManager } from "@/components/admin/land-types-manager";
 import { AppearancePicker } from "@/components/admin/appearance-picker";
@@ -36,14 +42,23 @@ export default async function SettingsPage() {
     session,
     maxLeadPurchases,
     leadExpiryHours,
+    acceptanceUnlimited,
+    followUpOutcomeDelayHours,
+    followUpPaymentDelayHours,
+    followUpPaymentRetryHours,
     projects,
     landTypes,
     contractorCategories,
+    successFeeTiers,
   ] =
     await Promise.all([
     getSession(),
     getMaxLeadPurchases(prisma),
     getLeadExpiryHours(prisma),
+    getAcceptanceUnlimited(prisma),
+    getFollowUpOutcomeDelayHours(prisma),
+    getFollowUpPaymentDelayHours(prisma),
+    getFollowUpPaymentRetryHours(prisma),
     prisma.contractorType.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -80,6 +95,7 @@ export default async function SettingsPage() {
         _count: { select: { contractors: true, leads: true } },
       },
     }),
+    loadSuccessFeeTierRecords(prisma),
     ]);
 
   return (
@@ -144,6 +160,33 @@ export default async function SettingsPage() {
             <SettingsForm
               maxLeadPurchases={maxLeadPurchases}
               leadExpiryHours={leadExpiryHours}
+              acceptanceUnlimited={acceptanceUnlimited}
+              followUpOutcomeDelayHours={followUpOutcomeDelayHours}
+              followUpPaymentDelayHours={followUpPaymentDelayHours}
+              followUpPaymentRetryHours={followUpPaymentRetryHours}
+            />
+          </div>
+
+          <div style={cardStyle}>
+            <p style={titleStyle}>Success fee tiers</p>
+            <p style={descStyle}>
+              Thresholds and rates for new Won jobs. Defaults: &lt; $10,000 = 5%, $10,000–$24,999 =
+              4%, $25,000+ = 3%.
+            </p>
+            <SuccessFeeTiersForm
+              tiers={successFeeTiers.map((tier) => ({
+                id: tier.id,
+                sortOrder: tier.sortOrder,
+                label:
+                  tier.sortOrder === 1
+                    ? "Small jobs"
+                    : tier.sortOrder === 2
+                      ? "Medium jobs"
+                      : "Large jobs",
+                maxValueDollars:
+                  tier.maxValueCents != null ? tier.maxValueCents / 100 : null,
+                ratePercent: tier.rateBasisPoints / 100,
+              }))}
             />
           </div>
 
@@ -194,9 +237,9 @@ export default async function SettingsPage() {
           <p style={titleStyle}>Projects</p>
           <p style={{ ...descStyle, marginBottom: 18 }}>
             Jobs landowners request and contractors fulfill. Hierarchy is{" "}
-            <b style={{ color: "var(--ink)" }}>Project → 3 tiers</b> (small / medium / large lead
-            prices). Enter all three prices when creating a project; edit them later under Pricing.
-            Rename anytime and delete only when unused.
+            <b style={{ color: "var(--ink)" }}>Project → 3 tiers</b> (small / medium / large job sizing).
+            Configure success fee rates in Success fee tiers above. Rename anytime and delete only
+            when unused.
           </p>
           <CategoriesManager
             categories={projects.map((c) => ({

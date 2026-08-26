@@ -122,7 +122,7 @@ export function ManualLeadForm({
         <p className="text-base text-text-muted">
           Distributed to {done.recipients} contractor(s).
           {done.recipients === 0 && (
-            <> No matching contractors were available for that trade — check contractors &amp; pricing.</>
+            <> No matching contractors were available for that trade — check contractors &amp; project setup.</>
           )}
         </p>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
@@ -252,7 +252,8 @@ export function ManualLeadForm({
             </Select>
           </div>
           <p className="rounded-sm bg-primary-soft p-3 text-sm text-text-muted">
-            Creating will snapshot the price from the matrix and distribute to matching contractors
+            Creating will distribute to matching contractors immediately. Contractors pay Landy&apos;s
+            a success fee only after they win work and are paid by the landowner.
             for that trade.
           </p>
         </section>

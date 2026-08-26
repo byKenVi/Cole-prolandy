@@ -77,6 +77,7 @@ export default async function AdminLeads({
       tier: true,
       status: true,
       priceCents: true,
+      budgetCents: true,
       propertyLocation: true,
       createdAt: true,
       projectType: {
@@ -98,8 +99,13 @@ export default async function AdminLeads({
     recipients: l._count.matches,
     sent: formatDate(l.createdAt),
     sentAtIso: l.createdAt.toISOString(),
-    price: l.priceCents === null ? "Pending" : formatMoney(l.priceCents),
-    priceCents: l.priceCents,
+    price:
+      l.budgetCents != null
+        ? formatMoney(l.budgetCents)
+        : l.priceCents === null
+          ? "Pending"
+          : formatMoney(l.priceCents),
+    priceCents: l.budgetCents ?? l.priceCents,
     iconSrc: iconSrcFor({
       icon: leadCategoryIcon(l),
       category: leadCategoryLabel(l),
@@ -117,7 +123,7 @@ export default async function AdminLeads({
       <PageHeader
         kicker="Distribution"
         title="Leads"
-        subtitle="Every job distributed to your contractors — newest first. Prices are snapshotted at send."
+        subtitle="Estimate requests distributed to contractors — newest first."
         action={<GoldButtonLink href="/admin/leads/new">New lead</GoldButtonLink>}
       />
 
@@ -133,7 +139,7 @@ export default async function AdminLeads({
         <StatCard label="Total leads" value={String(totalCount)} />
         <StatCard label="Distributed" value={String(distributed)} valueColor="var(--sageFg)" />
         <StatCard label="Expired" value={String(expired)} valueColor="var(--danger)" />
-        <StatCard label="Listed value" value={formatMoney(listedValue)} />
+        <StatCard label="Est. pipeline value" value={formatMoney(listedValue)} />
       </div>
 
       <Suspense fallback={null}>

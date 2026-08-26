@@ -12,6 +12,10 @@ export type DbClient = PrismaClient | Prisma.TransactionClient;
 export const APP_SETTING_KEYS = {
   maxLeadPurchases: "maxLeadPurchases",
   leadExpiryHours: "leadExpiryHours",
+  acceptanceUnlimited: "acceptanceUnlimited",
+  followUpOutcomeDelayHours: "followUpOutcomeDelayHours",
+  followUpPaymentDelayHours: "followUpPaymentDelayHours",
+  followUpPaymentRetryHours: "followUpPaymentRetryHours",
   /** @deprecated Legacy key — no longer used by intake. Kept for migration compatibility. */
   maxLeadRecipients: "maxLeadRecipients",
   /** @deprecated Legacy key — no longer used by intake. */

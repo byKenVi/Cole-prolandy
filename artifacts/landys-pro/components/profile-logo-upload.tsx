@@ -39,7 +39,7 @@ export function ProfileLogoUpload({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={pending}
-        className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[#3B372F] text-3xl font-semibold text-[#F6EEDF] ring-2 ring-[#EBE3D4] transition hover:ring-[#C0803C]"
+        className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[#4A3E2D] text-3xl font-semibold text-[#F6EEDF] ring-2 ring-[#EBE3D4] transition hover:ring-[#C0803C]"
         aria-label="Upload profile logo"
         title="Upload logo"
       >

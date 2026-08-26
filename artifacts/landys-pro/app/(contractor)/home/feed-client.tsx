@@ -4,14 +4,13 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Search, ChevronDown, Hammer, MessageSquare } from "lucide-react";
-import { WalletCard } from "@/components/wallet-card";
 import { LeadFeedCard } from "@/components/lead-feed-card";
 import { PaginationControls } from "@/components/pagination-controls";
 import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { OneClickAccept } from "@/components/one-click-accept";
+import { OneClickPass } from "@/components/one-click-pass";
 import { iconSrcFor } from "@/lib/project-icons";
 import { tierPill } from "@/lib/tier-style";
-import { formatMoney } from "@/lib/money";
 
 export type FeedRow = {
   matchId: string;
@@ -20,7 +19,8 @@ export type FeedRow = {
   categoryIcon: string | null;
   location: string;
   tier: number;
-  priceCents: number;
+  feeRatePercent?: number;
+  estimatedValueLabel?: string | null;
   receivedAt: Date;
   expiresAt: Date;
 };
@@ -31,15 +31,22 @@ const GRID =
 type TierTab = "all" | "t1" | "t2" | "t3";
 type SortOrder = "newest" | "oldest";
 
+function formatFeeRate(rate: number | undefined): string {
+  if (rate == null) return "—";
+  return rate % 1 === 0 ? `${rate.toFixed(0)}%` : `${rate.toFixed(1)}%`;
+}
+
+function detailHref(matchId: string): string {
+  return `/opportunities/${matchId}`;
+}
+
 export function ContractorFeed({
   rows,
-  walletCents,
-  hasSavedCard = false,
+  pathname = "/opportunities",
   pagination,
 }: {
   rows: FeedRow[];
-  walletCents: number;
-  hasSavedCard?: boolean;
+  pathname?: string;
   pagination?: { page: number; totalPages: number; totalCount: number; pageSize: number };
 }) {
   const [query, setQuery] = useState("");
@@ -83,7 +90,7 @@ export function ContractorFeed({
       <header className="flex flex-col gap-4 border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:flex-row md:items-center md:justify-between md:px-[34px] md:pt-[26px]">
         <div className="min-w-0">
           <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
-            New leads
+            Opportunities
           </h1>
           <p className="mt-[5px] text-[14px] text-[#8A7E68]">
             {totalOpen} open {totalOpen === 1 ? "job" : "jobs"} matched to your trade
@@ -110,14 +117,10 @@ export function ContractorFeed({
         </div>
       </header>
 
-      <div className="px-4 pt-5 sm:px-5 md:hidden">
-        <WalletCard cents={walletCents} />
-      </div>
-
       <div className="flex flex-col gap-3 px-4 py-4 sm:px-5 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-2.5 md:px-[34px]">
         <div
           role="tablist"
-          aria-label="Filter leads by tier"
+          aria-label="Filter opportunities by tier"
           className="flex w-full min-w-0 gap-0.5 overflow-x-auto rounded-[12px] bg-[#F1E8D8] p-1 [-ms-overflow-style:none] [scrollbar-width:none] md:w-auto md:flex-none [&::-webkit-scrollbar]:hidden"
         >
           <Tab label="New" count={countAll} active={tab === "all"} onSelect={() => setTab("all")} />
@@ -143,7 +146,6 @@ export function ContractorFeed({
           <NoMatches />
         ) : (
           <>
-            {/* Mobile cards */}
             <div className="contractor-table-mobile gap-3">
               {shown.map((r) => (
                 <LeadFeedCard
@@ -156,17 +158,15 @@ export function ContractorFeed({
                     categoryIcon: r.categoryIcon,
                     location: r.location,
                     tier: r.tier,
-                    priceCents: r.priceCents,
+                    feeRatePercent: r.feeRatePercent,
+                    estimatedValueLabel: r.estimatedValueLabel,
                     receivedAt: r.receivedAt,
                     expiresAt: r.expiresAt,
-                    walletCents,
-                    hasSavedCard,
                   }}
                 />
               ))}
             </div>
 
-            {/* Desktop table */}
             <div className="contractor-table-desktop overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
               <div className="overflow-x-auto">
                 <div
@@ -176,16 +176,11 @@ export function ContractorFeed({
                   <HeadCell>Location</HeadCell>
                   <HeadCell>Tier</HeadCell>
                   <HeadCell>Expires</HeadCell>
-                  <HeadCell className="text-right">Lead price</HeadCell>
+                  <HeadCell className="text-right">Success fee</HeadCell>
                   <span />
                 </div>
                 {shown.map((r) => (
-                  <FeedTableRow
-                    key={r.matchId}
-                    row={r}
-                    walletCents={walletCents}
-                    hasSavedCard={hasSavedCard}
-                  />
+                  <FeedTableRow key={r.matchId} row={r} />
                 ))}
               </div>
               <div className="flex flex-col gap-1 bg-[#FAF4E9] px-6 py-[14px] sm:flex-row sm:items-center sm:justify-between">
@@ -205,7 +200,7 @@ export function ContractorFeed({
                 totalPages={pagination.totalPages}
                 totalCount={pagination.totalCount}
                 pageSize={pagination.pageSize}
-                pathname="/home"
+                pathname={pathname}
               />
             )}
           </>
@@ -251,28 +246,20 @@ function Tab({
   );
 }
 
-function FeedTableRow({
-  row,
-  walletCents,
-  hasSavedCard,
-}: {
-  row: FeedRow;
-  walletCents: number;
-  hasSavedCard: boolean;
-}) {
+function FeedTableRow({ row }: { row: FeedRow }) {
   const src = iconSrcFor({
     icon: row.categoryIcon,
     category: row.categoryName,
     project: row.projectTypeName,
   });
   const pill = tierPill(row.tier);
+  const href = detailHref(row.matchId);
 
   return (
     <div
       className={`group grid ${GRID} min-w-[760px] items-center gap-[14px] border-b border-[#F2EBDD] px-6 last:border-b-0 hover:bg-[#FBF6EC] transition-colors`}
     >
-      {/* Job — each cell is its own Link so we avoid nesting interactive elements */}
-      <Link href={`/leads/${row.matchId}`} className="flex min-w-0 items-center gap-[14px] py-[15px]">
+      <Link href={href} className="flex min-w-0 items-center gap-[14px] py-[15px]">
         <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-[13px] bg-[#F5EEDF]">
           {src ? (
             <Image
@@ -292,19 +279,22 @@ function FeedTableRow({
             {row.projectTypeName}
           </p>
           <p className="mt-0.5 truncate text-[13px] leading-[1.2] text-[#8A7E68]">{row.categoryName}</p>
+          {row.estimatedValueLabel && (
+            <p className="mt-0.5 truncate text-[12px] font-semibold text-[#4A3E2D]">
+              Est. {row.estimatedValueLabel}
+            </p>
+          )}
         </div>
       </Link>
 
-      {/* Location */}
-      <Link href={`/leads/${row.matchId}`} className="py-[15px]">
+      <Link href={href} className="py-[15px]">
         <p className="flex items-center gap-[5px] text-[14px] font-medium leading-[1.3] text-[#5A4E3E]">
           <MapPin className="h-[14px] w-[14px] flex-none text-[#B0A691]" strokeWidth={1.7} aria-hidden />
           <span className="truncate">{row.location}</span>
         </p>
       </Link>
 
-      {/* Tier */}
-      <Link href={`/leads/${row.matchId}`} className="py-[15px]">
+      <Link href={href} className="py-[15px]">
         <span
           className="whitespace-nowrap rounded-full px-[10px] py-1.5 text-[11px] font-semibold"
           style={{ color: pill.color, background: pill.background }}
@@ -313,29 +303,19 @@ function FeedTableRow({
         </span>
       </Link>
 
-      {/* Expires — live countdown */}
-      <Link href={`/leads/${row.matchId}`} className="py-[15px]">
+      <Link href={href} className="py-[15px]">
         <ExpiryCountdown expiresAt={row.expiresAt} variant="inline" />
       </Link>
 
-      {/* Price */}
-      <Link href={`/leads/${row.matchId}`} className="py-[15px] text-right text-[19px] font-semibold tabular-nums text-[#3A352D]">
-        {formatMoney(row.priceCents)}
+      <Link href={href} className="py-[15px] text-right text-[19px] font-semibold tabular-nums text-[#4A3E2D]">
+        {formatFeeRate(row.feeRatePercent)}
       </Link>
 
-      {/* Actions */}
       <div className="flex items-center justify-end gap-2 py-[15px]">
-        <OneClickAccept
-          matchId={row.matchId}
-          priceCents={row.priceCents}
-          walletCents={walletCents}
-          hasSavedCard={hasSavedCard}
-        />
-        <Link
-          href={`/leads/${row.matchId}`}
-          className="inline-flex h-[38px] items-center whitespace-nowrap rounded-[10px] border border-[#EAD9BC] bg-[#FBF3E6] px-[13px] text-[13px] font-semibold text-[#9A6E2E] transition-colors group-hover:border-[#C0803C] group-hover:bg-[#C0803C] group-hover:text-white"
-        >
-          View
+        <OneClickPass matchId={row.matchId} />
+        <OneClickAccept matchId={row.matchId} />
+        <Link href={href} className="contractor-action-secondary hidden h-[48px] min-w-0 px-3 lg:inline-flex">
+          Details
         </Link>
       </div>
     </div>
@@ -356,7 +336,7 @@ function EmptyFeed() {
         />
       </span>
       <p className="mb-2.5 font-fraunces text-[24px] font-medium text-[#3A352D]">
-        No new leads right now
+        No new opportunities right now
       </p>
       <p className="mb-6 max-w-[44ch] text-[16px] leading-[1.6] text-[#6B6459]">
         We&apos;ll text you the moment a new job comes in near you. Keep your phone handy — you don&apos;t
@@ -373,7 +353,7 @@ function EmptyFeed() {
 function NoMatches() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center rounded-[18px] border border-[#EBE3D4] bg-white px-10 py-16 text-center shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
-      <p className="mb-2 font-fraunces text-[20px] font-medium text-[#3A352D]">No leads match your search</p>
+      <p className="mb-2 font-fraunces text-[20px] font-medium text-[#3A352D]">No opportunities match your search</p>
       <p className="max-w-[40ch] text-[15px] leading-[1.6] text-[#6B6459]">
         Try a different town or trade, or clear your filters.
       </p>

@@ -249,7 +249,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
         </div>
         <div>
           <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>
-            Initial lead prices
+            Initial tier budget thresholds
           </p>
           <div
             style={{
