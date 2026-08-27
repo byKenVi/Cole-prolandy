@@ -9,3 +9,5 @@
 - [Admin invite email via Resend](admin-invite-email.md) — Clerk createInvitation ignoreExisting silently skips re-sends; admin invites use Resend (Replit connector) via lib/integrations/email.ts instead.
 - [Prisma client drift after migration](prisma-client-drift-after-migration.md) — `migrate deploy` doesn't regenerate the client; new models look "missing" in tsc/dev until `prisma generate` runs.
 - [Next.js dev/build share .next/](nextjs-dev-build-shared-dir.md) — never run `next build` while the app's `next dev` workflow is live in the same dir; both corrupt.
+- [Shared dev/prod database risk](shared-dev-prod-database-risk.md) — dev, vitest, testing subagent, and prod all read one DB; never sweep a real admin list in a test plan.
+- [Destructive-action burst guard](destructive-guard.md) — deactivate/delete/refund gated by a DB-backed per-actor+action burst counter; how it's shaped and how to test new ones.

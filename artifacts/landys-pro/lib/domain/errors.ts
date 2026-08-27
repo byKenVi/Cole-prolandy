@@ -60,3 +60,16 @@ export class PriceNotFoundError extends DomainError {
     this.name = "PriceNotFoundError";
   }
 }
+
+export class DestructiveBurstError extends DomainError {
+  constructor(action: string, recentCount: number) {
+    super(
+      "DESTRUCTIVE_BURST_DETECTED",
+      `Too many "${action}" actions in a short time (${recentCount} in the last few minutes). ` +
+        `This safeguard blocks rapid repeated destructive admin actions, which is what an automated ` +
+        `script or test run looks like (a real admin doing this one row at a time won't hit it). ` +
+        `If this really is intentional bulk work, wait a few minutes and continue in smaller batches.`,
+    );
+    this.name = "DestructiveBurstError";
+  }
+}

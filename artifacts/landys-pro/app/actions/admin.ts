@@ -17,6 +17,7 @@ import { ICON_KEYS, ICON_AUTO, ICON_NONE } from "@/lib/project-icons";
 import { revalidateAdminShell, revalidateContractorShell } from "@/lib/revalidate";
 import { sendContractorAccountInvitation } from "@/lib/contractor-invitations";
 import { availableIntegrationCode } from "@/lib/taxonomy";
+import { assertNoDestructiveBurst } from "@/lib/domain/destructive-guard";
 
 type Result = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -231,6 +232,7 @@ export async function resolveMismatchAction(
 export async function refundLead(leadMatchId: string, reason: string): Promise<Result> {
   const admin = await requireAdmin();
   try {
+    await assertNoDestructiveBurst({ actorId: admin.email, action: "LEAD_REFUNDED" });
     const res = await refundLeadMatch({ leadMatchId, reason, actorId: admin.email });
     revalidatePath("/admin/leads");
     revalidatePath("/admin/contractors");
@@ -278,6 +280,14 @@ export async function chargeSavedCardTopUp(input: {
  * balance, WalletTransactions, LeadMatches, and AuditLog — never hard-deletes. */
 export async function deactivateContractor(id: string): Promise<Result> {
   const admin = await requireAdmin();
+  try {
+    await assertNoDestructiveBurst({
+      actorId: admin.email,
+      action: "contractor.deactivated.admin",
+    });
+  } catch (e) {
+    return { ok: false, message: e instanceof DomainError ? e.message : "Deactivation blocked." };
+  }
   const contractor = await prisma.contractor.findUnique({
     where: { id },
     select: { id: true, name: true, deactivatedAt: true },
@@ -348,6 +358,14 @@ export async function reactivateContractor(id: string): Promise<Result> {
  */
 export async function deleteContractor(id: string): Promise<Result> {
   const admin = await requireAdmin();
+  try {
+    await assertNoDestructiveBurst({
+      actorId: admin.email,
+      action: "contractor.deleted.admin",
+    });
+  } catch (e) {
+    return { ok: false, message: e instanceof DomainError ? e.message : "Delete blocked." };
+  }
   const contractor = await prisma.contractor.findUnique({
     where: { id },
     select: {

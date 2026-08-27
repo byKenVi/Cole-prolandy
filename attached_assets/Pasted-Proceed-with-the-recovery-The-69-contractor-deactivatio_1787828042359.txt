@@ -1,0 +1,114 @@
+Proceed with the recovery.
+
+The 69 contractor deactivations identified in the Aug 26–27 mass-deactivation incident are unintended.
+
+1. BEFORE CHANGING DATA
+- Query and snapshot the exact 69 affected contractor IDs/names and their deactivation audit records.
+- Define the recovery set from the incident evidence you already identified:
+  - mass deactivation time window
+  - attributed actor/action
+  - sequential automated pattern
+- Explicitly EXCLUDE the two legitimate older one-off deactivations from July 31.
+- Do not delete or rewrite any AuditLog records.
+
+2. REACTIVATE THE INCIDENT SET
+Reactivate exactly those 69 contractors.
+
+Use a transaction or another safe atomic approach where practical.
+
+Restore only the active/deactivated state required for login/matching.
+Do not overwrite contractor profiles, categories, Wix mappings, project assignments, or other data.
+
+Afterwards verify:
+- 69 intended contractors are active
+- the two legitimate previously deactivated contractors remain deactivated
+- affected contractor accounts can pass the active-account guard again
+
+Create an audit record for the restoration identifying it as:
+"Recovery of Aug 26–27 automated mass-deactivation incident"
+
+3. VERIFY THE CURRENT TEST ACCOUNT
+Identify the contractor account that produced:
+
+"Account deactivated — Your contractor account has been deactivated by the Landy's team."
+
+Confirm that it is active after recovery and that authentication proceeds normally.
+
+Do not expose credentials.
+
+4. INVESTIGATE THE AUTOMATION SOURCE
+Now determine what actually caused the mass deactivation.
+
+Check:
+- Playwright / browser tests
+- seed/reset scripts
+- admin E2E tests
+- scripts calling contractor deactivate actions
+- tests configured with the production Replit URL
+- environment variables that may cause tests to use the production database
+- any scheduled job
+- any recently run Replit agent/browser automation
+- relevant logs around Aug 26–27
+
+Do not guess. Report the evidence.
+
+5. ADD PRODUCTION SAFETY GUARDS
+
+The most important requirement is:
+AUTOMATED TESTS MUST NEVER PERFORM DESTRUCTIVE ADMIN ACTIONS AGAINST PRODUCTION.
+
+Implement the smallest robust safeguards appropriate to this codebase.
+
+At minimum verify/add:
+
+- E2E/destructive test configuration must refuse to run against the production hostname/database.
+- Any test helper capable of activate/deactivate/delete/refund/restitution operations must fail fast when pointed at production.
+- Production tests should use isolated test data where tests are necessary.
+- Do not disable legitimate Admin ability to deactivate an individual contractor.
+
+If a server-side environment guard can safely distinguish automated test-only mutation paths, add it.
+
+Do NOT introduce arbitrary rate limits that could interfere with legitimate production administration unless there is a clear reason.
+
+6. REGRESSION CHECK
+
+After recovery/safeguards:
+
+- typecheck
+- full automated tests
+- production build
+- verify contractor sign-in
+- verify contractor Dashboard
+- verify Opportunities
+- verify contractor remains eligible for matching where appropriate
+- verify Admin can still manually deactivate/reactivate one contractor normally
+
+Do not redeploy automatically unless a code change is required for the safety guard.
+
+If code changes are required:
+- make them
+- test them
+- report the commit
+- STOP before deploying so I can approve the deployment.
+
+Return:
+
+## Recovery
+- contractors restored count
+- contractors intentionally left deactivated
+- test account status
+
+## Root cause
+- confirmed cause, or evidence found if not yet certain
+
+## Safeguards
+- changes made
+
+## Verification
+- typecheck
+- tests
+- build
+- login smoke test
+
+## Deployment
+- whether a new deploy is required

@@ -55,6 +55,12 @@ The Next.js source lives at `artifacts/landys-pro/`. When pushing/pulling via Gi
 - **Do not** move or restructure `app/`, `prisma/`, `next.config.ts`, `middleware.ts`, `instrumentation.ts`.
 - The framework, package manager choice (npm locally), and source layout must stay identical to the local/Vercel version.
 
+## Database & testing safety
+
+- **Dev, tests, and production share one database.** `DATABASE_URL`/`DIRECT_URL` are the same for the dev workflow, `vitest`, the Playwright testing subagent, and the deployed app — there is no separate throwaway DB. Anything a script or automated test does to real-looking rows is a real, permanent mutation.
+- **Never write a test plan (manual script or testing subagent) that iterates/sweeps every row of an admin list** to exercise a destructive action (deactivate, delete, refund, bulk edit). Scope destructive test steps to one clearly pre-created/marked test record.
+- `deactivateContractor`, `deleteContractor`, and `refundLead` (`app/actions/admin.ts`) are gated by a burst guard (`lib/domain/destructive-guard.ts`): it blocks a rapid repeat of the *same* destructive action by the *same* admin (5+ within 2 minutes), without ever blocking normal single-row admin use. This exists because an automated sweep mass-deactivated 66 real contractors on Aug 26-27 2026 before this guard was added — see `.agents/memory/shared-dev-prod-database-risk.md` for the incident writeup.
+
 ## Gotchas
 
 - Tailwind config uses `import tailwindAnimate from "tailwindcss-animate"` (not `require()`). Keep it this way — pnpm's module resolution treats `.ts` configs as ESM.
