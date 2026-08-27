@@ -7,3 +7,5 @@
 - [Admin public route group](admin-public-route-group.md) — public pages at /admin/* URL must use app/(public)/admin/... route group to escape the admin auth layout; also use useAuth() not /api/ fetches for client-side sign-in detection.
 - [Radix Dialog role selector](radix-dialog-role-selector.md) — button type="button" inside Radix Dialog forms can swallow clicks; use label+hidden radio input instead.
 - [Admin invite email via Resend](admin-invite-email.md) — Clerk createInvitation ignoreExisting silently skips re-sends; admin invites use Resend (Replit connector) via lib/integrations/email.ts instead.
+- [Prisma client drift after migration](prisma-client-drift-after-migration.md) — `migrate deploy` doesn't regenerate the client; new models look "missing" in tsc/dev until `prisma generate` runs.
+- [Next.js dev/build share .next/](nextjs-dev-build-shared-dir.md) — never run `next build` while the app's `next dev` workflow is live in the same dir; both corrupt.
