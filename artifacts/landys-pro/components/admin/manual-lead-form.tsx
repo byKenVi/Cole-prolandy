@@ -23,7 +23,7 @@ const EMPTY = {
   landownerEmail: "",
   landownerPhone: "",
   propertyLocation: "",
-  tier: "",
+  tier: "2",
   landTypeId: "",
   projectTypeId: "",
 };
@@ -60,7 +60,6 @@ export function ManualLeadForm({
     }
     if (s === 2) {
       if (!form.projectTypeId) return "Project type is required.";
-      if (!["1", "2", "3"].includes(form.tier)) return "Choose a tier.";
     }
     return null;
   }
@@ -222,7 +221,7 @@ export function ManualLeadForm({
 
       {step === 2 && (
         <section className="flex flex-col gap-6">
-          <StepTitle title="Job details" subtitle="What work and which tier? Review before creating." />
+          <StepTitle title="Job details" subtitle="What work is needed? Review before creating." />
           <div>
             <Label htmlFor="pt">Project type</Label>
             <div className="mt-2">
@@ -235,26 +234,9 @@ export function ManualLeadForm({
               />
             </div>
           </div>
-          <div>
-            <Label htmlFor="tier">Tier</Label>
-            <Select
-              id="tier"
-              className="h-14 text-lg"
-              value={form.tier}
-              onChange={(e) => set("tier", e.target.value)}
-            >
-              <option value="" disabled>
-                Select a tier
-              </option>
-              <option value="1">Tier 1</option>
-              <option value="2">Tier 2</option>
-              <option value="3">Tier 3</option>
-            </Select>
-          </div>
           <p className="rounded-sm bg-primary-soft p-3 text-sm text-text-muted">
             Creating will distribute to matching contractors immediately. Contractors pay Landy&apos;s
-            a success fee only after they win work and are paid by the landowner.
-            for that trade.
+            a success fee only after they win the job and confirm the landowner has paid them.
           </p>
         </section>
       )}

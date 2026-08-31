@@ -181,6 +181,11 @@ export default async function ContractorDetail({
                   <span className="tabular-nums text-sm text-text-muted">
                     {estimateLabel(m.lead)}
                   </span>
+                  {m.jobOutcome !== "OPEN" && (
+                    <Badge variant={m.jobOutcome === "WON" ? "default" : "neutral"}>
+                      {m.jobOutcome === "WON" ? "Won" : "Lost"}
+                    </Badge>
+                  )}
                   {m.successFee && (
                     <Badge variant="neutral">{m.successFee.status.replace(/_/g, " ")}</Badge>
                   )}

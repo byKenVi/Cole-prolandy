@@ -17,7 +17,6 @@ import {
   iconSrcForKey,
   type IconKey,
 } from "@/lib/project-icons";
-import { dollarsToCents } from "@/lib/money";
 
 type Category = {
   id: string;
@@ -139,7 +138,6 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
   const [pending, startTransition] = useTransition();
   const [newName, setNewName] = useState("");
   const [newIcon, setNewIcon] = useState<string>(ICON_AUTO);
-  const [newPrices, setNewPrices] = useState<[string, string, string]>(["", "", ""]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editIcon, setEditIcon] = useState<string>(ICON_AUTO);
@@ -147,7 +145,8 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const deferredQuery = useDeferredValue(query);
-  const validNewPrices = newPrices.every((price) => dollarsToCents(price) >= 100);
+  /** Dormant legacy PriceTier rows — not success-fee rates and not lead prices. */
+  const LEGACY_PLACEHOLDER_CENTS: [number, number, number] = [10000, 25000, 50000];
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
@@ -216,19 +215,13 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
           <button
             type="button"
             className="a-gold"
-            disabled={pending || newName.trim().length < 2 || !validNewPrices}
+            disabled={pending || newName.trim().length < 2}
             onClick={() =>
               run(
-                () =>
-                  createContractorType(newName, newIcon, [
-                    dollarsToCents(newPrices[0]),
-                    dollarsToCents(newPrices[1]),
-                    dollarsToCents(newPrices[2]),
-                  ]),
+                () => createContractorType(newName, newIcon, LEGACY_PLACEHOLDER_CENTS),
                 () => {
                   setNewName("");
                   setNewIcon(ICON_AUTO);
-                  setNewPrices(["", "", ""]);
                 },
               )
             }
@@ -241,50 +234,11 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
               borderRadius: 10,
               font: "600 13px/1 'Inter'",
               cursor: "pointer",
-              opacity: pending || newName.trim().length < 2 || !validNewPrices ? 0.6 : 1,
+              opacity: pending || newName.trim().length < 2 ? 0.6 : 1,
             }}
           >
             Add project
           </button>
-        </div>
-        <div>
-          <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>
-            Initial tier budget thresholds
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3,minmax(0,1fr))",
-              gap: 8,
-            }}
-            className="admin-grid-tight"
-          >
-            {newPrices.map((price, index) => (
-              <label key={index} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ font: "500 11px/1 'Inter'", color: "var(--ink3)" }}>
-                  Tier {index + 1}
-                </span>
-                <span style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <span style={{ position: "absolute", left: 11, color: "var(--gold)" }}>$</span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={price}
-                    onChange={(event) =>
-                      setNewPrices((current) => {
-                        const next = [...current] as [string, string, string];
-                        next[index] = event.target.value;
-                        return next;
-                      })
-                    }
-                    placeholder={`Tier ${index + 1}`}
-                    style={{ ...inputStyle, width: "100%", minWidth: 0, paddingLeft: 25 }}
-                  />
-                </span>
-              </label>
-            ))}
-          </div>
         </div>
         <div>
           <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>Icon</p>
@@ -390,8 +344,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
                     </p>
                     <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
                       {c.code} · {c.contractors} contractor{c.contractors === 1 ? "" : "s"}
-                      {typeof c.leads === "number" ? ` · ${c.leads} lead${c.leads === 1 ? "" : "s"}` : ""}
-                      {" · 3 tiers"}
+                      {typeof c.leads === "number" ? ` · ${c.leads} request${c.leads === 1 ? "" : "s"}` : ""}
                     </p>
                   </div>
                 </div>

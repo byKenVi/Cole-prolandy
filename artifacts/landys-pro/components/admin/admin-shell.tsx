@@ -36,8 +36,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: "/admin-icons/dashboard.png" },
   { href: "/admin/leads", label: "Leads", icon: "/admin-icons/leads.png" },
   { href: "/admin/contractors", label: "Contractors", icon: "/admin-icons/contractors.png" },
-  { href: "/admin/fees", label: "Success fees", icon: "__fees__" },
-  { href: "/admin/confirmations", label: "Confirmations", icon: "__confirm__" },
+  { href: "/admin/fees", label: "Success fees", icon: "/admin-icons/success-fees.png" },
+  { href: "/admin/confirmations", label: "Confirmations", icon: "/admin-icons/confirmations.png" },
   { href: "/admin/settings", label: "Settings", icon: "/admin-icons/settings.png" },
 ];
 
@@ -67,54 +67,12 @@ function TeamIcon() {
   );
 }
 
-function FeesIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 2v20" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
-  );
-}
-
-function ConfirmIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M9 11l3 3L22 4" />
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-    </svg>
-  );
-}
-
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link href={item.href} className="admin-navitem" data-active={active} title={item.label}>
       <span className="admin-nav-icon">
         {item.icon === "__team__" ? (
           <TeamIcon />
-        ) : item.icon === "__fees__" ? (
-          <FeesIcon />
-        ) : item.icon === "__confirm__" ? (
-          <ConfirmIcon />
         ) : (
           <Image
             src={item.icon}

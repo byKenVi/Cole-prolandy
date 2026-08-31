@@ -1,14 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
-import {
-  RevenueHero,
-  type RevenuePoint,
-  type RevenueRange,
-} from "@/components/admin/revenue-hero";
 import { PageHeader, GoldButtonLink, Panel, IconTile, Chip } from "@/components/admin/ui";
 import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/format";
 import { iconSrcFor } from "@/lib/project-icons";
 import { leadCategoryIcon, leadCategoryLabel, leadScopeLabel } from "@/lib/resolved-lead";
 import { leadStatusChip } from "@/lib/admin-display";
@@ -18,149 +14,110 @@ export const revalidate = 0;
 
 function greeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning, Admin";
-  if (h < 18) return "Good afternoon, Admin";
-  return "Good evening, Admin";
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
 }
 
-function parseRange(raw: string | undefined): RevenueRange {
-  if (raw === "24h" || raw === "7d" || raw === "30d") return raw;
-  return "30d";
-}
-
-export default async function AdminDashboard({
-  searchParams,
-}: {
-  searchParams: Promise<{ range?: string }>;
-}) {
+export default async function AdminDashboard() {
   await expireLeads(prisma).catch(() => undefined);
 
-  const { range: rangeParam } = await searchParams;
-  const range = parseRange(rangeParam);
-
   const now = new Date();
-  const start365 = new Date();
-  start365.setHours(0, 0, 0, 0);
-  start365.setDate(start365.getDate() - 364);
-
   const [
-    contractors,
-    proContractors,
-    openLeads,
-    pendingMatches,
-    acceptedMatches,
-    declinedMatches,
-    expiredMatches,
+    openRequests,
+    acceptedOpportunities,
     wonJobs,
-    feesDue,
     feesAwaiting,
-    feesPaidCount,
-    successFeesAllTimeCents,
-    mismatches,
-    paidFees,
+    feesDue,
+    feesCollectedCents,
+    feesCollectedCount,
+    confirmationsReview,
     recentLeads,
+    feesAttention,
+    pendingConfirmations,
+    recentWon,
   ] = await Promise.all([
-    prisma.contractor.count({ where: { deactivatedAt: null } }),
-    prisma.contractor.count({ where: { isPro: true, deactivatedAt: null } }),
     prisma.lead.count({ where: { status: { in: ["NEW", "DISTRIBUTED"] } } }),
-    prisma.leadMatch.count({ where: { status: "PENDING" } }),
     prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
-    prisma.leadMatch.count({ where: { status: "DECLINED" } }),
-    prisma.leadMatch.count({ where: { status: "EXPIRED" } }),
     prisma.leadMatch.count({ where: { jobOutcome: "WON" } }),
-    prisma.successFee.count({ where: { status: "DUE" } }),
     prisma.successFee.count({ where: { status: "AWAITING_CONTRACTOR_PAYMENT" } }),
-    prisma.successFee.count({ where: { status: "PAID" } }),
+    prisma.successFee.count({ where: { status: "DUE" } }),
     prisma.successFee
       .aggregate({ where: { status: "PAID" }, _sum: { feeAmountCents: true } })
       .then((r) => r._sum.feeAmountCents ?? 0),
+    prisma.successFee.count({ where: { status: "PAID" } }),
     prisma.landownerConfirmation.count({ where: { mismatchFlagged: true } }),
-    prisma.successFee.findMany({
-      where: { status: "PAID", paidAt: { gte: start365 } },
-      select: { feeAmountCents: true, paidAt: true },
-    }),
     prisma.lead.findMany({
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 6,
       select: {
         id: true,
         status: true,
         budgetCents: true,
-        priceCents: true,
+        acceptedCount: true,
         createdAt: true,
+        propertyLocation: true,
         projectType: {
           select: { name: true, contractorType: { select: { name: true, icon: true } } },
         },
         workType: { select: { name: true } },
         contractorCategory: { select: { name: true } },
+        _count: { select: { matches: true } },
+      },
+    }),
+    prisma.successFee.findMany({
+      where: { status: { in: ["DUE", "AWAITING_CONTRACTOR_PAYMENT"] } },
+      orderBy: [{ status: "asc" }, { dueAt: "asc" }, { createdAt: "desc" }],
+      take: 5,
+      include: {
+        leadMatch: {
+          include: {
+            contractor: { select: { name: true } },
+            lead: {
+              select: {
+                propertyLocation: true,
+                projectType: { select: { name: true } },
+                workType: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.landownerConfirmation.findMany({
+      where: { OR: [{ respondedAt: null }, { mismatchFlagged: true }] },
+      orderBy: [{ mismatchFlagged: "desc" }, { createdAt: "desc" }],
+      take: 5,
+      include: {
+        lead: {
+          select: {
+            id: true,
+            landownerName: true,
+            propertyLocation: true,
+            projectType: { select: { name: true } },
+            workType: { select: { name: true } },
+          },
+        },
+        hiredLeadMatch: { select: { contractor: { select: { name: true } } } },
+      },
+    }),
+    prisma.leadMatch.findMany({
+      where: { jobOutcome: "WON" },
+      orderBy: { outcomeReportedAt: "desc" },
+      take: 5,
+      include: {
+        contractor: { select: { name: true } },
+        successFee: { select: { status: true, feeAmountCents: true } },
+        lead: {
+          select: {
+            propertyLocation: true,
+            projectType: { select: { name: true } },
+            workType: { select: { name: true } },
+          },
+        },
       },
     }),
   ]);
-
-  const dailyKey = (d: Date) => {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x.toISOString().slice(0, 10);
-  };
-  const byDay = new Map<string, number>();
-  for (const fee of paidFees) {
-    if (!fee.paidAt) continue;
-    const day = dailyKey(fee.paidAt);
-    byDay.set(day, (byDay.get(day) ?? 0) + fee.feeAmountCents);
-  }
-  const dailySeries = (days: number): RevenuePoint[] => {
-    const base = new Date();
-    base.setHours(0, 0, 0, 0);
-    base.setDate(base.getDate() - (days - 1));
-    return Array.from({ length: days }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
-      return {
-        label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-        revenueCents: byDay.get(dailyKey(d)) ?? 0,
-      };
-    });
-  };
-
-  const hourKey = (d: Date) => {
-    const x = new Date(d);
-    x.setMinutes(0, 0, 0);
-    return x.toISOString();
-  };
-  const byHour = new Map<string, number>();
-  const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  for (const fee of paidFees) {
-    if (!fee.paidAt || fee.paidAt < since24h) continue;
-    const key = hourKey(fee.paidAt);
-    byHour.set(key, (byHour.get(key) ?? 0) + fee.feeAmountCents);
-  }
-  const hourlySeries24h = (): RevenuePoint[] => {
-    const start = new Date(now);
-    start.setMinutes(0, 0, 0);
-    start.setHours(start.getHours() - 23);
-    return Array.from({ length: 24 }, (_, i) => {
-      const d = new Date(start);
-      d.setHours(start.getHours() + i);
-      return {
-        label: d.toLocaleTimeString(undefined, { hour: "numeric" }),
-        revenueCents: byHour.get(hourKey(d)) ?? 0,
-      };
-    });
-  };
-
-  const series =
-    range === "24h" ? hourlySeries24h() : range === "7d" ? dailySeries(7) : dailySeries(30);
-  const revenueInRange = series.reduce((s, p) => s + p.revenueCents, 0);
-
-  const mid = Math.floor(series.length / 2);
-  const firstHalf = series.slice(0, mid).reduce((s, p) => s + p.revenueCents, 0);
-  const secondHalf = series.slice(mid).reduce((s, p) => s + p.revenueCents, 0);
-  const trendPct =
-    firstHalf > 0 ? Math.round(((secondHalf - firstHalf) / firstHalf) * 100) : null;
-
-  const pipelineTotal = acceptedMatches + declinedMatches + pendingMatches + expiredMatches;
-  const pct = (n: number) => (pipelineTotal > 0 ? (n / pipelineTotal) * 100 : 0);
-  const acceptanceRate = pipelineTotal > 0 ? Math.round((acceptedMatches / pipelineTotal) * 100) : 0;
 
   const dateStr = now.toLocaleDateString(undefined, {
     month: "short",
@@ -168,180 +125,100 @@ export default async function AdminDashboard({
     year: "numeric",
   });
 
+  const metrics = [
+    { label: "Open requests", value: openRequests, href: "/admin/leads", hint: "New & distributed" },
+    { label: "Accepted", value: acceptedOpportunities, href: "/admin/leads", hint: "Opportunities" },
+    { label: "Won jobs", value: wonJobs, href: "/admin/fees", hint: "Reported won" },
+    {
+      label: "Awaiting payment",
+      value: feesAwaiting,
+      href: "/admin/fees?tab=awaiting",
+      hint: "Contractor not yet paid",
+    },
+    { label: "Fees due", value: feesDue, href: "/admin/fees?tab=due", hint: "Owed to Landy's" },
+    {
+      label: "Fees collected",
+      value: formatMoney(feesCollectedCents),
+      href: "/admin/fees?tab=paid",
+      hint: `${feesCollectedCount} paid`,
+      isMoney: true,
+    },
+    {
+      label: "Needs review",
+      value: confirmationsReview,
+      href: "/admin/confirmations?tab=mismatches",
+      hint: "Confirmation mismatches",
+    },
+  ];
+
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker={`Command center · ${dateStr}`}
+        kicker={`Operations · ${dateStr}`}
         title={greeting()}
-        subtitle="Success-fee operations at a glance."
-        titleSize={38}
-        action={<GoldButtonLink href="/admin/leads/new">New lead</GoldButtonLink>}
+        subtitle="Success-fee pipeline — opportunities, won jobs, and fees that need attention."
+        titleSize={36}
+        action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
       />
 
-      {/* HERO STRIP: revenue hero + wallet/stat column */}
       <div
-        className="admin-grid-stack"
-        style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 16, marginBottom: 16 }}
+        className="admin-stat-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gap: 12,
+          marginBottom: 22,
+        }}
       >
-        <RevenueHero
-          value={formatMoney(revenueInRange)}
-          trend={trendPct}
-          series={series}
-          range={range}
-        />
-
-        <div style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: 16 }}>
-          <div
+        {metrics.map((m) => (
+          <Link
+            key={m.label}
+            href={m.href}
             className="a-lift"
             style={{
-              background: "var(--sage)",
-              borderRadius: 20,
-              padding: "20px 22px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
+              textDecoration: "none",
+              background: "var(--card)",
+              border: "1px solid var(--line)",
+              borderRadius: 16,
+              padding: "16px 18px",
+              boxShadow: "var(--shadowSm)",
+              display: "block",
             }}
           >
             <p
               style={{
                 margin: "0 0 10px",
-                font: "600 11px/1 var(--mono)",
-                letterSpacing: ".08em",
+                font: "600 10px/1 var(--mono)",
+                letterSpacing: ".07em",
                 textTransform: "uppercase",
-                color: "var(--sageFg)",
-                opacity: 0.85,
+                color: "var(--ink3)",
               }}
             >
-              Success fees · all time
+              {m.label}
             </p>
             <p
               style={{
-                margin: 0,
-                font: "600 30px/1 var(--display)",
-                color: "var(--sageFg)",
-                letterSpacing: "-.02em",
+                margin: "0 0 4px",
+                font: "600 26px/1 var(--display)",
+                color: "var(--ink)",
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              {formatMoney(successFeesAllTimeCents)}
+              {m.value}
             </p>
-            <p style={{ margin: "6px 0 0", font: "500 12px/1 'Inter'", color: "var(--sageFg)", opacity: 0.8 }}>
-              {feesPaidCount} paid · {feesDue} due · {mismatches} mismatch{mismatches === 1 ? "" : "es"}
-            </p>
-          </div>
-          <div className="admin-grid-tight" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <MiniStat label="Fees due" value={String(feesDue)} sub={`${feesAwaiting} awaiting contractor payment`} />
-            <MiniStat label="Won jobs" value={String(wonJobs)} sub={`${acceptedMatches} accepted opportunities`} />
-          </div>
-          <div className="admin-grid-tight" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
-            <MiniStat label="Open estimates" value={String(openLeads)} sub={`${pendingMatches} pending responses`} />
-            <MiniStat label="Contractors" value={String(contractors)} sub={`${proContractors} on Pro`} />
-          </div>
-        </div>
+            <p style={{ margin: 0, font: "500 12px/1.2 'Inter'", color: "var(--ink2)" }}>{m.hint}</p>
+          </Link>
+        ))}
       </div>
 
-      {/* PIPELINE + RECENT LEADS */}
       <div
         className="admin-grid-stack"
-        style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 16 }}
+        style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 16 }}
       >
-        <div
-          style={{
-            background: "var(--card)",
-            border: "1px solid var(--line)",
-            borderRadius: 20,
-            padding: "22px 24px",
-            boxShadow: "var(--shadowSm)",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 3px",
-              font: "600 13px/1 'Inter'",
-              letterSpacing: ".02em",
-              textTransform: "uppercase",
-              color: "var(--ink2)",
-            }}
-          >
-            Match pipeline
-          </p>
-          <p style={{ margin: "0 0 18px", color: "var(--ink3)", fontSize: 13 }}>
-            {pipelineTotal} match{pipelineTotal === 1 ? "" : "es"} all time
-          </p>
-          <div
-            style={{
-              display: "flex",
-              height: 14,
-              borderRadius: 999,
-              overflow: "hidden",
-              marginBottom: 22,
-              background: "var(--track)",
-            }}
-          >
-            <div style={{ width: `${pct(acceptedMatches)}%`, background: "var(--gold)" }} />
-            <div style={{ width: `${pct(pendingMatches)}%`, background: "#D8B577" }} />
-            <div style={{ width: `${pct(declinedMatches)}%`, background: "var(--chipFg)" }} />
-          </div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <PipelineRow color="var(--gold)" label="Accepted" value={acceptedMatches} />
-            <PipelineRow color="var(--chipFg)" label="Passed" value={declinedMatches} />
-            <PipelineRow color="#D8B577" label="Pending" value={pendingMatches} />
-            <PipelineRow color="var(--track)" border label="Expired" value={expiredMatches} muted />
-          </div>
-          <div
-            style={{
-              marginTop: 20,
-              paddingTop: 18,
-              borderTop: "1px solid var(--line)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span style={{ font: "500 13px/1 'Inter'", color: "var(--ink2)" }}>Acceptance rate</span>
-            <span
-              style={{
-                font: "600 20px/1 var(--display)",
-                color: "var(--sageFg)",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {acceptanceRate}%
-            </span>
-          </div>
-        </div>
-
-        <Panel style={{ borderRadius: 20, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "18px 24px",
-              borderBottom: "1px solid var(--line)",
-            }}
-          >
-            <p style={{ margin: 0, font: "600 15px/1 'Inter'", color: "var(--ink)" }}>Recent leads</p>
-            <Link
-              href="/admin/leads"
-              className="a-linkgold"
-              style={{
-                font: "600 13px/1 'Inter'",
-                color: "var(--gold)",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                textDecoration: "none",
-              }}
-            >
-              View all
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
-            </Link>
-          </div>
+        <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
+          <SectionHead title="Recent opportunities" href="/admin/leads" />
           {recentLeads.length === 0 ? (
-            <p style={{ padding: "24px", color: "var(--ink3)", fontSize: 14 }}>No leads yet.</p>
+            <EmptyBlock text="No estimate requests yet. New Landys.co requests will appear here." />
           ) : (
             recentLeads.map((lead) => {
               const chip = leadStatusChip(lead.status);
@@ -350,6 +227,7 @@ export default async function AdminDashboard({
                 category: leadCategoryLabel(lead),
                 project: leadScopeLabel(lead),
               });
+              const est = lead.budgetCents;
               return (
                 <div
                   key={lead.id}
@@ -357,50 +235,90 @@ export default async function AdminDashboard({
                   style={{
                     position: "relative",
                     display: "grid",
-                    // Status + price share one wrapping cell so the row degrades
-                    // gracefully instead of overflowing on phones.
                     gridTemplateColumns: "44px minmax(0,1fr) auto",
                     alignItems: "center",
                     gap: 14,
-                    padding: "13px 24px",
+                    padding: "13px 22px",
                     borderBottom: "1px solid var(--line2)",
                   }}
                 >
-                  <RowLink href={`/admin/leads/${lead.id}`} label={`Open ${leadScopeLabel(lead)} lead`} />
+                  <RowLink href={`/admin/leads/${lead.id}`} label={`Open ${leadScopeLabel(lead)}`} />
                   <IconTile src={src} />
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
                       {leadScopeLabel(lead)}
                     </p>
-                    <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                      {leadCategoryLabel(lead)}
+                    <p style={{ margin: "2px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                      {lead.propertyLocation} · {lead._count.matches} matched · {lead.acceptedCount}{" "}
+                      accepted
                     </p>
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      justifyContent: "flex-end",
-                      gap: 10,
-                    }}
-                  >
+                  <div style={{ textAlign: "right" }}>
                     <Chip bg={chip.bg} fg={chip.fg}>
                       {chip.label}
                     </Chip>
-                    <span
+                    <p
                       style={{
-                        font: "600 16px/1 var(--display)",
+                        margin: "6px 0 0",
+                        font: "600 14px/1 var(--display)",
                         color: "var(--ink)",
                         fontVariantNumeric: "tabular-nums",
-                        textAlign: "right",
                       }}
                     >
-                      {(() => {
-                        const est = lead.budgetCents ?? lead.priceCents;
-                        return est ? formatMoney(est) : "Pending review";
-                      })()}
-                    </span>
+                      {est != null ? formatMoney(est) : "—"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </Panel>
+
+        <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
+          <SectionHead title="Fees requiring attention" href="/admin/fees" />
+          {feesAttention.length === 0 ? (
+            <EmptyBlock text="No fees need attention right now." />
+          ) : (
+            feesAttention.map((fee) => {
+              const awaiting = fee.status === "AWAITING_CONTRACTOR_PAYMENT";
+              return (
+                <div
+                  key={fee.id}
+                  style={{
+                    padding: "14px 22px",
+                    borderBottom: "1px solid var(--line2)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
+                        {leadScopeLabel(fee.leadMatch.lead)}
+                      </p>
+                      <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                        {fee.leadMatch.contractor.name} · {fee.leadMatch.lead.propertyLocation}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: "right", flex: "none" }}>
+                      <p
+                        style={{
+                          margin: 0,
+                          font: "600 15px/1 var(--display)",
+                          color: "var(--ink)",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {formatMoney(fee.feeAmountCents)}
+                      </p>
+                      <p
+                        style={{
+                          margin: "4px 0 0",
+                          font: "600 11px/1 'Inter'",
+                          color: awaiting ? "var(--goldSoftFg)" : "var(--danger)",
+                        }}
+                      >
+                        {awaiting ? "Awaiting contractor" : "Due"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               );
@@ -408,86 +326,125 @@ export default async function AdminDashboard({
           )}
         </Panel>
       </div>
+
+      <div
+        className="admin-grid-stack"
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
+      >
+        <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
+          <SectionHead title="Confirmations & mismatches" href="/admin/confirmations" />
+          {pendingConfirmations.length === 0 ? (
+            <EmptyBlock text="No pending confirmations or mismatches." />
+          ) : (
+            pendingConfirmations.map((row) => (
+              <div
+                key={row.id}
+                style={{ padding: "14px 22px", borderBottom: "1px solid var(--line2)" }}
+              >
+                <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
+                  {leadScopeLabel(row.lead)}
+                </p>
+                <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                  {row.lead.landownerName ?? "Landowner"} · {row.lead.propertyLocation}
+                </p>
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    font: "600 12px/1 'Inter'",
+                    color: row.mismatchFlagged ? "var(--danger)" : "var(--ink2)",
+                  }}
+                >
+                  {row.mismatchFlagged
+                    ? "Mismatch — needs review"
+                    : "Waiting for landowner response."}
+                </p>
+              </div>
+            ))
+          )}
+        </Panel>
+
+        <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
+          <SectionHead title="Recent won jobs" href="/admin/fees" />
+          {recentWon.length === 0 ? (
+            <EmptyBlock text="No won jobs yet." />
+          ) : (
+            recentWon.map((m) => (
+              <div
+                key={m.id}
+                style={{ padding: "14px 22px", borderBottom: "1px solid var(--line2)" }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
+                      {leadScopeLabel(m.lead)}
+                    </p>
+                    <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                      {m.contractor.name}
+                      {m.outcomeReportedAt ? ` · ${formatDate(m.outcomeReportedAt)}` : ""}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right", flex: "none" }}>
+                    {m.successFee ? (
+                      <>
+                        <p
+                          style={{
+                            margin: 0,
+                            font: "600 14px/1 var(--display)",
+                            color: "var(--ink)",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {formatMoney(m.successFee.feeAmountCents)}
+                        </p>
+                        <p style={{ margin: "4px 0 0", font: "500 11px/1 'Inter'", color: "var(--ink3)" }}>
+                          {m.successFee.status === "PAID"
+                            ? "Paid"
+                            : m.successFee.status === "DUE"
+                              ? "Due"
+                              : "Awaiting"}
+                        </p>
+                      </>
+                    ) : (
+                      <p style={{ margin: 0, font: "500 12px/1 'Inter'", color: "var(--ink3)" }}>—</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </Panel>
+      </div>
     </div>
   );
 }
 
-/** Small white KPI card used in the dashboard hero column. */
-function MiniStat({ label, value, sub }: { label: string; value: string; sub: string }) {
+function SectionHead({ title, href }: { title: string; href: string }) {
   return (
     <div
-      className="a-lift"
       style={{
-        background: "var(--card)",
-        border: "1px solid var(--line)",
-        borderRadius: 20,
-        padding: "18px 20px",
-        boxShadow: "var(--shadowSm)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "16px 22px",
+        borderBottom: "1px solid var(--line)",
       }}
     >
-      <p
-        style={{
-          margin: "0 0 12px",
-          font: "600 11px/1 var(--mono)",
-          letterSpacing: ".08em",
-          textTransform: "uppercase",
-          color: "var(--ink3)",
-        }}
+      <p style={{ margin: 0, font: "600 15px/1 'Inter'", color: "var(--ink)" }}>{title}</p>
+      <Link
+        href={href}
+        className="a-linkgold"
+        style={{ font: "600 13px/1 'Inter'", color: "var(--gold)", textDecoration: "none" }}
       >
-        {label}
-      </p>
-      <p style={{ margin: "0 0 6px", font: "600 28px/1 var(--display)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
-        {value}
-      </p>
-      <p style={{ margin: 0, font: "500 12px/1.2 'Inter'", color: "var(--ink2)" }}>{sub}</p>
+        View all
+      </Link>
     </div>
   );
 }
 
-function PipelineRow({
-  color,
-  label,
-  value,
-  border,
-  muted,
-}: {
-  color: string;
-  label: string;
-  value: number;
-  border?: boolean;
-  muted?: boolean;
-}) {
+function EmptyBlock({ text }: { text: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0" }}>
-      <span
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          font: "500 14px/1 'Inter'",
-          color: muted ? "var(--ink2)" : "var(--ink)",
-        }}
-      >
-        <span
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: 3,
-            background: color,
-            border: border ? "1px solid var(--line)" : undefined,
-          }}
-        />
-        {label}
-      </span>
-      <span
-        style={{
-          font: "600 15px/1 'Inter'",
-          color: muted ? "var(--ink2)" : "var(--ink)",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {value}
-      </span>
-    </div>
+    <p style={{ padding: "28px 22px", margin: 0, color: "var(--ink3)", fontSize: 14, lineHeight: 1.5 }}>
+      {text}
+    </p>
   );
 }

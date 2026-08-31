@@ -4,7 +4,6 @@ import { ArrowLeft, CheckCircle2, XCircle, Clock, Circle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TierBadge } from "@/components/tier-badge";
 import { LeadStatusBadge, LeadMatchStatusBadge } from "@/components/status-badge";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteLead } from "@/app/actions/admin";
@@ -176,14 +175,15 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             {leadCategoryLabel(lead)} · {lead.propertyLocation}
           </p>
           <div className="mt-2 flex items-center gap-2">
-            {lead.tier === null ? (
-              <span className="rounded-full bg-warning/10 px-2 py-1 text-xs font-semibold text-warning">
-                Tier review
-              </span>
-            ) : (
-              <TierBadge tier={lead.tier} />
-            )}
             <LeadStatusBadge status={lead.status} />
+            {lead.acceptedCount > 0 && (
+              <span
+                className="rounded-full px-2 py-1 text-xs font-semibold"
+                style={{ background: "var(--goldSoft)", color: "var(--goldSoftFg)" }}
+              >
+                {lead.acceptedCount} accepted
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -217,9 +217,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <p className="mt-1 text-3xl font-semibold leading-tight tabular-nums text-text">
             {lead.budgetCents != null
               ? formatMoney(lead.budgetCents)
-              : lead.priceCents === null
-                ? "Pending review"
-                : formatMoney(lead.priceCents)}
+              : "Pending review"}
           </p>
         </div>
         <dl className="grid gap-5 sm:grid-cols-2">

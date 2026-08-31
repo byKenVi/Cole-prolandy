@@ -12,19 +12,21 @@ export type LeadRow = {
   category: string;
   place: string;
   recipients: number;
+  accepted: number;
   sent: string;
-  /** ISO date for sorting (server already sorted; kept for client display). */
   sentAtIso: string;
   price: string;
   priceCents: number | null;
   iconSrc: string | null;
-  tier: ChipStyle;
-  tierNum: number | null;
   status: ChipStyle;
-  filter: "distributed" | "expired" | "other";
+  filter: "new" | "active" | "accepted" | "closed" | "other";
 };
 
-const GRID = "52px minmax(220px,2.4fr) minmax(170px,1.6fr) 84px 116px 130px 108px";
+type StatusTab = "all" | "new" | "active" | "accepted" | "closed";
+type SortKey = "date" | "value";
+type SortDir = "desc" | "asc";
+
+const GRID = "52px minmax(200px,2.2fr) minmax(150px,1.4fr) 88px 88px 110px 100px 108px";
 const HEAD_CELL: React.CSSProperties = {
   font: "600 10px/1 var(--mono)",
   letterSpacing: ".08em",
@@ -32,54 +34,40 @@ const HEAD_CELL: React.CSSProperties = {
   color: "var(--ink3)",
 };
 
-type SortKey = "date" | "value";
-type SortDir = "desc" | "asc";
-
-/**
- * Leads table with All / Distributed / Expired tabs, tier filter, and sortable
- * value/date columns. Rows are server-paginated; search + status tabs filter
- * the current page client-side. Tier/sort use URL params for server refetch.
- */
 export function LeadsTable({
   leads,
   total,
   pageCount,
   initialQuery = "",
   pagination,
-  initialTier = "",
+  initialStatus = "all",
+  statusCounts,
   initialSort = "date",
   initialDir = "desc",
 }: {
   leads: LeadRow[];
   total: number;
-  /** Rows on the current server page (before client filter). */
   pageCount?: number;
   initialQuery?: string;
   pagination?: React.ReactNode;
-  initialTier?: string;
+  initialStatus?: StatusTab;
+  statusCounts?: Record<StatusTab, number>;
   initialSort?: SortKey;
   initialDir?: SortDir;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<"all" | "distributed" | "expired">("all");
   const [query, setQuery] = useState(initialQuery);
 
   const q = query.trim().toLowerCase();
-  const matchesQuery = (l: LeadRow) =>
-    !q ||
-    l.title.toLowerCase().includes(q) ||
-    l.category.toLowerCase().includes(q) ||
-    l.place.toLowerCase().includes(q);
-
-  const searched = leads.filter(matchesQuery);
-  const counts = {
-    all: searched.length,
-    distributed: searched.filter((l) => l.filter === "distributed").length,
-    expired: searched.filter((l) => l.filter === "expired").length,
-  };
-  const shown = tab === "all" ? searched : searched.filter((l) => l.filter === tab);
+  const shown = leads.filter(
+    (l) =>
+      !q ||
+      l.title.toLowerCase().includes(q) ||
+      l.category.toLowerCase().includes(q) ||
+      l.place.toLowerCase().includes(q),
+  );
 
   function pushParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -87,7 +75,7 @@ export function LeadsTable({
       if (v === null || v === "") params.delete(k);
       else params.set(k, v);
     }
-    params.delete("page"); // reset page on sort/filter change
+    params.delete("page");
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
@@ -109,22 +97,20 @@ export function LeadsTable({
     cursor: "pointer",
     border: "none",
     font: "600 13px/1 'Inter'",
-    padding: "9px 15px",
+    padding: "9px 14px",
     borderRadius: 9,
     background: active ? "var(--card)" : "transparent",
     color: active ? "var(--ink)" : "var(--ink2)",
     boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
   });
 
-  const tierBtn = (value: string): React.CSSProperties => ({
-    cursor: "pointer",
-    border: "1px solid var(--line)",
-    font: "600 12px/1 'Inter'",
-    padding: "8px 12px",
-    borderRadius: 999,
-    background: initialTier === value ? "var(--goldSoft)" : "var(--field)",
-    color: initialTier === value ? "var(--goldSoftFg)" : "var(--ink2)",
-  });
+  const tabs: { key: StatusTab; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "new", label: "New" },
+    { key: "active", label: "Active" },
+    { key: "accepted", label: "Accepted" },
+    { key: "closed", label: "Expired / Closed" },
+  ];
 
   function SortButton({ label, sortKey, align }: { label: string; sortKey: SortKey; align?: "right" }) {
     const active = initialSort === sortKey;
@@ -155,81 +141,6 @@ export function LeadsTable({
     );
   }
 
-  function RowBody({ row }: { row: LeadRow }) {
-    return (
-      <>
-        <span
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            background: "var(--card2)",
-            border: "1px solid var(--line)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: "none",
-          }}
-        >
-          {row.iconSrc ? (
-            <Image src={row.iconSrc} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="4" />
-              <path d="M8 12h8M12 8v8" />
-            </svg>
-          )}
-        </span>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>
-          <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-            {row.recipients} recipient{row.recipients === 1 ? "" : "s"} · {row.category} · {row.place}
-          </p>
-        </div>
-        <span
-          style={{
-            font: "600 11px/1 'Inter'",
-            padding: "6px 10px",
-            borderRadius: 999,
-            color: row.tier.fg,
-            background: row.tier.bg,
-            whiteSpace: "nowrap",
-            flex: "none",
-          }}
-        >
-          {row.tier.label}
-        </span>
-        <span
-          style={{
-            font: "500 11px/1 'Inter'",
-            color: row.status.fg,
-            background: row.status.bg,
-            padding: "6px 11px",
-            borderRadius: 999,
-            flex: "none",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <span style={{ width: 6, height: 6, borderRadius: 999, background: row.status.fg }} />
-          {row.status.label}
-        </span>
-        <span style={{ font: "400 13px/1.3 'Inter'", color: "var(--ink2)", flex: "none" }}>{row.sent}</span>
-        <span
-          style={{
-            font: "600 17px/1 var(--display)",
-            color: "var(--ink)",
-            fontVariantNumeric: "tabular-nums",
-            flex: "none",
-          }}
-        >
-          {row.price}
-        </span>
-      </>
-    );
-  }
-
   return (
     <>
       <div
@@ -238,7 +149,7 @@ export function LeadsTable({
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
-          marginBottom: 12,
+          marginBottom: 16,
           flexWrap: "wrap",
         }}
       >
@@ -250,17 +161,22 @@ export function LeadsTable({
             border: "1px solid var(--line)",
             padding: 4,
             borderRadius: 12,
+            flexWrap: "wrap",
           }}
         >
-          <button type="button" style={segStyle(tab === "all")} onClick={() => setTab("all")}>
-            All <span style={{ opacity: 0.55 }}>{counts.all}</span>
-          </button>
-          <button type="button" style={segStyle(tab === "distributed")} onClick={() => setTab("distributed")}>
-            Distributed <span style={{ opacity: 0.55 }}>{counts.distributed}</span>
-          </button>
-          <button type="button" style={segStyle(tab === "expired")} onClick={() => setTab("expired")}>
-            Expired <span style={{ opacity: 0.55 }}>{counts.expired}</span>
-          </button>
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              style={segStyle(initialStatus === t.key)}
+              onClick={() => pushParams({ status: t.key === "all" ? null : t.key })}
+            >
+              {t.label}{" "}
+              <span style={{ opacity: 0.55 }}>
+                {statusCounts?.[t.key] ?? (t.key === "all" ? total : "—")}
+              </span>
+            </button>
+          ))}
         </div>
 
         <div
@@ -274,14 +190,22 @@ export function LeadsTable({
             background: "var(--field)",
             border: "1px solid var(--line)",
             borderRadius: 11,
-            // Grow to 240px when there is room, but shrink freely on phones
-            // rather than forcing the toolbar wider than the viewport.
             flex: "1 1 240px",
             minWidth: 0,
             marginLeft: "auto",
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--ink3)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-3-3" />
           </svg>
@@ -290,25 +214,10 @@ export function LeadsTable({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search job, trade or location…"
-            aria-label="Search leads by job, trade or location"
+            aria-label="Search leads"
             style={{ font: "400 14px/1 'Inter'", width: "100%" }}
           />
         </div>
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }} role="group" aria-label="Filter by tier">
-        <button type="button" style={tierBtn("")} onClick={() => pushParams({ tier: null })}>
-          All tiers
-        </button>
-        <button type="button" style={tierBtn("1")} onClick={() => pushParams({ tier: "1" })}>
-          Tier 1
-        </button>
-        <button type="button" style={tierBtn("2")} onClick={() => pushParams({ tier: "2" })}>
-          Tier 2
-        </button>
-        <button type="button" style={tierBtn("3")} onClick={() => pushParams({ tier: "3" })}>
-          Tier 3
-        </button>
       </div>
 
       <div
@@ -320,23 +229,23 @@ export function LeadsTable({
           overflow: "hidden",
         }}
       >
-        {/* Desktop header + rows */}
         <div className="admin-table-desktop">
           <div
             style={{
               display: "grid",
               gridTemplateColumns: GRID,
               alignItems: "center",
-              gap: 14,
-              padding: "13px 24px",
+              gap: 12,
+              padding: "13px 22px",
               background: "var(--card2)",
               borderBottom: "1px solid var(--line)",
             }}
           >
             <span />
-            <span style={HEAD_CELL}>Job</span>
-            <span style={HEAD_CELL}>Trade &amp; location</span>
-            <span style={HEAD_CELL}>Tier</span>
+            <span style={HEAD_CELL}>Project</span>
+            <span style={HEAD_CELL}>Location</span>
+            <span style={HEAD_CELL}>Matched</span>
+            <span style={HEAD_CELL}>Accepted</span>
             <span style={HEAD_CELL}>Status</span>
             <SortButton label="Sent" sortKey="date" />
             <SortButton label="Est. value" sortKey="value" align="right" />
@@ -351,8 +260,8 @@ export function LeadsTable({
                 display: "grid",
                 gridTemplateColumns: GRID,
                 alignItems: "center",
-                gap: 14,
-                padding: "15px 24px",
+                gap: 12,
+                padding: "15px 22px",
                 borderBottom: "1px solid var(--line2)",
                 textDecoration: "none",
               }}
@@ -372,34 +281,23 @@ export function LeadsTable({
                 {row.iconSrc ? (
                   <Image src={row.iconSrc} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
                 ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="4" />
-                    <path d="M8 12h8M12 8v8" />
-                  </svg>
+                  <span style={{ width: 20, height: 20, borderRadius: 4, background: "var(--track)" }} />
                 )}
               </span>
               <div style={{ minWidth: 0 }}>
                 <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>
                 <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                  {row.recipients} recipient{row.recipients === 1 ? "" : "s"}
+                  {row.category}
                 </p>
               </div>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, font: "500 13px/1.3 'Inter'", color: "var(--ink2)" }}>{row.category}</p>
-                <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>{row.place}</p>
-              </div>
-              <span
-                style={{
-                  font: "600 11px/1 'Inter'",
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  color: row.tier.fg,
-                  background: row.tier.bg,
-                  whiteSpace: "nowrap",
-                  justifySelf: "start",
-                }}
-              >
-                {row.tier.label}
+              <p style={{ margin: 0, font: "500 13px/1.3 'Inter'", color: "var(--ink2)", minWidth: 0 }}>
+                {row.place}
+              </p>
+              <span style={{ font: "600 14px/1 'Inter'", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
+                {row.recipients}
+              </span>
+              <span style={{ font: "600 14px/1 'Inter'", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
+                {row.accepted}
               </span>
               <span
                 style={{
@@ -420,7 +318,7 @@ export function LeadsTable({
               <span style={{ font: "400 13px/1.3 'Inter'", color: "var(--ink2)" }}>{row.sent}</span>
               <span
                 style={{
-                  font: "600 17px/1 var(--display)",
+                  font: "600 16px/1 var(--display)",
                   color: "var(--ink)",
                   fontVariantNumeric: "tabular-nums",
                   textAlign: "right",
@@ -432,31 +330,47 @@ export function LeadsTable({
           ))}
         </div>
 
-        {/* Mobile stacked cards */}
         <div className="admin-table-mobile" style={{ display: "none", flexDirection: "column" }}>
           {shown.map((row) => (
             <Link
               key={row.id}
               href={`/admin/leads/${row.id}`}
-              className="a-row admin-fade-up"
+              className="a-row"
               style={{
                 display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                gap: 10,
+                flexDirection: "column",
+                gap: 8,
                 padding: "16px 18px",
                 borderBottom: "1px solid var(--line2)",
                 textDecoration: "none",
               }}
             >
-              <RowBody row={row} />
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>
+                <span style={{ font: "600 15px/1 var(--display)", color: "var(--ink)" }}>{row.price}</span>
+              </div>
+              <p style={{ margin: 0, font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                {row.place} · {row.recipients} matched · {row.accepted} accepted · {row.sent}
+              </p>
+              <span
+                style={{
+                  alignSelf: "flex-start",
+                  font: "500 11px/1 'Inter'",
+                  color: row.status.fg,
+                  background: row.status.bg,
+                  padding: "6px 11px",
+                  borderRadius: 999,
+                }}
+              >
+                {row.status.label}
+              </span>
             </Link>
           ))}
         </div>
 
         {shown.length === 0 && (
           <p style={{ padding: "28px 24px", color: "var(--ink3)", fontSize: 14, textAlign: "center" }}>
-            No leads in this view.
+            No requests in this view.
           </p>
         )}
 
@@ -478,7 +392,7 @@ export function LeadsTable({
               Showing {shown.length}
               {pageCount != null ? ` of ${pageCount} on this page` : ""}
               {" · "}
-              {total} lead{total === 1 ? "" : "s"} total
+              {total} request{total === 1 ? "" : "s"} total
             </span>
           </div>
         )}

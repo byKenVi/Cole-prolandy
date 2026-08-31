@@ -11,25 +11,13 @@ export function leadStatusChip(status: string): ChipStyle {
       return { label: "Distributed", bg: "var(--posBg)", fg: "var(--pos)" };
     case "NEW":
       return { label: "New", bg: "var(--goldSoft)", fg: "var(--goldSoftFg)" };
+    case "SOLD_OUT":
+      return { label: "Filled", bg: "var(--chipBg)", fg: "var(--sageFg)" };
     case "EXPIRED":
       return { label: "Expired", bg: "var(--dangerBg)", fg: "var(--danger)" };
     case "CLOSED":
       return { label: "Closed", bg: "var(--chipBg)", fg: "var(--ink3)" };
     default:
       return { label: status, bg: "var(--chipBg)", fg: "var(--chipFg)" };
-  }
-}
-
-/** Tier chip colours (hardcoded warm tones, as in the design model). */
-export function tierChip(tier: number | null): ChipStyle {
-  switch (tier) {
-    case 2:
-      return { label: "Tier 2", bg: "#F4E6CE", fg: "#8A5A1E" };
-    case 3:
-      return { label: "Tier 3", bg: "#EFD8C4", fg: "#7A3E1E" };
-    case null:
-      return { label: "Tier review", bg: "var(--warningBg)", fg: "var(--warning)" };
-    default:
-      return { label: "Tier 1", bg: "var(--chipBg)", fg: "var(--chipFg)" };
   }
 }

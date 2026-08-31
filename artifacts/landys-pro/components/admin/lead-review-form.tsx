@@ -31,7 +31,7 @@ export function LeadReviewForm({
       <div>
         <p className="font-inter text-sm font-semibold text-text">Budget review required</p>
         <p className="mt-1 font-inter text-xs text-text-muted">
-          Correct the landowner&apos;s project budget. Job tier is calculated from tier thresholds.
+          Correct the landowner&apos;s estimated project budget so matching can continue.
           {budgetRaw ? ` Raw Wix value: ${budgetRaw}` : ""}
           {contractorReviewRequired
             ? " This direct request will remain held until its external contractor identity resolves."

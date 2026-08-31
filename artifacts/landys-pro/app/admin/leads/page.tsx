@@ -9,12 +9,14 @@ import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { iconSrcFor } from "@/lib/project-icons";
 import { leadCategoryIcon, leadCategoryLabel, leadScopeLabel } from "@/lib/resolved-lead";
-import { leadStatusChip, tierChip } from "@/lib/admin-display";
+import { leadStatusChip } from "@/lib/admin-display";
 import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage, parsePageSize } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZES = [10, 20, 50];
+
+type StatusTab = "all" | "new" | "active" | "accepted" | "closed";
 
 function parseSort(raw: string | undefined): "date" | "value" {
   return raw === "value" ? "value" : "date";
@@ -24,9 +26,26 @@ function parseDir(raw: string | undefined): "asc" | "desc" {
   return raw === "asc" ? "asc" : "desc";
 }
 
-function parseTier(raw: string | undefined): number | null {
-  if (raw === "1" || raw === "2" || raw === "3") return Number(raw);
-  return null;
+function parseStatus(raw: string | undefined): StatusTab {
+  if (raw === "new" || raw === "active" || raw === "accepted" || raw === "closed" || raw === "all") {
+    return raw;
+  }
+  return "all";
+}
+
+function statusWhere(tab: StatusTab): Prisma.LeadWhereInput {
+  switch (tab) {
+    case "new":
+      return { status: "NEW" };
+    case "active":
+      return { status: "DISTRIBUTED" };
+    case "accepted":
+      return { acceptedCount: { gt: 0 }, status: { in: ["DISTRIBUTED", "SOLD_OUT"] } };
+    case "closed":
+      return { status: { in: ["EXPIRED", "CLOSED"] } };
+    default:
+      return {};
+  }
 }
 
 export default async function AdminLeads({
@@ -38,7 +57,7 @@ export default async function AdminLeads({
     pageSize?: string;
     sort?: string;
     dir?: string;
-    tier?: string;
+    status?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -47,25 +66,39 @@ export default async function AdminLeads({
   const pageSize = parsePageSize(sp.pageSize, DEFAULT_PAGE_SIZE, PAGE_SIZES);
   const sort = parseSort(sp.sort);
   const dir = parseDir(sp.dir);
-  const tier = parseTier(sp.tier);
+  const statusTab = parseStatus(sp.status);
 
   await expireLeads(prisma).catch(() => undefined);
 
-  const where: Prisma.LeadWhereInput = {};
-  if (tier != null) where.tier = tier;
+  const where: Prisma.LeadWhereInput = statusWhere(statusTab);
 
-  const [totalCount, distributed, expired, listedAgg, filteredCount] = await Promise.all([
+  const [
+    totalCount,
+    newCount,
+    activeCount,
+    acceptedCount,
+    closedCount,
+    pipelineAgg,
+    filteredCount,
+  ] = await Promise.all([
     prisma.lead.count(),
+    prisma.lead.count({ where: { status: "NEW" } }),
     prisma.lead.count({ where: { status: "DISTRIBUTED" } }),
-    prisma.lead.count({ where: { status: "EXPIRED" } }),
-    prisma.lead.aggregate({ _sum: { priceCents: true } }),
+    prisma.lead.count({
+      where: { acceptedCount: { gt: 0 }, status: { in: ["DISTRIBUTED", "SOLD_OUT"] } },
+    }),
+    prisma.lead.count({ where: { status: { in: ["EXPIRED", "CLOSED"] } } }),
+    prisma.lead.aggregate({
+      where: { status: { in: ["NEW", "DISTRIBUTED", "SOLD_OUT"] } },
+      _sum: { budgetCents: true },
+    }),
     prisma.lead.count({ where }),
   ]);
 
   const { page, skip, take, totalPages } = paginationMeta(filteredCount, requestedPage, pageSize);
 
   const orderBy: Prisma.LeadOrderByWithRelationInput =
-    sort === "value" ? { priceCents: dir } : { createdAt: dir };
+    sort === "value" ? { budgetCents: dir } : { createdAt: dir };
 
   const leads = await prisma.lead.findMany({
     where,
@@ -74,10 +107,9 @@ export default async function AdminLeads({
     take,
     select: {
       id: true,
-      tier: true,
       status: true,
-      priceCents: true,
       budgetCents: true,
+      acceptedCount: true,
       propertyLocation: true,
       createdAt: true,
       projectType: {
@@ -89,7 +121,7 @@ export default async function AdminLeads({
     },
   });
 
-  const listedValue = listedAgg._sum.priceCents ?? 0;
+  const pipelineValue = pipelineAgg._sum.budgetCents ?? 0;
 
   const rows: LeadRow[] = leads.map((l) => ({
     id: l.id,
@@ -97,34 +129,36 @@ export default async function AdminLeads({
     category: leadCategoryLabel(l),
     place: l.propertyLocation,
     recipients: l._count.matches,
+    accepted: l.acceptedCount,
     sent: formatDate(l.createdAt),
     sentAtIso: l.createdAt.toISOString(),
-    price:
-      l.budgetCents != null
-        ? formatMoney(l.budgetCents)
-        : l.priceCents === null
-          ? "Pending"
-          : formatMoney(l.priceCents),
-    priceCents: l.budgetCents ?? l.priceCents,
+    price: l.budgetCents == null ? "—" : formatMoney(l.budgetCents),
+    priceCents: l.budgetCents,
     iconSrc: iconSrcFor({
       icon: leadCategoryIcon(l),
       category: leadCategoryLabel(l),
       project: leadScopeLabel(l),
     }),
-    tier: tierChip(l.tier),
-    tierNum: l.tier,
     status: leadStatusChip(l.status),
     filter:
-      l.status === "DISTRIBUTED" ? "distributed" : l.status === "EXPIRED" ? "expired" : "other",
+      l.status === "NEW"
+        ? "new"
+        : l.status === "DISTRIBUTED"
+          ? "active"
+          : l.acceptedCount > 0
+            ? "accepted"
+            : l.status === "EXPIRED" || l.status === "CLOSED"
+              ? "closed"
+              : "other",
   }));
 
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker="Distribution"
+        kicker="Opportunities"
         title="Leads"
-        subtitle="Estimate requests distributed to contractors — newest first."
-        action={<GoldButtonLink href="/admin/leads/new">New lead</GoldButtonLink>}
+        subtitle="Estimate requests from Landys.co — matching, acceptance, and status."
+        action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
       />
 
       <div
@@ -136,10 +170,14 @@ export default async function AdminLeads({
           marginBottom: 20,
         }}
       >
-        <StatCard label="Total leads" value={String(totalCount)} />
-        <StatCard label="Distributed" value={String(distributed)} valueColor="var(--sageFg)" />
-        <StatCard label="Expired" value={String(expired)} valueColor="var(--danger)" />
-        <StatCard label="Est. pipeline value" value={formatMoney(listedValue)} />
+        <StatCard label="Total requests" value={String(totalCount)} />
+        <StatCard label="Active / distributed" value={String(activeCount)} valueColor="var(--sageFg)" />
+        <StatCard label="With acceptances" value={String(acceptedCount)} />
+        <StatCard
+          label="Est. pipeline value"
+          value={formatMoney(pipelineValue)}
+          sub="Sum of estimated project values on open requests"
+        />
       </div>
 
       <Suspense fallback={null}>
@@ -148,7 +186,14 @@ export default async function AdminLeads({
           total={filteredCount}
           pageCount={leads.length}
           initialQuery={initialQuery}
-          initialTier={tier != null ? String(tier) : ""}
+          initialStatus={statusTab}
+          statusCounts={{
+            all: totalCount,
+            new: newCount,
+            active: activeCount,
+            accepted: acceptedCount,
+            closed: closedCount,
+          }}
           initialSort={sort}
           initialDir={dir}
           pagination={
@@ -162,7 +207,7 @@ export default async function AdminLeads({
               pathname="/admin/leads"
               params={{
                 q: initialQuery || undefined,
-                tier: tier != null ? String(tier) : undefined,
+                status: statusTab !== "all" ? statusTab : undefined,
                 sort: sort !== "date" ? sort : undefined,
                 dir: dir !== "desc" ? dir : undefined,
               }}
