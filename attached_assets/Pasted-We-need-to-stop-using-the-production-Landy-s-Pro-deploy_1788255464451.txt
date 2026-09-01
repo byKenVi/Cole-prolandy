@@ -1,0 +1,265 @@
+We need to stop using the production Landy's Pro deployment as our testing environment.
+
+Create and configure a proper STAGING environment for Landy's Pro on Replit.
+
+GOAL
+
+We need:
+
+Cursor/local development
+→ push code
+→ test on Replit STAGING
+→ validate
+→ deploy the same approved code to PRODUCTION
+
+Production must remain clean and must never be used for development/testing data again.
+
+Do NOT modify or wipe the existing production environment during this task.
+
+==================================================
+1. STAGING ARCHITECTURE
+==================================================
+
+Create or prepare a separate Replit deployment/environment for Landy's Pro staging.
+
+It must use the same application/codebase and deployment architecture as production, but with isolated runtime configuration.
+
+Staging must have:
+
+- its own public URL
+- its own DATABASE_URL
+- its own DIRECT_URL
+- same Prisma migrations
+- same build/start commands
+- same application code
+- same success-fee business logic
+
+Do not create a different application architecture.
+
+The staging environment should be as close to production as possible.
+
+==================================================
+2. DATABASE ISOLATION
+==================================================
+
+Production and staging MUST NOT share the same database.
+
+Provision or connect a separate Supabase/Postgres database for staging.
+
+Requirements:
+
+- same Prisma schema
+- all migrations applied
+- no production operational data copied unless explicitly required
+- safe test data allowed
+- easy to reset/reseed
+
+Run:
+
+prisma migrate deploy
+
+against STAGING ONLY.
+
+Confirm clearly which database is staging without exposing credentials.
+
+==================================================
+3. AUTH
+==================================================
+
+Staging must not use live production Clerk configuration if avoidable.
+
+Use Clerk development/test configuration for staging.
+
+Verify:
+
+- Admin login works
+- Contractor login works
+- test users can be created safely
+- production accounts are not accidentally modified
+
+==================================================
+4. STRIPE
+==================================================
+
+Staging must use Stripe TEST MODE.
+
+Configure:
+
+- test publishable key
+- test secret key
+- staging webhook endpoint
+- staging webhook signing secret
+
+Success-fee payments must be fully testable without creating real charges.
+
+Production Stripe configuration must not be changed.
+
+==================================================
+5. WIX / LANDYS.CO
+==================================================
+
+Inspect the current Wix/Landys.co integration.
+
+We need a safe way to test:
+
+Landowner request
+→ Landy's Pro staging intake
+→ matching
+→ contractor opportunity
+
+Prefer one of these, in this order:
+
+A. Wix supports a configurable staging endpoint / test integration
+B. create a controlled staging/test intake endpoint
+C. provide a safe manual/test request mechanism that generates the exact same internal Lead structure
+
+Do NOT redirect real Landys.co production submissions to staging.
+
+Document how we will test the Wix flow safely.
+
+==================================================
+6. EMAIL / SMS SAFETY
+==================================================
+
+Staging must not accidentally notify real contractors or landowners.
+
+Inspect Resend and Twilio behavior.
+
+Implement/configure the safest staging approach available, such as:
+
+- allowlisted destination numbers/emails
+- explicit staging recipient override
+- provider test mode where supported
+
+We must still be able to test:
+- opportunity notification
+- contractor follow-up
+- landowner confirmation
+- fee payment reminder
+
+without contacting production users.
+
+==================================================
+7. CRON
+==================================================
+
+Configure staging equivalent of:
+
+GET /api/cron/follow-ups
+
+using the staging CRON_SECRET.
+
+Hourly scheduling is fine.
+
+It must target the staging URL and staging database only.
+
+==================================================
+8. TEST DATA
+==================================================
+
+Create a clean, repeatable staging seed for the CURRENT SUCCESS-FEE MODEL ONLY.
+
+Do NOT seed legacy pay-per-lead behavior.
+
+Seed a small useful set such as:
+
+- Admin account/test access
+- several contractor profiles representing different categories/work types
+- canonical live-v3 taxonomy
+- a few opportunities in useful states
+- accepted opportunity
+- Won / Awaiting Contractor Payment example
+- Fee Due example
+- Fee Paid example
+- landowner confirmation example
+- mismatch example
+
+No wallet balances.
+No purchased leads.
+No old pricing tiers.
+No pay-per-lead transactions.
+
+Provide a safe reset/reseed command for staging.
+
+==================================================
+9. PRODUCTION SAFETY
+==================================================
+
+Add clear safeguards so staging/test scripts cannot point at production accidentally.
+
+Any staging reset/seed/destructive test command must fail if:
+
+- production hostname is detected
+- production database is detected
+- environment is production
+
+Do not weaken legitimate production Admin functionality.
+
+==================================================
+10. DEVELOPMENT WORKFLOW
+==================================================
+
+Document the intended workflow:
+
+1. Develop locally in Cursor.
+2. Push approved branch/commit.
+3. Pull/deploy to STAGING.
+4. Run migrations on staging if required.
+5. Run functional/browser QA.
+6. Once approved, deploy SAME approved commit to production.
+7. Run production migration only when necessary.
+8. Production receives no test seed data.
+
+Recommend the simplest branch strategy compatible with the current repository.
+
+==================================================
+11. DO NOT CLEAN PRODUCTION YET
+==================================================
+
+Do NOT execute the existing success-fee operational reset against production yet.
+
+Once staging is operational and verified, we will separately clean production so Cole receives:
+
+- contractors + canonical mappings
+- Admin/settings/integrations
+- zero test leads
+- zero test matches
+- zero test success fees
+- zero test confirmations
+- zero wallet transactions
+- zero fake dashboard revenue/pipeline values
+
+==================================================
+FINAL REPORT
+==================================================
+
+Return:
+
+## Staging
+- URL / deployment status
+- database isolation
+- build status
+
+## Integrations
+- Clerk
+- Stripe test mode
+- Wix testing strategy
+- Email
+- SMS
+- Cron
+
+## Test data
+- seed strategy
+- reset command
+
+## Production protection
+- safeguards implemented
+
+## Workflow
+- exact Cursor → Staging → Production process
+
+## Remaining actions
+Only genuine blockers or things requiring my credentials/manual action.
+
+Do not modify production data.
+Do not deploy new code to production.

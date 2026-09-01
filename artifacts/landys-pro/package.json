@@ -16,7 +16,10 @@
     "test:watch": "vitest",
     "preflight:taxonomy": "tsx ./scripts/export-taxonomy-preflight.ts",
     "ops:success-fee-reset": "tsx ./scripts/success-fee-operational-reset.ts",
-    "ops:success-fee-reset:execute": "tsx ./scripts/success-fee-operational-reset.ts --execute"
+    "ops:success-fee-reset:execute": "tsx ./scripts/success-fee-operational-reset.ts --execute",
+    "staging:migrate": "tsx ./scripts/staging-database.ts migrate",
+    "staging:reset": "tsx ./scripts/staging-database.ts reset",
+    "staging:reseed": "tsx ./scripts/staging-database.ts reseed"
   },
   "engines": {
     "node": ">=22 <23"

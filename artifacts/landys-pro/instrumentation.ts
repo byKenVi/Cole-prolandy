@@ -1,4 +1,5 @@
 import { assertAuthConfigFailClosed } from "@/lib/auth";
+import { assertStagingRuntimeConfig } from "@/lib/runtime-environment";
 
 /**
  * Next.js server-startup hook. Runs once when the server boots (Node runtime).
@@ -7,4 +8,5 @@ import { assertAuthConfigFailClosed } from "@/lib/auth";
  */
 export function register() {
   assertAuthConfigFailClosed();
+  assertStagingRuntimeConfig();
 }

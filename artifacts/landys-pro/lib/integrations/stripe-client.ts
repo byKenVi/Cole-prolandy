@@ -10,6 +10,16 @@
 import Stripe from "stripe";
 
 async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecret?: string }> {
+  // Never let staging inherit the production Stripe connector. A staging Repl
+  // must provide explicit Stripe test-mode credentials.
+  if (process.env.LANDYS_ENV === "staging") {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey?.startsWith("sk_test_")) {
+      throw new Error("Staging requires STRIPE_SECRET_KEY to be a Stripe test-mode key.");
+    }
+    return { secretKey, webhookSecret: process.env.STRIPE_WEBHOOK_SECRET };
+  }
+
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY

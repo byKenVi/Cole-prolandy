@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { appUrl } from "@/lib/app-url";
 import { previewSuccessFeeRate } from "@/lib/domain/success-fee";
 import { followUpLink, landownerConfirmLink } from "@/lib/domain/follow-up";
+import {
+  safeEmailRecipient,
+  safeSmsRecipient,
+} from "@/lib/integrations/staging-recipient";
 
 export type LeadNotification = {
   contractor: { name: string; email: string; phone: string };
@@ -72,9 +76,9 @@ export async function notifyNewLead(n: LeadNotification): Promise<void> {
   const emailBody = `A new ${n.projectTypeName} opportunity is available near ${n.propertyLocation}.\n${feeHint}\n\nAccept or pass: ${link}`;
 
   const [smsSettled, emailSettled] = await Promise.allSettled([
-    sms.send({ to: n.contractor.phone, body: smsBody }),
+    sms.send({ to: safeSmsRecipient(n.contractor.phone), body: smsBody }),
     email.send({
-      to: n.contractor.email,
+      to: safeEmailRecipient(n.contractor.email),
       subject: `New opportunity: ${n.projectTypeName} near ${n.propertyLocation}`,
       text: emailBody,
     }),
@@ -104,9 +108,9 @@ export async function notifyOutcomeFollowUp(params: {
   const emailBody = `Quick check on the ${params.projectLabel} job near ${params.location}.\n\nDid you get this job?\n${link}`;
 
   await Promise.allSettled([
-    sms.send({ to: params.contractor.phone, body: smsBody }),
+    sms.send({ to: safeSmsRecipient(params.contractor.phone), body: smsBody }),
     email.send({
-      to: params.contractor.email,
+      to: safeEmailRecipient(params.contractor.email),
       subject: `Did you get the job? — ${params.projectLabel}`,
       text: emailBody,
     }),
@@ -124,9 +128,9 @@ export async function notifyPaymentFollowUp(params: {
   const emailBody = `Have you been paid for the ${params.projectLabel} job?\n\n${link}`;
 
   await Promise.allSettled([
-    sms.send({ to: params.contractor.phone, body: smsBody }),
+    sms.send({ to: safeSmsRecipient(params.contractor.phone), body: smsBody }),
     email.send({
-      to: params.contractor.email,
+      to: safeEmailRecipient(params.contractor.email),
       subject: `Have you been paid? — ${params.projectLabel}`,
       text: emailBody,
     }),
@@ -143,9 +147,9 @@ export async function notifyFeeDue(params: {
   const amount = (params.feeAmountCents / 100).toFixed(2);
   const smsBody = `Landy's Pro: Your ${params.projectLabel} success fee ($${amount}) is due. Pay Landy's: ${params.payLink}`;
   await Promise.allSettled([
-    sms.send({ to: params.contractor.phone, body: smsBody }),
+    sms.send({ to: safeSmsRecipient(params.contractor.phone), body: smsBody }),
     email.send({
-      to: params.contractor.email,
+      to: safeEmailRecipient(params.contractor.email),
       subject: `Success fee due — ${params.projectLabel}`,
       text: `Your success fee of $${amount} is due.\n\nPay Landy's: ${params.payLink}`,
     }),
@@ -161,7 +165,7 @@ export async function notifyLandownerConfirmation(params: {
   const link = landownerConfirmLink(params.token);
   const name = params.landownerName?.trim() || "there";
   await email.send({
-    to: params.landownerEmail,
+    to: safeEmailRecipient(params.landownerEmail),
     subject: `Did you hire a contractor for your ${params.projectLabel} project?`,
     text: `Hi ${name},\n\nDid you hire one of the contractors Landy's connected you with for your ${params.projectLabel} project?\n\n${link}`,
   });
