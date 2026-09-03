@@ -326,6 +326,7 @@ body:has(.admin-theme[data-theme="dark"]) {
 }
 .admin-theme .a-row {
   transition: background 0.15s ease;
+  cursor: pointer;
 }
 .admin-theme .a-row:hover {
   background: var(--card2);
@@ -605,6 +606,24 @@ body:has(.admin-theme[data-theme="dark"]) {
   gap: 11px;
   padding-top: 15px;
   border-top: 1px solid rgba(255, 255, 255, 0.09);
+  min-width: 0;
+}
+.admin-user .admin-foot-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.admin-user .admin-foot-email {
+  margin: 2px 0 0;
+  font: 400 12px/1.2 "Inter";
+  color: #8fa592;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-sidebar-signout {
+  flex: none;
+  margin-left: 2px;
 }
 
 /* Scrim behind the mobile drawer (only shown on small screens). */
@@ -1104,7 +1123,7 @@ body:has(.admin-theme[data-theme="dark"]) {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: clip;
+  overflow-x: auto;
 }
 /* Desktop tables in the contractor feed / my-leads — never participate in
    layout below the md breakpoint, even if a utility class is missing. */

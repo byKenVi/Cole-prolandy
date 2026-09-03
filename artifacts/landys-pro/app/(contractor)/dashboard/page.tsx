@@ -28,7 +28,7 @@ function jobStatus(match: {
   if (fee === "DUE") return { label: "Fee due", tone: "danger" };
   if (fee === "PAID") return { label: "Fee paid", tone: "success" };
   if (fee === "AWAITING_CONTRACTOR_PAYMENT") {
-    return { label: "Waiting for landowner payment", tone: "warn" };
+    return { label: "Waiting to be paid", tone: "warn" };
   }
   if (match.jobOutcome === "WON") return { label: "Won", tone: "success" };
   if (match.jobOutcome === "LOST") return { label: "Lost", tone: "neutral" };
@@ -51,7 +51,7 @@ export default async function ContractorDashboard() {
     await Promise.all([
       prisma.contractor.findUnique({
         where: { id: contractorId },
-        select: { name: true },
+        select: { name: true, cardBrand: true, cardLast4: true, stripeDefaultPaymentMethodId: true },
       }),
       prisma.leadMatch.count({ where: { contractorId, status: "PENDING" } }),
       prisma.leadMatch.findMany({
@@ -164,6 +164,11 @@ export default async function ContractorDashboard() {
                 <FeePayButton
                   leadMatchId={fee.leadMatchId}
                   amountLabel={formatMoney(fee.feeAmountCents)}
+                  savedCard={
+                    contractor?.stripeDefaultPaymentMethodId
+                      ? { brand: contractor.cardBrand, last4: contractor.cardLast4 }
+                      : null
+                  }
                 />
               </div>
             ))}

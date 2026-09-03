@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateSetting } from "@/app/actions/admin";
+import { hoursToHuman } from "@/lib/hours-human";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -79,8 +80,8 @@ export function FollowUpSettingsForm({
     },
     {
       id: "paymentDelay",
-      title: "Ask if the landowner paid",
-      plain: "Hours after a won job before we ask whether the landowner has paid the contractor.",
+      title: "Ask if you've been paid",
+      plain: "Hours after a won job before we ask the contractor whether they've been paid.",
       value: paymentDelay,
       setValue: setPaymentDelay,
       unit: "hours after won",
@@ -137,6 +138,11 @@ export function FollowUpSettingsForm({
               {row.unit}
             </span>
           </div>
+          {hoursToHuman(Number(row.value)) && (
+            <p style={{ margin: "8px 0 0", font: "500 13px/1.3 'Inter'", color: "var(--goldSoftFg)" }}>
+              {hoursToHuman(Number(row.value))}
+            </p>
+          )}
         </div>
       ))}
 

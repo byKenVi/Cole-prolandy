@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateBooleanSetting, updateSetting } from "@/app/actions/admin";
+import { hoursToHuman } from "@/lib/hours-human";
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -147,6 +148,9 @@ export function OpportunityDistributionForm({
           />
           <span style={{ ...hintStyle, flex: "none" }}>hours</span>
         </div>
+        {hoursToHuman(Number(hours)) && (
+          <p style={{ ...hintStyle, margin: "8px 0 0" }}>{hoursToHuman(Number(hours))}</p>
+        )}
       </div>
 
       {message && (

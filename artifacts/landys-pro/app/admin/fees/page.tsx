@@ -8,6 +8,7 @@ import {
   AdminEmptyState,
 } from "@/components/admin/ui";
 import { MarkFeePaidButton } from "@/components/admin/mark-fee-paid-button";
+import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { leadScopeLabel } from "@/lib/resolved-lead";
@@ -98,10 +99,13 @@ function paymentMethodMeta(method: string | null | undefined): {
   fg: string;
 } {
   if (method === "stripe") {
-    return { label: "Stripe", bg: "var(--posBg)", fg: "var(--pos)" };
+    return { label: "Card (Stripe)", bg: "var(--posBg)", fg: "var(--pos)" };
   }
-  if (method === "manual" || !method) {
-    return { label: "Manual / Check", bg: "var(--chipBg)", fg: "var(--ink2)" };
+  if (method === "check") {
+    return { label: "Check", bg: "var(--chipBg)", fg: "var(--ink2)" };
+  }
+  if (method === "offline" || method === "manual" || !method) {
+    return { label: "Offline / check", bg: "var(--chipBg)", fg: "var(--ink2)" };
   }
   return { label: method, bg: "var(--chipBg)", fg: "var(--ink2)" };
 }
@@ -259,7 +263,7 @@ export default async function AdminFeesPage({
 
       <div
         style={{
-          overflow: "hidden",
+          overflowX: "auto",
           borderRadius: 16,
           border: "1px solid var(--line)",
           background: "var(--card)",
@@ -270,7 +274,7 @@ export default async function AdminFeesPage({
           <AdminEmptyState title={empty.title} description={empty.description} icon={<FeeEmptyIcon />} />
         ) : (
           <>
-            <table className="admin-table-desktop" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="admin-table-desktop" style={{ width: "100%", minWidth: 980, borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--card2)", borderBottom: "1px solid var(--line)" }}>
                   <th style={thStyle}>Project</th>
@@ -296,12 +300,16 @@ export default async function AdminFeesPage({
                   return (
                     <tr
                       key={fee.id}
+                      className="a-row"
                       style={{
+                        position: "relative",
                         borderBottom: "1px solid var(--line2)",
                         background: isDue ? "color-mix(in srgb, var(--dangerBg) 35%, transparent)" : undefined,
+                        cursor: "pointer",
                       }}
                     >
                       <td style={{ ...tdStyle, color: "var(--ink)" }}>
+                        <RowLink href={`/admin/fees/${fee.leadMatchId}`} label={`Open fee for ${project}`} />
                         <span style={{ fontWeight: 600 }}>{project}</span>
                         <br />
                         <span style={{ fontSize: 12, color: "var(--ink3)" }}>
@@ -351,7 +359,7 @@ export default async function AdminFeesPage({
                         </span>
                         {formatDate(when.value)}
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "right" }}>
+                      <td style={{ ...tdStyle, textAlign: "right", position: "relative", zIndex: 10 }}>
                         {isDue ? (
                           <MarkFeePaidButton leadMatchId={fee.leadMatchId} prominent />
                         ) : pay ? (
@@ -379,14 +387,17 @@ export default async function AdminFeesPage({
                     key={fee.id}
                     className="a-row admin-fade-up"
                     style={{
+                      position: "relative",
                       display: "flex",
                       flexDirection: "column",
                       gap: 12,
                       padding: "18px 18px",
                       borderBottom: "1px solid var(--line2)",
                       background: isDue ? "color-mix(in srgb, var(--dangerBg) 40%, transparent)" : undefined,
+                      cursor: "pointer",
                     }}
                   >
+                    <RowLink href={`/admin/fees/${fee.leadMatchId}`} label={`Open fee for ${project}`} />
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ margin: 0, font: "600 15px/1.3 'Inter'", color: "var(--ink)" }}>{project}</p>
@@ -466,7 +477,11 @@ export default async function AdminFeesPage({
                           {formatMoney(fee.feeAmountCents)}
                         </p>
                       </div>
-                      {isDue && <MarkFeePaidButton leadMatchId={fee.leadMatchId} prominent />}
+                      {isDue && (
+                        <div style={{ position: "relative", zIndex: 10 }}>
+                          <MarkFeePaidButton leadMatchId={fee.leadMatchId} prominent />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

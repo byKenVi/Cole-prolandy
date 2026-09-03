@@ -114,10 +114,11 @@ export async function markSuccessFeeDue(db: DbClient, leadMatchId: string) {
 
 export async function markSuccessFeePaid(params: {
   leadMatchId: string;
-  paymentMethod: "stripe" | "manual";
+  paymentMethod: "stripe" | "manual" | "check" | "offline";
   stripePaymentIntentId?: string | null;
   paidByAdminId?: string | null;
   manualPaymentNote?: string | null;
+  paidAt?: Date | null;
 }) {
   return prisma.$transaction(async (tx) => {
     const fee = await tx.successFee.findUnique({ where: { leadMatchId: params.leadMatchId } });
@@ -131,7 +132,7 @@ export async function markSuccessFeePaid(params: {
       where: { id: fee.id },
       data: {
         status: "PAID",
-        paidAt: new Date(),
+        paidAt: params.paidAt ?? new Date(),
         paymentMethod: params.paymentMethod,
         stripePaymentIntentId: params.stripePaymentIntentId ?? fee.stripePaymentIntentId,
         paidByAdminId: params.paidByAdminId ?? null,
@@ -141,7 +142,7 @@ export async function markSuccessFeePaid(params: {
 
     await tx.auditLog.create({
       data: {
-        actorType: params.paymentMethod === "manual" ? "admin" : "system",
+        actorType: params.paymentMethod === "stripe" ? "system" : "admin",
         actorId: params.paidByAdminId ?? null,
         action: "SUCCESS_FEE_PAID",
         targetType: "SuccessFee",

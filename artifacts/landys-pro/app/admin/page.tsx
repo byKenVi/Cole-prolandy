@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
 import {
@@ -231,9 +232,10 @@ export default async function AdminDashboard({
       take: 5,
       include: {
         contractor: { select: { name: true } },
-        successFee: { select: { status: true, feeAmountCents: true } },
+        successFee: { select: { status: true, feeAmountCents: true, leadMatchId: true } },
         lead: {
           select: {
+            id: true,
             propertyLocation: true,
             projectType: { select: { name: true } },
             workType: { select: { name: true } },
@@ -263,24 +265,28 @@ export default async function AdminDashboard({
       value: openRequests,
       href: "/admin/leads",
       hint: "New & distributed",
+      accent: "var(--gold)",
     },
     {
       label: "Won jobs",
       value: wonJobs,
       href: "/admin/fees",
       hint: "Reported won",
+      accent: "var(--green)",
     },
     {
       label: "Fees due",
       value: feesDue,
       href: "/admin/fees?tab=due",
       hint: "Owed to Landy's",
+      accent: "var(--danger)",
     },
     {
       label: "Fees collected",
       value: formatMoney(feesCollectedCents),
       href: "/admin/fees?tab=paid",
       hint: "All-time paid",
+      accent: "var(--sageFg)",
     },
   ];
 
@@ -304,20 +310,21 @@ export default async function AdminDashboard({
         }}
       >
         {metrics.map((m) => (
-          <Link
-            key={m.label}
-            href={m.href}
-            className="a-lift"
-            style={{
-              textDecoration: "none",
-              background: "var(--card)",
-              border: "1px solid var(--line)",
-              borderRadius: 16,
-              padding: "14px 16px",
-              boxShadow: "var(--shadowSm)",
-              display: "block",
-            }}
-          >
+            <Link
+              key={m.label}
+              href={m.href}
+              className="a-lift"
+              style={{
+                textDecoration: "none",
+                background: "var(--card)",
+                border: "1px solid var(--line)",
+                borderLeft: `4px solid ${m.accent ?? "var(--gold)"}`,
+                borderRadius: 16,
+                padding: "14px 16px",
+                boxShadow: "var(--shadowSm)",
+                display: "block",
+              }}
+            >
             <p
               style={{
                 margin: "0 0 8px",
@@ -377,7 +384,7 @@ export default async function AdminDashboard({
                   style={{
                     position: "relative",
                     display: "grid",
-                    gridTemplateColumns: "44px minmax(0,1fr) auto",
+                    gridTemplateColumns: "44px minmax(0,1fr) auto auto",
                     alignItems: "center",
                     gap: 14,
                     padding: "13px 22px",
@@ -410,6 +417,7 @@ export default async function AdminDashboard({
                       {est != null ? formatMoney(est) : "—"}
                     </p>
                   </div>
+                  <ChevronRight size={16} color="var(--ink3)" aria-hidden />
                 </div>
               );
             })
@@ -426,12 +434,16 @@ export default async function AdminDashboard({
               return (
                 <div
                   key={fee.id}
+                  className="a-row"
                   style={{
+                    position: "relative",
                     padding: "14px 22px",
                     borderBottom: "1px solid var(--line2)",
+                    cursor: "pointer",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <RowLink href={`/admin/fees/${fee.leadMatchId}`} label={`Open fee for ${leadScopeLabel(fee.leadMatch.lead)}`} />
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                     <div style={{ minWidth: 0 }}>
                       <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
                         {leadScopeLabel(fee.leadMatch.lead)}
@@ -458,9 +470,10 @@ export default async function AdminDashboard({
                           color: awaiting ? "var(--goldSoftFg)" : "var(--danger)",
                         }}
                       >
-                        {awaiting ? "Awaiting contractor" : "Due"}
+                        {awaiting ? "Contractor awaiting payment" : "Due"}
                       </p>
                     </div>
+                    <ChevronRight size={16} color="var(--ink3)" aria-hidden />
                   </div>
                 </div>
               );
@@ -481,8 +494,20 @@ export default async function AdminDashboard({
             pendingConfirmations.map((row) => (
               <div
                 key={row.id}
-                style={{ padding: "14px 22px", borderBottom: "1px solid var(--line2)" }}
+                className="a-row"
+                style={{
+                  position: "relative",
+                  padding: "14px 22px",
+                  borderBottom: "1px solid var(--line2)",
+                  cursor: "pointer",
+                }}
               >
+                <RowLink
+                  href={`/admin/leads/${row.lead.id}`}
+                  label={`Open confirmation for ${leadScopeLabel(row.lead)}`}
+                />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ minWidth: 0 }}>
                 <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
                   {leadScopeLabel(row.lead)}
                 </p>
@@ -500,6 +525,9 @@ export default async function AdminDashboard({
                     ? "Mismatch — needs review"
                     : "Waiting for landowner response."}
                 </p>
+                  </div>
+                  <ChevronRight size={16} color="var(--ink3)" aria-hidden />
+                </div>
               </div>
             ))
           )}
@@ -513,9 +541,19 @@ export default async function AdminDashboard({
             recentWon.map((m) => (
               <div
                 key={m.id}
-                style={{ padding: "14px 22px", borderBottom: "1px solid var(--line2)" }}
+                className="a-row"
+                style={{
+                  position: "relative",
+                  padding: "14px 22px",
+                  borderBottom: "1px solid var(--line2)",
+                  cursor: "pointer",
+                }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <RowLink
+                  href={m.successFee ? `/admin/fees/${m.successFee.leadMatchId}` : `/admin/leads/${m.lead.id}`}
+                  label={`Open ${leadScopeLabel(m.lead)}`}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
                       {leadScopeLabel(m.lead)}
@@ -550,6 +588,7 @@ export default async function AdminDashboard({
                       <p style={{ margin: 0, font: "500 12px/1 'Inter'", color: "var(--ink3)" }}>—</p>
                     )}
                   </div>
+                  <ChevronRight size={16} color="var(--ink3)" aria-hidden />
                 </div>
               </div>
             ))

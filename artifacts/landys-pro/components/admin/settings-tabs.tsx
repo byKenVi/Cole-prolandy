@@ -114,18 +114,27 @@ export function SettingsTabs({
   }, [searchParams]);
 
   const setTab = useCallback(
-    (tab: SettingsTabId) => {
+    (tab: SettingsTabId, dir?: string) => {
       const params = new URLSearchParams(searchParams.toString());
       if (tab === "general") {
         params.delete("tab");
+        params.delete("dir");
       } else {
         params.set("tab", tab);
+      }
+      if (tab === "directories") {
+        if (dir) params.set("dir", dir);
+        else params.delete("dir");
+      } else {
+        params.delete("dir");
       }
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
     [pathname, router, searchParams],
   );
+
+  const directory = searchParams.get("dir");
 
   return (
     <div className="admin-fade-up">
@@ -181,7 +190,7 @@ export function SettingsTabs({
       </div>
 
       {activeTab === "general" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: 920 }}>
           {isOwner && (
             <Link href="/admin/team" style={{ textDecoration: "none" }}>
               <Panel
@@ -268,7 +277,7 @@ export function SettingsTabs({
       )}
 
       {activeTab === "distribution" && (
-        <Panel style={{ ...cardPad, maxWidth: 560 }}>
+        <Panel style={{ ...cardPad, width: "100%", maxWidth: 920 }}>
           <p style={titleStyle}>Opportunity distribution</p>
           <p style={descStyle}>
             Control how many contractors can accept an opportunity and how long it stays open.
@@ -293,7 +302,7 @@ export function SettingsTabs({
       )}
 
       {activeTab === "followups" && (
-        <Panel style={{ ...cardPad, maxWidth: 560 }}>
+        <Panel style={{ ...cardPad, width: "100%", maxWidth: 920 }}>
           <p style={titleStyle}>Follow-ups</p>
           <p style={descStyle}>
             When to nudge contractors about outcomes and payment after they accept an opportunity.
@@ -307,34 +316,66 @@ export function SettingsTabs({
       )}
 
       {activeTab === "directories" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <p style={{ margin: "0 0 2px", font: "400 14px/1.5 'Inter'", color: "var(--ink3)" }}>
-            These are labels used on leads and contractors — not AppSetting product rules.
-          </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 12,
+            }}
+          >
+            {[
+              { id: "projects", title: "Projects / Services", body: "Jobs landowners request." },
+              { id: "land", title: "Land types", body: "Property classifications." },
+              { id: "categories", title: "Contractor categories", body: "One business category per contractor." },
+            ].map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => setTab("directories", card.id)}
+                style={{
+                  textAlign: "left",
+                  padding: "18px 20px",
+                  borderRadius: 16,
+                  border: directory === card.id ? "1px solid var(--gold)" : "1px solid var(--line)",
+                  background: directory === card.id ? "var(--goldSoft)" : "var(--card)",
+                  cursor: "pointer",
+                  boxShadow: "var(--shadow)",
+                }}
+              >
+                <p style={{ ...titleStyle, marginBottom: 6 }}>{card.title}</p>
+                <p style={{ ...descStyle, marginBottom: 0 }}>{card.body}</p>
+              </button>
+            ))}
+          </div>
 
-          <Panel style={cardPad}>
-            <p style={titleStyle}>Contractor categories</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>
-              One business category per contractor. Categories do not control project eligibility.
-            </p>
-            <ContractorCategoriesManager categories={contractorCategories} />
-          </Panel>
-
-          <Panel style={cardPad}>
-            <p style={titleStyle}>Land types</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>
-              Property classifications for leads. Rename freely; delete only when unused.
-            </p>
-            <LandTypesManager landTypes={landTypes} />
-          </Panel>
-
-          <Panel style={cardPad}>
-            <p style={titleStyle}>Projects</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>
-              Jobs landowners request. Success fee rates live under Success fee tiers — not here.
-            </p>
-            <CategoriesManager categories={projects} />
-          </Panel>
+          {directory === "categories" && (
+            <Panel style={cardPad}>
+              <p style={titleStyle}>Contractor categories</p>
+              <p style={{ ...descStyle, marginBottom: 18 }}>
+                One business category per contractor. Categories do not control project eligibility.
+              </p>
+              <ContractorCategoriesManager categories={contractorCategories} />
+            </Panel>
+          )}
+          {directory === "land" && (
+            <Panel style={cardPad}>
+              <p style={titleStyle}>Land types</p>
+              <p style={{ ...descStyle, marginBottom: 18 }}>
+                Property classifications for leads. Rename freely; delete only when unused.
+              </p>
+              <LandTypesManager landTypes={landTypes} />
+            </Panel>
+          )}
+          {directory === "projects" && (
+            <Panel style={cardPad}>
+              <p style={titleStyle}>Projects / Services</p>
+              <p style={{ ...descStyle, marginBottom: 18 }}>
+                Jobs landowners request. Success fee rates live under Success fee tiers — not here.
+              </p>
+              <CategoriesManager categories={projects} />
+            </Panel>
+          )}
         </div>
       )}
     </div>

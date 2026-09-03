@@ -1,12 +1,9 @@
 import Image from "next/image";
-import { Hammer } from "lucide-react";
 import { iconSrcFor } from "@/lib/project-icons";
 import { cn } from "@/lib/utils";
 
 /**
- * Rounded tile holding a project category's 3D icon. Prefers an admin-assigned
- * icon key, then matches on the category and/or project-type name; falls back
- * to a neutral tool glyph when unknown.
+ * Rounded tile holding a project category's 3D icon. Always shows a 3D PNG.
  */
 export function ProjectIcon({
   icon,
@@ -33,18 +30,14 @@ export function ProjectIcon({
         className,
       )}
     >
-      {src ? (
-        <Image
-          src={src}
-          alt=""
-          aria-hidden
-          width={96}
-          height={96}
-          className={cn("select-none object-contain", img)}
-        />
-      ) : (
-        <Hammer className={cn("text-primary", img)} aria-hidden />
-      )}
+      <Image
+        src={src}
+        alt=""
+        aria-hidden
+        width={96}
+        height={96}
+        className={cn("select-none object-contain", img)}
+      />
     </div>
   );
 }

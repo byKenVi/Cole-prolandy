@@ -293,6 +293,7 @@ describe("parseSuccessFeeEvent", () => {
       contractorId: "c1",
       amountCents: 40_000,
       paymentIntentId: "pi_abc",
+      stripeCustomerId: null,
     });
   });
 

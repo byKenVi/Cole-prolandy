@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { MapPin, Phone, Mail, CheckCircle2, Lock, Hammer } from "lucide-react";
+import { MapPin, Phone, Mail, CheckCircle2, Lock } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { AcceptTokenActions } from "@/components/accept-token-actions";
 import { iconSrcFor } from "@/lib/project-icons";
@@ -109,11 +109,14 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
           <div className="rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-5 shadow-[0_12px_32px_rgba(58,53,45,0.10)]">
             <div className="mb-3 flex items-start gap-3">
               <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#F5EEDF]">
-                {iconSrc ? (
-                  <Image src={iconSrc} alt="" aria-hidden width={40} height={40} className="h-7 w-7 object-contain" />
-                ) : (
-                  <Hammer className="h-6 w-6 text-[#9A6E2E]" aria-hidden />
-                )}
+                <Image
+                  src={iconSrc ?? "/icons/excavation.png"}
+                  alt=""
+                  aria-hidden
+                  width={40}
+                  height={40}
+                  className="h-7 w-7 object-contain"
+                />
               </span>
               <div className="min-w-0">
                 <h1 className="font-fraunces text-[20px] font-medium leading-tight tracking-[-0.01em] text-[#3A352D]">

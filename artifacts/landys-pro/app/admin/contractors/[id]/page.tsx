@@ -103,11 +103,11 @@ export default async function ContractorDetail({
           {contractor.clerkUserId && (
             <DeleteButton
               onDelete={resetContractorClerkLink.bind(null, contractor.id)}
-              label="Reset Clerk link"
-              confirmLabel="Reset link"
-              title="Reset this contractor's Clerk link?"
-              description={`${contractor.name} will need to claim their account again from a fresh invitation email.`}
-              successMessage="Clerk link reset."
+              label="Reset sign-in access"
+              confirmLabel="Send new link"
+              title="Reset this contractor's sign-in access?"
+              description={`${contractor.name} will receive a fresh invitation to sign in. Use this if they are having trouble accessing their account.`}
+              successMessage="Sign-in access reset. A new invitation will be sent."
               showTrashIcon={false}
               destructive={false}
             />

@@ -12,8 +12,8 @@ import { ExitViewAsButton } from "@/components/auth/exit-view-as";
 const NAV: { href: string; label: string; icon: string }[] = [
   { href: "/dashboard", label: "Dashboard", icon: "/nav-icons/nav-home.png" },
   { href: "/opportunities", label: "Opportunities", icon: "/nav-icons/nav-leads.png" },
-  { href: "/jobs", label: "My Jobs", icon: "/nav-icons/nav-leads.png" },
-  { href: "/fees", label: "Fees & payments", icon: "/nav-icons/nav-profile.png" },
+  { href: "/jobs", label: "My Jobs", icon: "/icon-job-mono.png" },
+  { href: "/fees", label: "Fees & Payments", icon: "/nav-icons/nav-wallet.png" },
   { href: "/profile", label: "Profile", icon: "/nav-icons/nav-profile.png" },
 ];
 
@@ -73,7 +73,7 @@ export function ContractorSidebar({
         </div>
       )}
 
-      <div className="flex items-center gap-[11px] border-t border-white/[0.07] px-[6px] pb-[2px] pt-4">
+      <div className="flex min-w-0 items-center gap-2.5 border-t border-white/[0.07] px-[6px] pb-[2px] pt-4">
         {userMenu ? (
           <span className="flex-none">{userMenu}</span>
         ) : (
@@ -84,7 +84,7 @@ export function ContractorSidebar({
             {initials ?? "?"}
           </Link>
         )}
-        <Link href="/profile" className="min-w-0 flex-1">
+        <Link href="/profile" className="min-w-0 flex-1 overflow-hidden">
           <p className="truncate text-[14px] font-semibold leading-[1.2] text-[#F1E7D6]">
             {name ?? "Your profile"}
           </p>
@@ -93,7 +93,9 @@ export function ContractorSidebar({
           )}
         </Link>
         {showSignOut ? (
-          <SignOutLink variant="sidebarIcon" label="Sign out" />
+          <span className="ml-1 flex-none">
+            <SignOutLink variant="sidebarIcon" label="Sign out" />
+          </span>
         ) : (
           <ChevronRight className="h-4 w-4 flex-none text-[#9A9084]" strokeWidth={1.8} aria-hidden />
         )}

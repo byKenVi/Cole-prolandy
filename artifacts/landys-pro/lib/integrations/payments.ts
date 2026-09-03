@@ -501,7 +501,7 @@ export async function createSuccessFeeCheckout(
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     metadata,
-    payment_intent_data: { metadata },
+    payment_intent_data: { metadata, setup_future_usage: "off_session" },
   });
 
   if (!session.url) throw new Error("Stripe did not return a checkout URL.");

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { formatMoney } from "@/lib/money";
@@ -33,8 +33,8 @@ function statusMeta(status: FeeStatus): {
       };
     case "AWAITING_CONTRACTOR_PAYMENT":
       return {
-        label: "Awaiting your payment",
-        hint: "Landowner pays you directly first",
+        label: "Waiting to be paid",
+        hint: "You won. We'll check in when the landowner pays you.",
         color: "#8A6B2E",
         bg: "#F4EAD3",
       };
@@ -59,15 +59,24 @@ export default async function FeesPage({
     );
   }
 
-  const fees = await prisma.successFee.findMany({
-    where: { leadMatch: { contractorId: session.contractorId } },
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-    include: {
-      leadMatch: {
-        include: { lead: { include: leadDisplayInclude } },
+  const [fees, contractor] = await Promise.all([
+    prisma.successFee.findMany({
+      where: { leadMatch: { contractorId: session.contractorId } },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      include: {
+        leadMatch: {
+          include: { lead: { include: leadDisplayInclude } },
+        },
       },
-    },
-  });
+    }),
+    prisma.contractor.findUnique({
+      where: { id: session.contractorId },
+      select: { cardBrand: true, cardLast4: true, stripeDefaultPaymentMethodId: true },
+    }),
+  ]);
+  const savedCard = contractor?.stripeDefaultPaymentMethodId
+    ? { brand: contractor.cardBrand, last4: contractor.cardLast4 }
+    : null;
 
   const due = fees.filter((f) => f.status === "DUE");
   const awaiting = fees.filter((f) => f.status === "AWAITING_CONTRACTOR_PAYMENT");
@@ -122,17 +131,17 @@ export default async function FeesPage({
                 </p>
                 <div className="mt-3 flex flex-col gap-3">
                   {due.map((fee) => (
-                    <FeeCard key={fee.id} fee={fee} emphasize />
+                    <FeeCard key={fee.id} fee={fee} emphasize savedCard={savedCard} />
                   ))}
                 </div>
               </section>
             )}
 
             {awaiting.length > 0 && (
-              <FeeSection title="Awaiting landowner payment" fees={awaiting} />
+              <FeeSection title="Waiting to be paid" fees={awaiting} savedCard={savedCard} />
             )}
-            {paidFees.length > 0 && <FeeSection title="Paid" fees={paidFees} />}
-            {other.length > 0 && <FeeSection title="Other" fees={other} />}
+            {paidFees.length > 0 && <FeeSection title="Paid" fees={paidFees} savedCard={savedCard} />}
+            {other.length > 0 && <FeeSection title="Other" fees={other} savedCard={savedCard} />}
           </>
         )}
       </div>
@@ -143,6 +152,7 @@ export default async function FeesPage({
 function FeeSection({
   title,
   fees,
+  savedCard,
 }: {
   title: string;
   fees: Array<{
@@ -155,13 +165,14 @@ function FeeSection({
     paymentMethod: string | null;
     leadMatch: { lead: Parameters<typeof leadScopeLabel>[0] & { propertyLocation: string } };
   }>;
+  savedCard?: { brand?: string | null; last4?: string | null } | null;
 }) {
   return (
     <section>
       <h2 className="font-fraunces text-[20px] font-semibold text-[#4A3E2D]">{title}</h2>
       <div className="mt-3 flex flex-col gap-3">
         {fees.map((fee) => (
-          <FeeCard key={fee.id} fee={fee} />
+          <FeeCard key={fee.id} fee={fee} savedCard={savedCard} />
         ))}
       </div>
     </section>
@@ -171,6 +182,7 @@ function FeeSection({
 function FeeCard({
   fee,
   emphasize = false,
+  savedCard,
 }: {
   fee: {
     id: string;
@@ -183,6 +195,7 @@ function FeeCard({
     leadMatch: { lead: Parameters<typeof leadScopeLabel>[0] & { propertyLocation: string } };
   };
   emphasize?: boolean;
+  savedCard?: { brand?: string | null; last4?: string | null } | null;
 }) {
   const status = statusMeta(fee.status);
   const ratePercent = fee.rateBasisPoints / 100;
@@ -199,20 +212,22 @@ function FeeCard({
 
   return (
     <article
-      className={`rounded-[18px] border p-4 sm:p-5 ${
+      className={`group relative rounded-[18px] border p-4 sm:p-5 hover:bg-[#FBF6EC] ${
         emphasize
           ? "border-[#E8C4BE] bg-[#FDF5F3]"
           : "border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]"
       }`}
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <Link
-            href={`/jobs/${fee.leadMatchId}`}
-            className="truncate text-[17px] font-semibold text-[#4A3E2D] hover:text-[#C0803C]"
-          >
+      <Link
+        href={`/fees/${fee.leadMatchId}`}
+        className="absolute inset-0 z-0 rounded-[18px]"
+        aria-label={`View fee for ${leadScopeLabel(fee.leadMatch.lead)}`}
+      />
+      <div className="relative z-[1] flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="pointer-events-none min-w-0 flex-1">
+          <p className="truncate text-[17px] font-semibold text-[#4A3E2D] group-hover:text-[#C0803C]">
             {leadScopeLabel(fee.leadMatch.lead)}
-          </Link>
+          </p>
           <p className="mt-0.5 truncate text-[13px] text-[#8A7E68]">
             {fee.leadMatch.lead.propertyLocation}
           </p>
@@ -230,8 +245,8 @@ function FeeCard({
           </div>
         </div>
 
-        <div className="flex flex-col items-stretch gap-3 sm:min-w-[200px] sm:items-end">
-          <div className="text-left sm:text-right">
+        <div className="relative z-10 flex flex-col items-stretch gap-3 sm:min-w-[200px] sm:items-end">
+          <div className="pointer-events-none text-left sm:text-right">
             <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8A7E68]">
               Landy&apos;s fee
             </p>
@@ -244,8 +259,15 @@ function FeeCard({
               <FeePayButton
                 leadMatchId={fee.leadMatchId}
                 amountLabel={formatMoney(fee.feeAmountCents)}
+                savedCard={savedCard}
               />
             </div>
+          )}
+          {fee.status !== "DUE" && (
+            <ChevronRight
+              className="mt-1 h-4 w-4 flex-none self-end text-[#B0A691] group-hover:text-[#C0803C]"
+              aria-hidden
+            />
           )}
         </div>
       </div>

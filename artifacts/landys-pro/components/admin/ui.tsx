@@ -247,12 +247,13 @@ export function IconTile({
   imgSize = 26,
   radius = 12,
 }: {
-  src: string | null;
+  src?: string | null;
   alt?: string;
   size?: number;
   imgSize?: number;
   radius?: number;
 }) {
+  const resolved = src || "/icons/excavation.png";
   return (
     <span
       style={{
@@ -267,29 +268,13 @@ export function IconTile({
         flex: "none",
       }}
     >
-      {src ? (
-        <Image
-          src={src}
-          alt={alt}
-          width={imgSize}
-          height={imgSize}
-          style={{ objectFit: "contain" }}
-        />
-      ) : (
-        <svg
-          width={imgSize - 4}
-          height={imgSize - 4}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--ink3)"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect x="3" y="3" width="18" height="18" rx="4" />
-          <path d="M8 12h8M12 8v8" />
-        </svg>
-      )}
+      <Image
+        src={resolved}
+        alt={alt}
+        width={imgSize}
+        height={imgSize}
+        style={{ objectFit: "contain" }}
+      />
     </span>
   );
 }

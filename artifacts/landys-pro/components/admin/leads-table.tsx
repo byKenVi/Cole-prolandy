@@ -226,7 +226,7 @@ export function LeadsTable({
           border: "1px solid var(--line)",
           borderRadius: 18,
           boxShadow: "var(--shadow)",
-          overflow: "hidden",
+          overflowX: "auto",
         }}
       >
         <div className="admin-table-desktop">
@@ -248,7 +248,7 @@ export function LeadsTable({
             <span style={HEAD_CELL}>Accepted</span>
             <span style={HEAD_CELL}>Status</span>
             <SortButton label="Sent" sortKey="date" />
-            <SortButton label="Est. value" sortKey="value" align="right" />
+            <SortButton label="Estimated budget" sortKey="value" align="right" />
           </div>
 
           {shown.map((row) => (
@@ -278,11 +278,7 @@ export function LeadsTable({
                   justifyContent: "center",
                 }}
               >
-                {row.iconSrc ? (
-                  <Image src={row.iconSrc} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
-                ) : (
-                  <span style={{ width: 20, height: 20, borderRadius: 4, background: "var(--track)" }} />
-                )}
+                <Image src={row.iconSrc || "/icons/excavation.png"} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
               </span>
               <div style={{ minWidth: 0 }}>
                 <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>

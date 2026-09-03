@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Hammer, ChevronRight } from "lucide-react";
+import { MapPin, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { iconSrcFor } from "@/lib/project-icons";
@@ -45,27 +45,27 @@ const GROUP_ORDER: GroupKey[] = [
 const GROUP_META: Record<GroupKey, { title: string; hint: string }> = {
   fee_due: {
     title: "Fee due",
-    hint: "Landowner paid you — pay Landy's success fee",
+    hint: "You confirmed the landowner paid you. Landy's success fee is now due.",
   },
   awaiting_pay: {
-    title: "Waiting for landowner payment",
-    hint: "You won the job. Confirm when you've been paid.",
+    title: "Waiting to be paid",
+    hint: "You won the job. We'll check in to see when you've been paid.",
   },
   accepted: {
     title: "Accepted",
-    hint: "Contact unlocked — work with the landowner off-platform",
+    hint: "You're connected to the landowner — work stays off-platform.",
   },
   won: {
     title: "Won",
-    hint: "Marked won — waiting on the payment check-in",
+    hint: "You reported winning the job.",
   },
   lost: {
     title: "Lost",
     hint: "Jobs you passed on after connecting",
   },
   paid: {
-    title: "Completed / paid",
-    hint: "Landy's fee settled",
+    title: "Paid",
+    hint: "Landy's success fee has been settled.",
   },
 };
 
@@ -75,11 +75,11 @@ function classify(match: {
 }): { group: GroupKey; statusLabel: string; statusTone: JobRow["statusTone"] } {
   const fee = match.successFee?.status;
   if (fee === "DUE") return { group: "fee_due", statusLabel: "Fee due", statusTone: "danger" };
-  if (fee === "PAID") return { group: "paid", statusLabel: "Fee paid", statusTone: "success" };
+  if (fee === "PAID") return { group: "paid", statusLabel: "Paid", statusTone: "success" };
   if (fee === "AWAITING_CONTRACTOR_PAYMENT") {
     return {
       group: "awaiting_pay",
-      statusLabel: "Waiting for landowner payment",
+      statusLabel: "Waiting to be paid",
       statusTone: "warn",
     };
   }
@@ -202,7 +202,7 @@ function Shell({
                 ))}
               </div>
 
-              <div className="hidden overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white md:block">
+              <div className="hidden rounded-[18px] border border-[#EBE3D4] bg-white md:block">
                 {group.rows.map((r) => (
                   <DesktopJobRow key={r.matchId} row={r} />
                 ))}
@@ -224,14 +224,10 @@ function DesktopJobRow({ row }: { row: JobRow }) {
   return (
     <Link
       href={`/jobs/${row.matchId}`}
-      className="group flex items-center gap-4 border-b border-[#F2EBDD] px-5 py-4 last:border-b-0 hover:bg-[#FBF6EC]"
+      className="group flex cursor-pointer items-center gap-4 border-b border-[#F2EBDD] px-5 py-4 last:border-b-0 hover:bg-[#FBF6EC]"
     >
       <span className="flex h-12 w-12 flex-none items-center justify-center rounded-[14px] bg-[#F5EEDF]">
-        {src ? (
-          <Image src={src} alt="" aria-hidden width={60} height={60} className="h-8 w-8 object-contain" />
-        ) : (
-          <Hammer className="h-7 w-7 text-[#9A6E2E]" aria-hidden />
-        )}
+        <Image src={src} alt="" aria-hidden width={60} height={60} className="h-8 w-8 object-contain" />
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[16px] font-semibold text-[#4A3E2D] group-hover:text-[#C0803C]">

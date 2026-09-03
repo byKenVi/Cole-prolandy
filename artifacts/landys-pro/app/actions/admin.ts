@@ -1097,7 +1097,7 @@ export async function resetContractorClerkLink(contractorId: string): Promise<Re
     select: { id: true, name: true, email: true, clerkUserId: true },
   });
   if (!contractor) return { ok: false, message: "Contractor not found." };
-  if (!contractor.clerkUserId) return { ok: false, message: "This contractor has no Clerk link to reset." };
+  if (!contractor.clerkUserId) return { ok: false, message: "This contractor has no sign-in account to reset." };
 
   await prisma.contractor.update({
     where: { id: contractorId },
@@ -1114,7 +1114,7 @@ export async function resetContractorClerkLink(contractorId: string): Promise<Re
     },
   });
   revalidatePath(`/admin/contractors/${contractorId}`);
-  return { ok: true, message: "Clerk link cleared. The contractor can now sign in again to re-link." };
+  return { ok: true, message: "Sign-in access reset. The contractor can sign in again with a fresh invitation." };
 }
 
 export async function updateContractor(id: string, input: ContractorInput): Promise<Result> {

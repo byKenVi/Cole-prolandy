@@ -320,7 +320,7 @@ function Sidebar({
               {identity.adminRole === "owner" ? "Owner" : "Admin"}
             </span>
           </p>
-          <p style={{ margin: "2px 0 0", font: "400 12px/1 'Inter'", color: "#8FA592" }}>
+          <p className="admin-foot-email">
             {identity.email ?? "Administrator"}
           </p>
         </div>

@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, MapPin, Phone, Mail, CheckCircle2, Lock, Hammer } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, Mail, CheckCircle2, Lock } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { LeadActions } from "@/components/lead-actions";
 import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { iconSrcFor } from "@/lib/project-icons";
 import { formatMoney } from "@/lib/money";
+import { FeePayButton } from "@/components/fee-pay-button";
 import {
   hasResolvedLeadSnapshot,
   leadCategoryIcon,
@@ -74,11 +75,7 @@ export default async function JobDetail({
           <div className="px-4 pb-6 pt-5 sm:px-5 md:px-8 md:pb-8 md:pt-7">
             <div className="mb-2 flex items-center gap-[15px]">
               <span className="flex h-14 w-14 flex-none items-center justify-center rounded-[15px] bg-[#F5EEDF]">
-                {iconSrc ? (
-                  <Image src={iconSrc} alt="" aria-hidden width={72} height={72} className="h-9 w-9 object-contain" />
-                ) : (
-                  <Hammer className="h-8 w-8 text-[#9A6E2E]" aria-hidden />
-                )}
+                <Image src={iconSrc} alt="" aria-hidden width={72} height={72} className="h-9 w-9 object-contain" />
               </span>
               <div>
                 <h1 className="font-fraunces text-[28px] font-medium tracking-[-0.01em] text-[#3A352D]">
@@ -190,11 +187,24 @@ export default async function JobDetail({
                 }
               >
                 {successFee.status === "PAID"
-                  ? "Success fee paid"
+                  ? "Success fee paid — settled with Landy's"
                   : successFee.status === "DUE"
-                    ? "Fee due — pay from the Fees tab"
-                    : "Confirm landowner payment to mark fee due"}
+                    ? "Fee due — you confirmed the landowner paid you"
+                    : "Waiting to be paid — we'll check in by text"}
               </div>
+              {successFee.status === "DUE" && (
+                <div className="mt-4">
+                  <FeePayButton
+                    leadMatchId={match.id}
+                    amountLabel={formatMoney(successFee.feeAmountCents)}
+                    savedCard={
+                      match.contractor.stripeDefaultPaymentMethodId
+                        ? { brand: match.contractor.cardBrand, last4: match.contractor.cardLast4 }
+                        : null
+                    }
+                  />
+                </div>
+              )}
             </>
           ) : accepted ? (
             <p className="flex items-center justify-center gap-2 rounded-[14px] bg-[#2F4A3C] py-4 text-[16px] font-semibold text-white">

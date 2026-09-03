@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Search, ChevronDown, Hammer, MessageSquare } from "lucide-react";
+import { MapPin, Search, ChevronDown, MessageSquare } from "lucide-react";
 import { OpportunityCard } from "@/components/opportunity-card";
 import { PaginationControls } from "@/components/pagination-controls";
 import { ExpiryCountdown } from "@/components/expiry-countdown";
@@ -20,13 +20,14 @@ export type FeedRow = {
   description?: string | null;
   landTypeName?: string | null;
   feeRatePercent?: number;
+  estimatedFeeLabel?: string | null;
   estimatedValueLabel?: string | null;
   receivedAt: Date;
   expiresAt: Date;
 };
 
 const GRID =
-  "grid-cols-[minmax(220px,2.8fr)_minmax(140px,1.4fr)_110px_100px_120px_168px]";
+  "grid-cols-[minmax(200px,2.2fr)_minmax(120px,1.1fr)_minmax(118px,0.9fr)_96px_minmax(128px,0.95fr)_minmax(196px,auto)]";
 
 type SortOrder = "newest" | "oldest";
 
@@ -136,17 +137,17 @@ export function ContractorFeed({
               ))}
             </div>
 
-            <div className="contractor-table-desktop overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
+            <div className="contractor-table-desktop rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
               <div className="overflow-x-auto">
                 <div
-                  className={`grid ${GRID} min-w-[820px] items-center gap-3.5 border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-3.5`}
+                  className={`grid ${GRID} min-w-[980px] items-center gap-3.5 border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-3.5`}
                 >
                   <HeadCell>Job</HeadCell>
-                  <HeadCell>Where</HeadCell>
-                  <HeadCell>Est. value</HeadCell>
-                  <HeadCell>Expires</HeadCell>
-                  <HeadCell className="text-right">Landy&apos;s fee</HeadCell>
-                  <span />
+                  <HeadCell>Location</HeadCell>
+                  <HeadCell>Estimated budget</HeadCell>
+                  <HeadCell>Expiration</HeadCell>
+                  <HeadCell>Landy&apos;s success fee</HeadCell>
+                  <HeadCell className="text-right">Actions</HeadCell>
                 </div>
                 {shown.map((r) => (
                   <FeedTableRow key={r.matchId} row={r} />
@@ -192,15 +193,11 @@ function FeedTableRow({ row }: { row: FeedRow }) {
 
   return (
     <div
-      className={`group grid ${GRID} min-w-[820px] items-center gap-3.5 border-b border-[#F2EBDD] px-6 last:border-b-0 hover:bg-[#FBF6EC] transition-colors`}
+      className={`group grid ${GRID} min-w-[980px] items-center gap-3.5 border-b border-[#F2EBDD] px-6 last:border-b-0 hover:bg-[#FBF6EC] transition-colors`}
     >
       <Link href={href} className="flex min-w-0 items-center gap-3.5 py-4">
         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-[14px] bg-[#F5EEDF]">
-          {src ? (
-            <Image src={src} alt="" aria-hidden width={60} height={60} className="h-8 w-8 object-contain" />
-          ) : (
-            <Hammer className="h-7 w-7 text-[#9A6E2E]" aria-hidden />
-          )}
+          <Image src={src} alt="" aria-hidden width={60} height={60} className="h-8 w-8 object-contain" />
         </span>
         <div className="min-w-0">
           <p className="truncate text-[16px] font-semibold text-[#4A3E2D]">{row.projectTypeName}</p>
@@ -223,11 +220,16 @@ function FeedTableRow({ row }: { row: FeedRow }) {
         <ExpiryCountdown expiresAt={row.expiresAt} variant="inline" />
       </Link>
 
-      <Link href={href} className="py-4 text-right text-[18px] font-semibold tabular-nums text-[#4A3E2D]">
-        {formatFeeRate(row.feeRatePercent)}
+      <Link href={href} className="py-4 pr-2">
+        <p className="text-[15px] font-semibold tabular-nums text-[#4A3E2D]">
+          {row.estimatedFeeLabel ?? formatFeeRate(row.feeRatePercent)}
+        </p>
+        {row.estimatedFeeLabel && row.feeRatePercent != null && (
+          <p className="mt-0.5 text-[11px] text-[#8A7E68]">{formatFeeRate(row.feeRatePercent)}</p>
+        )}
       </Link>
 
-      <div className="flex items-center justify-end gap-2 py-4">
+      <div className="flex items-center justify-end gap-2 py-4 pl-2">
         <OneClickPass matchId={row.matchId} />
         <OneClickAccept matchId={row.matchId} />
       </div>

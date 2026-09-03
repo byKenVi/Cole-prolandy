@@ -62,10 +62,12 @@ export default async function OpportunitiesPage({
     if (!hasResolvedLeadSnapshot(m.lead)) return [];
     const estimate = estimatedValueCents(m.lead);
     let feeRatePercent: number | undefined;
+    let estimatedFeeLabel: string | null = null;
     if (estimate && estimate > 0 && tiers.length > 0) {
       try {
-        const { rateBasisPoints } = resolveSuccessFeeForValue(tiers, estimate);
-        feeRatePercent = rateBasisPoints / 100;
+        const resolved = resolveSuccessFeeForValue(tiers, estimate);
+        feeRatePercent = resolved.rateBasisPoints / 100;
+        estimatedFeeLabel = formatMoney(resolved.feeAmountCents);
       } catch {
         /* non-fatal */
       }
@@ -80,6 +82,7 @@ export default async function OpportunitiesPage({
         description: m.lead.description,
         landTypeName: m.lead.landType?.name ?? null,
         feeRatePercent,
+        estimatedFeeLabel,
         estimatedValueLabel: estimate && estimate > 0 ? formatMoney(estimate) : null,
         receivedAt: m.createdAt,
         expiresAt: m.lead.expiresAt,

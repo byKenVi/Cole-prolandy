@@ -124,8 +124,8 @@ export async function notifyPaymentFollowUp(params: {
   leadMatchId: string;
 }) {
   const link = followUpLink(params.token);
-  const smsBody = `Landy's Pro: Have you been paid for the ${params.projectLabel} job? Yes or Not yet: ${link}`;
-  const emailBody = `Have you been paid for the ${params.projectLabel} job?\n\n${link}`;
+  const emailBody = `Have you been paid for the ${params.projectLabel} job?\n\nYes, I've been paid — or Not yet:\n${link}`;
+  const smsBody = `Landy's Pro: Have you been paid for the ${params.projectLabel} job? Yes, I've been paid / Not yet: ${link}`;
 
   await Promise.allSettled([
     sms.send({ to: safeSmsRecipient(params.contractor.phone), body: smsBody }),

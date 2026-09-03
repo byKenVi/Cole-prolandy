@@ -282,7 +282,7 @@ export default async function AdminConfirmationsPage({
 
       <div
         style={{
-          overflow: "hidden",
+          overflowX: "auto",
           borderRadius: 16,
           border: "1px solid var(--line)",
           background: "var(--card)",
@@ -293,7 +293,7 @@ export default async function AdminConfirmationsPage({
           <AdminEmptyState title={empty.title} description={empty.description} icon={<ConfirmEmptyIcon />} />
         ) : (
           <>
-            <table className="admin-table-desktop" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="admin-table-desktop" style={{ width: "100%", minWidth: 920, borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "var(--card2)", borderBottom: "1px solid var(--line)" }}>
                   <th style={thStyle}>Project</th>

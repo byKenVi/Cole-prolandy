@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string; icon: string }[] = [
   { href: "/dashboard", label: "Home", icon: "/nav-icons/nav-home.png" },
-  { href: "/opportunities", label: "Opportunities", icon: "/nav-icons/nav-leads.png" },
-  { href: "/jobs", label: "My Jobs", icon: "/nav-icons/nav-leads.png" },
-  { href: "/fees", label: "Fees", icon: "/nav-icons/nav-profile.png" },
+  { href: "/opportunities", label: "Opps", icon: "/nav-icons/nav-leads.png" },
+  { href: "/jobs", label: "My Jobs", icon: "/icon-job-mono.png" },
+  { href: "/fees", label: "Fees", icon: "/nav-icons/nav-wallet.png" },
   { href: "/profile", label: "Profile", icon: "/nav-icons/nav-profile.png" },
 ];
 

@@ -87,6 +87,7 @@ export function ManualLeadForm({
     reviewStatus: "pending_review" | "routed";
   } | null>(null);
   const [form, setForm] = useState({ ...EMPTY });
+  const [step, setStep] = useState(0);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -106,10 +107,45 @@ export function ManualLeadForm({
       return "Add at least 10 characters describing the project.";
     }
     const budgetCents = dollarsToCents(form.budgetDollars.replace(/[$,\s]/g, ""));
-    if (budgetCents <= 0) return "Estimated project value is required.";
+    if (budgetCents <= 0) return "Estimated project budget is required.";
     if (!form.timelineCode) return "Choose the project timeline.";
     if (!form.urgencyCode) return "Choose the urgency.";
     return null;
+  }
+
+  function validateStep(n: number): string | null {
+    if (n === 0) {
+      if (form.landownerName.trim().length < 2) return "Landowner name is required.";
+      if (form.landownerPhone.trim().length < 7) return "A valid phone number is required.";
+      if (!form.landownerEmail.trim()) return "Landowner email is required.";
+      if (!/^\d{5}(?:-\d{4})?$/.test(form.propertyZip.trim())) return "Enter a valid property ZIP code.";
+      return null;
+    }
+    if (n === 1) {
+      if (!form.landTypeCode) return "Choose a land type.";
+      if (!form.contractorCategoryCode) return "Choose the contractor category.";
+      if (!form.workTypeCode) return "Choose the type of work.";
+      return null;
+    }
+    if (n === 2) {
+      if (form.description.trim().length < 10) return "Add at least 10 characters describing the project.";
+      const budgetCents = dollarsToCents(form.budgetDollars.replace(/[$,\s]/g, ""));
+      if (budgetCents <= 0) return "Estimated project budget is required.";
+      if (!form.timelineCode) return "Choose the project timeline.";
+      if (!form.urgencyCode) return "Choose the urgency.";
+      return null;
+    }
+    return validate();
+  }
+
+  function goNext() {
+    const err = validateStep(step);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setStep((s) => Math.min(3, s + 1));
   }
 
   function createOpportunity() {
@@ -179,82 +215,121 @@ export function ManualLeadForm({
     );
   }
 
+  const STEPS = ["Landowner", "Project", "Details", "Review"];
+  const workName = workTypes.find((o) => o.code === form.workTypeCode)?.name ?? form.workTypeCode;
+  const landName = landTypes.find((o) => o.code === form.landTypeCode)?.name ?? form.landTypeCode;
+  const catName =
+    contractorCategories.find((o) => o.code === form.contractorCategoryCode)?.name ?? form.contractorCategoryCode;
+
   return (
     <form onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-7">
-      <Section
-        kicker="01 · Landowner"
-        title="Who needs the work?"
-        subtitle="The contact contractors receive only after they accept the opportunity."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Full name" htmlFor="landowner-name">
-            <Input id="landowner-name" style={FIELD} value={form.landownerName} onChange={(event) => set("landownerName", event.target.value)} autoComplete="name" placeholder="Jane Landowner" />
-          </Field>
-          <Field label="Phone" htmlFor="landowner-phone">
-            <Input id="landowner-phone" type="tel" style={FIELD} value={form.landownerPhone} onChange={(event) => set("landownerPhone", event.target.value)} autoComplete="tel" placeholder="(512) 555-0100" />
-          </Field>
-          <div className="sm:col-span-2">
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {STEPS.map((label, i) => (
+          <span
+            key={label}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 999,
+              font: "600 12px/1 'Inter'",
+              background: i === step ? "var(--goldSoft)" : "var(--card2)",
+              color: i === step ? "var(--goldSoftFg)" : "var(--ink3)",
+              border: i === step ? "1px solid var(--gold)" : "1px solid var(--line)",
+            }}
+          >
+            {i + 1}. {label}
+          </span>
+        ))}
+      </div>
+
+      {step === 0 && (
+        <Section kicker="01 · Landowner" title="Who needs the work?" subtitle="Contact contractors receive only after they accept.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Full name" htmlFor="landowner-name">
+              <Input id="landowner-name" style={FIELD} value={form.landownerName} onChange={(event) => set("landownerName", event.target.value)} autoComplete="name" placeholder="Jane Landowner" />
+            </Field>
+            <Field label="Phone" htmlFor="landowner-phone">
+              <Input id="landowner-phone" type="tel" style={FIELD} value={form.landownerPhone} onChange={(event) => set("landownerPhone", event.target.value)} autoComplete="tel" placeholder="(512) 555-0100" />
+            </Field>
             <Field label="Email" htmlFor="landowner-email">
               <Input id="landowner-email" type="email" style={FIELD} value={form.landownerEmail} onChange={(event) => set("landownerEmail", event.target.value)} autoComplete="email" placeholder="jane@example.com" />
             </Field>
-          </div>
-        </div>
-      </Section>
-
-      <Section kicker="02 · Property" title="Where is the project?" subtitle="ZIP and land type use the same live taxonomy as Landys.co.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Property ZIP" htmlFor="property-zip">
-            <Input id="property-zip" inputMode="numeric" style={FIELD} value={form.propertyZip} onChange={(event) => set("propertyZip", event.target.value)} placeholder="78701" />
-          </Field>
-          <Field label="Land type" htmlFor="land-type">
-            <TaxonomySelect id="land-type" value={form.landTypeCode} placeholder="Choose land type…" options={landTypes} onChange={(value) => set("landTypeCode", value)} />
-          </Field>
-        </div>
-      </Section>
-
-      <Section kicker="03 · Matching" title="Who should receive it?" subtitle="Category identifies the contractor trade; work type describes the job. Both drive matching.">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Contractor category" htmlFor="contractor-category">
-            <TaxonomySelect id="contractor-category" value={form.contractorCategoryCode} placeholder="Choose a trade…" options={contractorCategories} onChange={(value) => set("contractorCategoryCode", value)} />
-          </Field>
-          <Field label="Type of work" htmlFor="work-type">
-            <TaxonomySelect id="work-type" value={form.workTypeCode} placeholder="Choose work type…" options={workTypes} onChange={(value) => set("workTypeCode", value)} />
-          </Field>
-        </div>
-      </Section>
-
-      <Section kicker="04 · Project" title="What should contractors know?" subtitle="Value, timing, urgency, and scope help a contractor decide quickly.">
-        <div className="flex flex-col gap-4">
-          <Field label="Project description" htmlFor="project-description">
-            <Textarea id="project-description" rows={4} value={form.description} onChange={(event) => set("description", event.target.value)} placeholder="What needs to be done, site conditions, timing notes…" style={{ ...FIELD, height: "auto", minHeight: 112, padding: "12px 14px", resize: "vertical", lineHeight: 1.45 }} />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Estimated project value" htmlFor="project-value">
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 font-semibold" style={{ color: "var(--ink3)" }}>$</span>
-                <Input id="project-value" inputMode="decimal" style={{ ...FIELD, paddingLeft: 28 }} value={form.budgetDollars} onChange={(event) => set("budgetDollars", event.target.value)} placeholder="25,000" />
-              </div>
-              <p style={HINT}>Used to select the success-fee rate.</p>
-            </Field>
-            <Field label="Timeline" htmlFor="timeline">
-              <TaxonomySelect id="timeline" value={form.timelineCode} placeholder="Choose timeline…" options={TIMELINES} onChange={(value) => set("timelineCode", value)} />
-            </Field>
-            <Field label="Urgency" htmlFor="urgency">
-              <TaxonomySelect id="urgency" value={form.urgencyCode} placeholder="Choose urgency…" options={URGENCIES} onChange={(value) => set("urgencyCode", value)} />
+            <Field label="Property ZIP" htmlFor="property-zip">
+              <Input id="property-zip" inputMode="numeric" style={FIELD} value={form.propertyZip} onChange={(event) => set("propertyZip", event.target.value)} placeholder="78701" />
             </Field>
           </div>
-        </div>
-      </Section>
+        </Section>
+      )}
+
+      {step === 1 && (
+        <Section kicker="02 · Project" title="What kind of work?" subtitle="Current taxonomy used for matching.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Land type" htmlFor="land-type">
+              <TaxonomySelect id="land-type" value={form.landTypeCode} placeholder="Choose land type…" options={landTypes} onChange={(value) => set("landTypeCode", value)} />
+            </Field>
+            <Field label="Contractor category" htmlFor="contractor-category">
+              <TaxonomySelect id="contractor-category" value={form.contractorCategoryCode} placeholder="Choose a trade…" options={contractorCategories} onChange={(value) => set("contractorCategoryCode", value)} />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Type of work" htmlFor="work-type">
+                <TaxonomySelect id="work-type" value={form.workTypeCode} placeholder="Choose work type…" options={workTypes} onChange={(value) => set("workTypeCode", value)} />
+              </Field>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {step === 2 && (
+        <Section kicker="03 · Project details" title="Budget and scope" subtitle="The landowner's submitted budget is an estimate, not a final contract value.">
+          <div className="flex flex-col gap-4">
+            <Field label="Project description" htmlFor="project-description">
+              <Textarea id="project-description" rows={4} value={form.description} onChange={(event) => set("description", event.target.value)} placeholder="What needs to be done, site conditions, timing notes…" style={{ ...FIELD, height: "auto", minHeight: 112, padding: "12px 14px", resize: "vertical", lineHeight: 1.45 }} />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Estimated budget" htmlFor="project-value">
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 font-semibold" style={{ color: "var(--ink3)" }}>$</span>
+                  <Input id="project-value" inputMode="decimal" style={{ ...FIELD, paddingLeft: 28 }} value={form.budgetDollars} onChange={(event) => set("budgetDollars", event.target.value)} placeholder="25,000" />
+                </div>
+                <p style={HINT}>Used to preview the success-fee rate. Not the final contract.</p>
+              </Field>
+              <Field label="Timeline" htmlFor="timeline">
+                <TaxonomySelect id="timeline" value={form.timelineCode} placeholder="Choose timeline…" options={TIMELINES} onChange={(value) => set("timelineCode", value)} />
+              </Field>
+              <Field label="Urgency" htmlFor="urgency">
+                <TaxonomySelect id="urgency" value={form.urgencyCode} placeholder="Choose urgency…" options={URGENCIES} onChange={(value) => set("urgencyCode", value)} />
+              </Field>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {step === 3 && (
+        <Section kicker="04 · Review" title="Ready to distribute?" subtitle="Creates a free opportunity. Landy's earns only after the contractor is paid by the landowner.">
+          <div className="grid gap-3 rounded-[14px] border p-4" style={{ borderColor: "var(--line)", background: "var(--card2)" }}>
+            <p style={{ margin: 0, font: "600 15px/1.4 'Inter'", color: "var(--ink)" }}>{form.landownerName} · {form.propertyZip}</p>
+            <p style={{ margin: 0, color: "var(--ink2)" }}>{form.landownerPhone} · {form.landownerEmail}</p>
+            <p style={{ margin: 0, color: "var(--ink)" }}>{workName} · {catName} · {landName}</p>
+            <p style={{ margin: 0, color: "var(--ink2)" }}>Estimated budget ${form.budgetDollars}</p>
+            <p style={{ margin: 0, color: "var(--ink2)", whiteSpace: "pre-wrap" }}>{form.description}</p>
+          </div>
+        </Section>
+      )}
 
       {error && <p className="rounded-xl px-3.5 py-3 text-sm font-medium" style={{ margin: 0, background: "var(--dangerSoft, #fde8e8)", color: "var(--danger, #b42318)" }}>{error}</p>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3.5 rounded-[14px] border px-[18px] py-4" style={{ background: "var(--card2)", borderColor: "var(--line)" }}>
-        <p style={{ margin: 0, maxWidth: 480, font: "400 13px/1.45 'Inter'", color: "var(--ink2)" }}>
-          This sends a free opportunity to matching contractors. Landy&apos;s earns only when a contractor wins and gets paid.
-        </p>
-        <Button type="button" variant="accent" className="h-12 px-7 text-base" loading={pending} disabled={pending} onClick={createOpportunity}>
-          Create &amp; distribute
+      <div className="flex flex-wrap items-center justify-between gap-3.5">
+        <Button type="button" variant="outline" disabled={step === 0} onClick={() => { setError(null); setStep((s) => Math.max(0, s - 1)); }}>
+          Back
         </Button>
+        {step < 3 ? (
+          <Button type="button" variant="accent" className="h-12 px-7 text-base" onClick={goNext}>
+            Continue
+          </Button>
+        ) : (
+          <Button type="button" variant="accent" className="h-12 px-7 text-base" loading={pending} disabled={pending} onClick={createOpportunity}>
+            Create &amp; distribute
+          </Button>
+        )}
       </div>
     </form>
   );

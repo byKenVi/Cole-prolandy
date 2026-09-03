@@ -151,7 +151,7 @@ export default async function AdminContractors({
           border: "1px solid var(--line)",
           borderRadius: 18,
           boxShadow: "var(--shadow)",
-          overflow: "hidden",
+          overflowX: "auto",
         }}
       >
         {contractors.length === 0 ? (

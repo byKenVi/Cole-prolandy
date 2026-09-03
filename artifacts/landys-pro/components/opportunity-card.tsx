@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Phone, Mail, Hammer } from "lucide-react";
+import { MapPin, Phone, Mail } from "lucide-react";
 import { iconSrcFor } from "@/lib/project-icons";
 import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { OneClickAccept } from "@/components/one-click-accept";
@@ -48,18 +48,14 @@ function CardIcon({ lead }: { lead: OpportunityCardData }) {
   });
   return (
     <span className="flex h-12 w-12 flex-none items-center justify-center rounded-[14px] bg-[#F5EEDF]">
-      {src ? (
-        <Image
-          src={src}
-          alt=""
-          aria-hidden
-          width={60}
-          height={60}
-          className="h-8 w-8 object-contain"
-        />
-      ) : (
-        <Hammer className="h-7 w-7 text-[#9A6E2E]" aria-hidden />
-      )}
+      <Image
+        src={src}
+        alt=""
+        aria-hidden
+        width={60}
+        height={60}
+        className="h-8 w-8 object-contain"
+      />
     </span>
   );
 }
@@ -110,7 +106,7 @@ export function OpportunityCard({ lead }: { lead: OpportunityCardData }) {
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
             {lead.estimatedValueLabel && (
               <span className="font-semibold text-[#4A3E2D]">
-                Est. {lead.estimatedValueLabel}
+                Estimated budget {lead.estimatedValueLabel}
               </span>
             )}
             {lead.feeRatePercent != null && (

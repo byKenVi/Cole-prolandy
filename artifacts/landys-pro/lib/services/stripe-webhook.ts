@@ -270,6 +270,8 @@ export type SuccessFeePaymentEvent = {
   contractorId: string;
   amountCents: number;
   paymentIntentId: string | null;
+  paymentMethodId?: string | null;
+  stripeCustomerId?: string | null;
 };
 
 export function parseSuccessFeeEvent(event: Stripe.Event): SuccessFeePaymentEvent | null {
@@ -289,6 +291,7 @@ export function parseSuccessFeeEvent(event: Stripe.Event): SuccessFeePaymentEven
         typeof s.payment_intent === "string"
           ? s.payment_intent
           : (s.payment_intent?.id ?? null),
+      stripeCustomerId: typeof s.customer === "string" ? s.customer : (s.customer?.id ?? null),
     };
   }
   if (event.type === "payment_intent.succeeded") {
@@ -303,6 +306,11 @@ export function parseSuccessFeeEvent(event: Stripe.Event): SuccessFeePaymentEven
       contractorId: pi.metadata?.contractorId ?? "",
       amountCents: pi.amount_received ?? pi.amount ?? 0,
       paymentIntentId: pi.id,
+      paymentMethodId:
+        typeof pi.payment_method === "string"
+          ? pi.payment_method
+          : (pi.payment_method?.id ?? null),
+      stripeCustomerId: typeof pi.customer === "string" ? pi.customer : (pi.customer?.id ?? null),
     };
   }
   return null;
@@ -352,6 +360,12 @@ export async function confirmSuccessFeePayment(
         },
       });
     });
+    if (e.contractorId) {
+      const card = await cardFieldsFromPaymentMethod(e.paymentMethodId, e.stripeCustomerId);
+      if (Object.keys(card).length > 0) {
+        await prisma.contractor.updateMany({ where: { id: e.contractorId }, data: card });
+      }
+    }
     return { status: "credited" };
   } catch (err) {
     if (isUniqueViolation(err)) return { status: "duplicate" };
