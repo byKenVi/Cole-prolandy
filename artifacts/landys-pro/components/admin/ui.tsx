@@ -293,3 +293,144 @@ export function IconTile({
     </span>
   );
 }
+
+/** Segmented tab control used on fees / confirmations / settings. */
+export function AdminTabBar({
+  children,
+  "aria-label": ariaLabel,
+}: {
+  children: React.ReactNode;
+  "aria-label"?: string;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      style={{
+        display: "flex",
+        gap: 3,
+        background: "var(--card2)",
+        padding: 4,
+        borderRadius: 12,
+        marginBottom: 16,
+        flexWrap: "wrap",
+        width: "fit-content",
+        maxWidth: "100%",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function AdminTabLink({
+  href,
+  active,
+  children,
+  count,
+  tone,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+  count?: number;
+  /** Optional accent for the active count pill. */
+  tone?: "gold" | "danger" | "pos";
+}) {
+  const toneBg =
+    tone === "danger" ? "var(--dangerBg)" : tone === "pos" ? "var(--posBg)" : "var(--goldSoft)";
+  const toneFg =
+    tone === "danger" ? "var(--danger)" : tone === "pos" ? "var(--pos)" : "var(--gold)";
+
+  return (
+    <Link
+      href={href}
+      role="tab"
+      aria-selected={active}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 7,
+        textDecoration: "none",
+        border: "none",
+        font: "600 13px/1 'Inter'",
+        padding: "9px 15px",
+        borderRadius: 9,
+        background: active ? "var(--card)" : "transparent",
+        color: active ? "var(--ink)" : "var(--ink2)",
+        boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
+      }}
+    >
+      {children}
+      {typeof count === "number" && (
+        <span
+          style={{
+            font: "600 11px/1 var(--mono)",
+            color: active ? toneFg : "var(--ink3)",
+            background: active ? toneBg : "var(--chipBg)",
+            padding: "3px 7px",
+            borderRadius: 999,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+/** Strong empty state for admin list surfaces. */
+export function AdminEmptyState({
+  title,
+  description,
+  icon,
+}: {
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        padding: "48px 28px",
+        textAlign: "center",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 10,
+      }}
+    >
+      {icon && (
+        <div
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 14,
+            background: "var(--card2)",
+            border: "1px solid var(--line)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--ink3)",
+            marginBottom: 4,
+          }}
+        >
+          {icon}
+        </div>
+      )}
+      <p style={{ margin: 0, font: "600 16px/1.35 'Inter'", color: "var(--ink)" }}>{title}</p>
+      {description && (
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 360,
+            font: "400 14px/1.55 'Inter'",
+            color: "var(--ink3)",
+          }}
+        >
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}

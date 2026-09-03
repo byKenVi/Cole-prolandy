@@ -45,8 +45,8 @@ export function LeadEditForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <p className="rounded-sm bg-primary-soft p-3 text-sm text-text-muted">
-        Only landowner contact details and location can be edited. The project, tier and price are
-        locked once a lead is created so money can never shift after distribution.
+        Only landowner contact details and location can be edited. Project type and matching
+        details stay locked after distribution.
       </p>
 
       <div className="grid gap-5 sm:grid-cols-2">

@@ -1,19 +1,32 @@
-import { isStaging } from "@/lib/runtime-environment";
+import { isLocal, isStaging } from "@/lib/runtime-environment";
 
-function requiredOverride(name: "STAGING_NOTIFICATION_EMAIL" | "STAGING_NOTIFICATION_PHONE"): string {
+type OverrideName =
+  | "LOCAL_NOTIFICATION_EMAIL"
+  | "LOCAL_NOTIFICATION_PHONE"
+  | "STAGING_NOTIFICATION_EMAIL"
+  | "STAGING_NOTIFICATION_PHONE";
+
+function requiredOverride(name: OverrideName): string {
   const value = process.env[name]?.trim();
   if (!value) {
-    throw new Error(`${name} is required in staging; refusing to contact the original recipient.`);
+    throw new Error(`${name} is required in this environment; refusing to contact the original recipient.`);
   }
   return value;
 }
 
-/** Production/development keep the original destination. Staging always redirects. */
+/**
+ * Production keeps the original destination.
+ * Local (LANDYS_ENV=local) and staging always redirect to safe overrides (fail-closed).
+ */
 export function safeEmailRecipient(original: string): string {
-  return isStaging() ? requiredOverride("STAGING_NOTIFICATION_EMAIL") : original;
+  if (isLocal()) return requiredOverride("LOCAL_NOTIFICATION_EMAIL");
+  if (isStaging()) return requiredOverride("STAGING_NOTIFICATION_EMAIL");
+  return original;
 }
 
-/** Production/development keep the original destination. Staging always redirects. */
+/** Same isolation rules as email, for SMS. */
 export function safeSmsRecipient(original: string): string {
-  return isStaging() ? requiredOverride("STAGING_NOTIFICATION_PHONE") : original;
+  if (isLocal()) return requiredOverride("LOCAL_NOTIFICATION_PHONE");
+  if (isStaging()) return requiredOverride("STAGING_NOTIFICATION_PHONE");
+  return original;
 }

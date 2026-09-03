@@ -158,7 +158,7 @@ export default async function AdminLeads({
         kicker="Opportunities"
         title="Leads"
         subtitle="Estimate requests from Landys.co — matching, acceptance, and status."
-        action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
+        action={<GoldButtonLink href="/admin/leads/new">Create opportunity</GoldButtonLink>}
       />
 
       <div

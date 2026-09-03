@@ -1,8 +1,9 @@
 import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { CONTRACTOR_LOGOS_BUCKET } from "@/lib/storage-buckets";
 
-export const CONTRACTOR_LOGOS_BUCKET = "contractor-logos";
+export { CONTRACTOR_LOGOS_BUCKET } from "@/lib/storage-buckets";
 
 let client: SupabaseClient | null | undefined;
 let bucketReady: Promise<void> | null = null;

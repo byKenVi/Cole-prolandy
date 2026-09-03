@@ -17,19 +17,30 @@ export default async function ProfilePage() {
     ? await prisma.contractor.findUnique({
         where: { id: session.contractorId },
         include: {
-          projects: {
-            include: { contractorType: { select: { id: true, name: true } } },
-            orderBy: { contractorType: { name: "asc" } },
+          categoryMemberships: {
+            include: { category: { select: { id: true, name: true } } },
+            orderBy: { category: { name: "asc" } },
+          },
+          workTypes: {
+            include: { workType: { select: { id: true, name: true } } },
+            orderBy: { workType: { name: "asc" } },
           },
         },
       })
     : null;
 
-  const assignedProjects =
-    contractor?.projects.map((p) => ({
-      id: p.contractorType.id,
-      name: p.contractorType.name,
-    })) ?? [];
+  const assignedProjects = contractor
+    ? [
+        ...contractor.categoryMemberships.map((membership) => ({
+          id: `category-${membership.category.id}`,
+          name: membership.category.name,
+        })),
+        ...contractor.workTypes.map((membership) => ({
+          id: `work-${membership.workType.id}`,
+          name: membership.workType.name,
+        })),
+      ]
+    : [];
 
   if (!contractor) {
     return (
@@ -64,10 +75,10 @@ export default async function ProfilePage() {
   const initial = (contractor.name.trim()[0] ?? "?").toUpperCase();
   const projectLabel =
     assignedProjects.length === 0
-      ? "No projects assigned"
+      ? "Matching not configured"
       : assignedProjects.length === 1
         ? assignedProjects[0]!.name
-        : `${assignedProjects.length} projects`;
+        : `${assignedProjects.length} matching rules`;
 
   return (
     <div className="contractor-page flex min-h-full flex-col">
@@ -76,7 +87,7 @@ export default async function ProfilePage() {
           Profile
         </h1>
         <p className="mt-[5px] text-[14px] text-[#8A7E68]">
-          Update your contact details. Project assignment is managed by Landy’s.
+          Update your contact details. Opportunity matching is managed by Landy’s.
         </p>
       </header>
 

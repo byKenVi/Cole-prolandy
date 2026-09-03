@@ -320,6 +320,26 @@ export async function runOperationalReset(
   opts: { execute?: boolean } = {},
 ): Promise<{ plan: ResetPlan; before: ResetCounts; after: ResetCounts | null }> {
   const execute = Boolean(opts.execute);
+
+  // Hard stop: never execute destructive reset against production.
+  const env = process.env.LANDYS_ENV?.trim().toLowerCase();
+  if (execute && env === "production") {
+    throw new Error('Refusing execute: LANDYS_ENV=production.');
+  }
+  if (execute) {
+    const { assertDatabaseUrlSafeForQa } = await import("@/lib/ops/database-safety");
+    const url = process.env.DATABASE_URL;
+    if (url) {
+      try {
+        assertDatabaseUrlSafeForQa(url);
+      } catch (e) {
+        throw new Error(
+          `Refusing execute against unsafe database: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
+  }
+
   const before = await collectResetCounts(db);
   const plan = buildResetPlan(before, execute);
 

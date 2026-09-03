@@ -1,26 +1,18 @@
-"use client";
-
 import Link from "next/link";
-import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
-import { formatMoney } from "@/lib/money";
 
-export type RevenueRange = "24h" | "7d" | "30d";
+export type RevenueRange = "7d" | "30d" | "90d" | "all";
 export type RevenuePoint = { label: string; revenueCents: number };
 
 const RANGE_OPTIONS: { id: RevenueRange; label: string }[] = [
-  { id: "24h", label: "24 hours" },
-  { id: "7d", label: "7 days" },
-  { id: "30d", label: "30 days" },
+  { id: "7d", label: "7D" },
+  { id: "30d", label: "30D" },
+  { id: "90d", label: "90D" },
+  { id: "all", label: "All" },
 ];
 
 /**
- * Dark-green lead-revenue hero with an interactive Recharts sparkline.
- * Series is real LEAD_CHARGE totals (server-computed, zero-filled).
+ * Success-fees-collected hero with an interactive Recharts sparkline.
+ * Series is PAID SuccessFee totals (server-computed, zero-filled).
  */
 export function RevenueHero({
   value,
@@ -37,8 +29,31 @@ export function RevenueHero({
     label: p.label,
     revenueCents: p.revenueCents,
   }));
+  const chartWidth = 1000;
+  const chartHeight = 96;
+  const topPadding = 8;
+  const bottomPadding = 8;
+  const maxRevenue = Math.max(1, ...chartData.map((point) => point.revenueCents));
+  const points = chartData.map((point, index) => {
+    const x =
+      chartData.length <= 1 ? chartWidth / 2 : (index / (chartData.length - 1)) * chartWidth;
+    const y =
+      chartHeight -
+      bottomPadding -
+      (point.revenueCents / maxRevenue) * (chartHeight - topPadding - bottomPadding);
+    return { ...point, x, y };
+  });
+  const linePath = points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+    .join(" ");
+  const areaPath = points.length
+    ? `${linePath} L${points[points.length - 1]!.x.toFixed(1)},${chartHeight} L${points[0]!.x.toFixed(1)},${chartHeight} Z`
+    : "";
+  const firstLabel = chartData[0]?.label ?? "";
+  const middleLabel = chartData[Math.floor(chartData.length / 2)]?.label ?? "";
+  const lastLabel = chartData[chartData.length - 1]?.label ?? "";
 
-  const rangeLabel = RANGE_OPTIONS.find((o) => o.id === range)?.label ?? "30 days";
+  const rangeLabel = RANGE_OPTIONS.find((o) => o.id === range)?.label ?? "30D";
 
   return (
     <div
@@ -81,11 +96,11 @@ export function RevenueHero({
                 color: "rgba(241,231,214,.62)",
               }}
             >
-              Lead revenue · {rangeLabel}
+              Success fees collected · {rangeLabel}
             </p>
             <div
               role="tablist"
-              aria-label="Revenue period"
+              aria-label="Success fees period"
               style={{
                 display: "inline-flex",
                 flexWrap: "wrap",
@@ -125,7 +140,6 @@ export function RevenueHero({
           <p
             style={{
               margin: "0 0 6px",
-              // Scales down on phones so a large total never overflows the card.
               fontFamily: "var(--display)",
               fontWeight: 600,
               fontSize: "clamp(32px, 9vw, 48px)",
@@ -189,46 +203,64 @@ export function RevenueHero({
         </span>
       </div>
 
-      <div style={{ width: "100%", height: 100, marginTop: 10 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
-            <defs>
-              <linearGradient id="heroRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#E0A95C" stopOpacity={0.45} />
-                <stop offset="100%" stopColor="#E0A95C" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <Tooltip
-              cursor={{ stroke: "rgba(241,231,214,.35)", strokeWidth: 1 }}
-              formatter={(value) => [formatMoney(Number(value ?? 0)), "Revenue"]}
-              labelFormatter={(label) => String(label)}
-              contentStyle={{
-                borderRadius: 10,
-                border: "1px solid rgba(241,231,214,.2)",
-                background: "#2F4A3C",
-                color: "#F1E7D6",
-                fontSize: 12,
-                boxShadow: "0 8px 20px rgba(0,0,0,.35)",
-              }}
-              itemStyle={{ color: "#E0A95C" }}
-              labelStyle={{ color: "rgba(241,231,214,.75)", marginBottom: 2 }}
+      <div
+        role="img"
+        aria-label={`Success fees collected over ${rangeLabel}: ${value}`}
+        style={{ width: "100%", marginTop: 14 }}
+      >
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          width="100%"
+          height="112"
+          preserveAspectRatio="none"
+          aria-hidden
+          style={{ display: "block", overflow: "visible" }}
+        >
+          <defs>
+            <linearGradient id="heroRevenueFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#E0A95C" stopOpacity="0.48" />
+              <stop offset="100%" stopColor="#E0A95C" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          {[0.25, 0.5, 0.75].map((fraction) => (
+            <line
+              key={fraction}
+              x1="0"
+              x2={chartWidth}
+              y1={chartHeight * fraction}
+              y2={chartHeight * fraction}
+              stroke="rgba(241,231,214,.10)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
             />
-            <Area
-              type="monotone"
-              dataKey="revenueCents"
+          ))}
+          {areaPath && <path d={areaPath} fill="url(#heroRevenueFill)" />}
+          {linePath && (
+            <path
+              d={linePath}
+              fill="none"
               stroke="#E0A95C"
-              strokeWidth={2.8}
-              fill="url(#heroRevenueFill)"
-              dot={false}
-              activeDot={{
-                r: 5,
-                fill: "#E0A95C",
-                stroke: "#2F4A3C",
-                strokeWidth: 2.5,
-              }}
+              strokeWidth="3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
             />
-          </AreaChart>
-        </ResponsiveContainer>
+          )}
+        </svg>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 10,
+            marginTop: 4,
+            color: "rgba(241,231,214,.5)",
+            font: "500 10px/1 var(--mono)",
+          }}
+        >
+          <span>{firstLabel}</span>
+          <span>{middleLabel}</span>
+          <span>{lastLabel}</span>
+        </div>
       </div>
     </div>
   );

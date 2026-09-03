@@ -49,6 +49,8 @@ export function parseTopUpEvent(event: Stripe.Event): TopUpEvent | null {
     const s = event.data.object as Stripe.Checkout.Session;
     // Setup-mode sessions only save a card — handled separately, never credit.
     if (s.mode === "setup") return null;
+    // Success-fee checkouts share contractorId/amount metadata; never treat as top-up.
+    if (s.metadata?.purpose === "success_fee") return null;
     return {
       eventId: event.id,
       eventType: event.type,
@@ -65,6 +67,8 @@ export function parseTopUpEvent(event: Stripe.Event): TopUpEvent | null {
   }
   if (event.type === "payment_intent.succeeded") {
     const pi = event.data.object as Stripe.PaymentIntent;
+    // Success-fee PaymentIntents must never create WalletTransactions.
+    if (pi.metadata?.purpose === "success_fee") return null;
     return {
       eventId: event.id,
       eventType: event.type,

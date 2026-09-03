@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
+import {
+  RevenueHero,
+  type RevenuePoint,
+  type RevenueRange,
+} from "@/components/admin/revenue-hero";
 import { PageHeader, GoldButtonLink, Panel, IconTile, Chip } from "@/components/admin/ui";
 import { RowLink } from "@/components/admin/row-link";
 import { formatMoney } from "@/lib/money";
@@ -19,36 +24,155 @@ function greeting(): string {
   return "Good evening";
 }
 
-export default async function AdminDashboard() {
+function parseRange(raw: string | undefined): RevenueRange {
+  if (raw === "7d" || raw === "90d" || raw === "all") return raw;
+  return "30d";
+}
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function dailyKey(d: Date): string {
+  return startOfDay(d).toISOString().slice(0, 10);
+}
+
+function monthKey(d: Date): string {
+  const x = startOfDay(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Build a zero-filled PAID-fee series for the selected window. */
+function buildPaidSeries(
+  paidFees: { feeAmountCents: number; paidAt: Date | null }[],
+  range: RevenueRange,
+  now: Date,
+): RevenuePoint[] {
+  const withPaidAt = paidFees.filter((f): f is { feeAmountCents: number; paidAt: Date } => Boolean(f.paidAt));
+
+  if (range !== "all") {
+    const rangeDays = range === "7d" ? 7 : range === "90d" ? 90 : 30;
+    const rangeStart = startOfDay(now);
+    rangeStart.setDate(rangeStart.getDate() - (rangeDays - 1));
+
+    const byDay = new Map<string, number>();
+    for (const fee of withPaidAt) {
+      const day = dailyKey(fee.paidAt);
+      byDay.set(day, (byDay.get(day) ?? 0) + fee.feeAmountCents);
+    }
+
+    return Array.from({ length: rangeDays }, (_, i) => {
+      const d = new Date(rangeStart);
+      d.setDate(rangeStart.getDate() + i);
+      return {
+        label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        revenueCents: byDay.get(dailyKey(d)) ?? 0,
+      };
+    });
+  }
+
+  // All-time: daily when history is short, monthly when it stretches.
+  if (withPaidAt.length === 0) {
+    return [{ label: "—", revenueCents: 0 }];
+  }
+
+  const earliest = withPaidAt.reduce(
+    (min, f) => (f.paidAt < min ? f.paidAt : min),
+    withPaidAt[0].paidAt,
+  );
+  const start = startOfDay(earliest);
+  const end = startOfDay(now);
+  const spanDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+
+  if (spanDays <= 120) {
+    const byDay = new Map<string, number>();
+    for (const fee of withPaidAt) {
+      const day = dailyKey(fee.paidAt);
+      byDay.set(day, (byDay.get(day) ?? 0) + fee.feeAmountCents);
+    }
+    return Array.from({ length: spanDays }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return {
+        label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        revenueCents: byDay.get(dailyKey(d)) ?? 0,
+      };
+    });
+  }
+
+  const byMonth = new Map<string, number>();
+  for (const fee of withPaidAt) {
+    const key = monthKey(fee.paidAt);
+    byMonth.set(key, (byMonth.get(key) ?? 0) + fee.feeAmountCents);
+  }
+
+  const series: RevenuePoint[] = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (cursor <= last) {
+    const key = monthKey(cursor);
+    series.push({
+      label: cursor.toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
+      revenueCents: byMonth.get(key) ?? 0,
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return series.length > 0 ? series : [{ label: "—", revenueCents: 0 }];
+}
+
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
   await expireLeads(prisma).catch(() => undefined);
 
+  const { range: rangeParam } = await searchParams;
+  const range = parseRange(rangeParam);
   const now = new Date();
+
+  const paidWhere =
+    range === "all"
+      ? { status: "PAID" as const }
+      : {
+          status: "PAID" as const,
+          paidAt: {
+            gte: (() => {
+              const days = range === "7d" ? 7 : range === "90d" ? 90 : 30;
+              const start = startOfDay(now);
+              start.setDate(start.getDate() - (days - 1));
+              return start;
+            })(),
+          },
+        };
+
   const [
     openRequests,
-    acceptedOpportunities,
     wonJobs,
-    feesAwaiting,
     feesDue,
     feesCollectedCents,
-    feesCollectedCount,
-    confirmationsReview,
-    recentLeads,
+    paidInRange,
+    opportunitiesAttention,
     feesAttention,
     pendingConfirmations,
     recentWon,
   ] = await Promise.all([
     prisma.lead.count({ where: { status: { in: ["NEW", "DISTRIBUTED"] } } }),
-    prisma.leadMatch.count({ where: { status: "ACCEPTED" } }),
     prisma.leadMatch.count({ where: { jobOutcome: "WON" } }),
-    prisma.successFee.count({ where: { status: "AWAITING_CONTRACTOR_PAYMENT" } }),
     prisma.successFee.count({ where: { status: "DUE" } }),
     prisma.successFee
       .aggregate({ where: { status: "PAID" }, _sum: { feeAmountCents: true } })
       .then((r) => r._sum.feeAmountCents ?? 0),
-    prisma.successFee.count({ where: { status: "PAID" } }),
-    prisma.landownerConfirmation.count({ where: { mismatchFlagged: true } }),
+    prisma.successFee.findMany({
+      where: paidWhere,
+      select: { feeAmountCents: true, paidAt: true },
+    }),
+    // Open pipeline that still needs ops eyes (oldest first).
     prisma.lead.findMany({
-      orderBy: { createdAt: "desc" },
+      where: { status: { in: ["NEW", "DISTRIBUTED"] } },
+      orderBy: { createdAt: "asc" },
       take: 6,
       select: {
         id: true,
@@ -119,6 +243,14 @@ export default async function AdminDashboard() {
     }),
   ]);
 
+  const series = buildPaidSeries(paidInRange, range, now);
+  const revenueInRange = series.reduce((s, p) => s + p.revenueCents, 0);
+  const mid = Math.floor(series.length / 2);
+  const firstHalf = series.slice(0, mid).reduce((s, p) => s + p.revenueCents, 0);
+  const secondHalf = series.slice(mid).reduce((s, p) => s + p.revenueCents, 0);
+  const trendPct =
+    firstHalf > 0 ? Math.round(((secondHalf - firstHalf) / firstHalf) * 100) : null;
+
   const dateStr = now.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -126,28 +258,29 @@ export default async function AdminDashboard() {
   });
 
   const metrics = [
-    { label: "Open requests", value: openRequests, href: "/admin/leads", hint: "New & distributed" },
-    { label: "Accepted", value: acceptedOpportunities, href: "/admin/leads", hint: "Opportunities" },
-    { label: "Won jobs", value: wonJobs, href: "/admin/fees", hint: "Reported won" },
     {
-      label: "Awaiting payment",
-      value: feesAwaiting,
-      href: "/admin/fees?tab=awaiting",
-      hint: "Contractor not yet paid",
+      label: "Open requests",
+      value: openRequests,
+      href: "/admin/leads",
+      hint: "New & distributed",
     },
-    { label: "Fees due", value: feesDue, href: "/admin/fees?tab=due", hint: "Owed to Landy's" },
+    {
+      label: "Won jobs",
+      value: wonJobs,
+      href: "/admin/fees",
+      hint: "Reported won",
+    },
+    {
+      label: "Fees due",
+      value: feesDue,
+      href: "/admin/fees?tab=due",
+      hint: "Owed to Landy's",
+    },
     {
       label: "Fees collected",
       value: formatMoney(feesCollectedCents),
       href: "/admin/fees?tab=paid",
-      hint: `${feesCollectedCount} paid`,
-      isMoney: true,
-    },
-    {
-      label: "Needs review",
-      value: confirmationsReview,
-      href: "/admin/confirmations?tab=mismatches",
-      hint: "Confirmation mismatches",
+      hint: "All-time paid",
     },
   ];
 
@@ -156,7 +289,7 @@ export default async function AdminDashboard() {
       <PageHeader
         kicker={`Operations · ${dateStr}`}
         title={greeting()}
-        subtitle="Success-fee pipeline — opportunities, won jobs, and fees that need attention."
+        subtitle="What needs attention — open requests, fees, confirmations, and won jobs."
         titleSize={36}
         action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
       />
@@ -165,9 +298,9 @@ export default async function AdminDashboard() {
         className="admin-stat-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
           gap: 12,
-          marginBottom: 22,
+          marginBottom: 18,
         }}
       >
         {metrics.map((m) => (
@@ -180,14 +313,14 @@ export default async function AdminDashboard() {
               background: "var(--card)",
               border: "1px solid var(--line)",
               borderRadius: 16,
-              padding: "16px 18px",
+              padding: "14px 16px",
               boxShadow: "var(--shadowSm)",
               display: "block",
             }}
           >
             <p
               style={{
-                margin: "0 0 10px",
+                margin: "0 0 8px",
                 font: "600 10px/1 var(--mono)",
                 letterSpacing: ".07em",
                 textTransform: "uppercase",
@@ -199,7 +332,7 @@ export default async function AdminDashboard() {
             <p
               style={{
                 margin: "0 0 4px",
-                font: "600 26px/1 var(--display)",
+                font: "600 24px/1 var(--display)",
                 color: "var(--ink)",
                 fontVariantNumeric: "tabular-nums",
               }}
@@ -211,16 +344,25 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
+      <div style={{ marginBottom: 16 }}>
+        <RevenueHero
+          value={formatMoney(revenueInRange)}
+          trend={trendPct}
+          series={series}
+          range={range}
+        />
+      </div>
+
       <div
         className="admin-grid-stack"
         style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 16 }}
       >
         <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
-          <SectionHead title="Recent opportunities" href="/admin/leads" />
-          {recentLeads.length === 0 ? (
-            <EmptyBlock text="No estimate requests yet. New Landys.co requests will appear here." />
+          <SectionHead title="Opportunities needing attention" href="/admin/leads" />
+          {opportunitiesAttention.length === 0 ? (
+            <EmptyBlock text="No open estimate requests need attention." />
           ) : (
-            recentLeads.map((lead) => {
+            opportunitiesAttention.map((lead) => {
               const chip = leadStatusChip(lead.status);
               const src = iconSrcFor({
                 icon: leadCategoryIcon(lead),
@@ -250,7 +392,7 @@ export default async function AdminDashboard() {
                     </p>
                     <p style={{ margin: "2px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
                       {lead.propertyLocation} · {lead._count.matches} matched · {lead.acceptedCount}{" "}
-                      accepted
+                      accepted · {formatDate(lead.createdAt)}
                     </p>
                   </div>
                   <div style={{ textAlign: "right" }}>
@@ -275,7 +417,7 @@ export default async function AdminDashboard() {
         </Panel>
 
         <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
-          <SectionHead title="Fees requiring attention" href="/admin/fees" />
+          <SectionHead title="Fees requiring action" href="/admin/fees" />
           {feesAttention.length === 0 ? (
             <EmptyBlock text="No fees need attention right now." />
           ) : (
@@ -332,7 +474,7 @@ export default async function AdminDashboard() {
         style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
       >
         <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
-          <SectionHead title="Confirmations & mismatches" href="/admin/confirmations" />
+          <SectionHead title="Pending confirmations & mismatches" href="/admin/confirmations" />
           {pendingConfirmations.length === 0 ? (
             <EmptyBlock text="No pending confirmations or mismatches." />
           ) : (

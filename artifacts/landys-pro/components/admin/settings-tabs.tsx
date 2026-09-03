@@ -15,13 +15,19 @@ import { LandTypesManager } from "@/components/admin/land-types-manager";
 import { ContractorCategoriesManager } from "@/components/admin/contractor-categories-manager";
 import { PageHeader, Panel } from "@/components/admin/ui";
 
-export type SettingsTabId = "general" | "distribution" | "fees" | "followups";
+export type SettingsTabId =
+  | "general"
+  | "distribution"
+  | "fees"
+  | "followups"
+  | "directories";
 
 const TABS: { id: SettingsTabId; label: string }[] = [
   { id: "general", label: "General" },
   { id: "distribution", label: "Opportunity distribution" },
   { id: "fees", label: "Success fee tiers" },
   { id: "followups", label: "Follow-ups" },
+  { id: "directories", label: "Directories" },
 ];
 
 const cardPad: React.CSSProperties = { padding: "24px 26px" };
@@ -35,13 +41,6 @@ const descStyle: React.CSSProperties = {
   color: "var(--ink2)",
   fontSize: 14,
   lineHeight: 1.5,
-};
-const sectionKicker: React.CSSProperties = {
-  margin: "0 0 14px",
-  font: "600 12px/1 var(--mono)",
-  letterSpacing: ".06em",
-  textTransform: "uppercase",
-  color: "var(--ink3)",
 };
 
 type CategoryRow = {
@@ -102,7 +101,13 @@ export function SettingsTabs({
 
   const activeTab = useMemo<SettingsTabId>(() => {
     const raw = searchParams.get("tab");
-    if (raw === "distribution" || raw === "fees" || raw === "followups" || raw === "general") {
+    if (
+      raw === "distribution" ||
+      raw === "fees" ||
+      raw === "followups" ||
+      raw === "general" ||
+      raw === "directories"
+    ) {
       return raw;
     }
     return "general";
@@ -127,7 +132,7 @@ export function SettingsTabs({
       <PageHeader
         kicker="Admin"
         title="Settings"
-        subtitle="Configure distribution, fees, follow-ups, appearance, and taxonomy."
+        subtitle="Product rules for distribution, success fees, and follow-ups — plus a few workspace basics."
       />
 
       <div
@@ -176,7 +181,7 @@ export function SettingsTabs({
       </div>
 
       {activeTab === "general" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 640 }}>
           {isOwner && (
             <Link href="/admin/team" style={{ textDecoration: "none" }}>
               <Panel
@@ -191,9 +196,9 @@ export function SettingsTabs({
                 }}
               >
                 <div>
-                  <p style={titleStyle}>Team</p>
+                  <p style={titleStyle}>Team access</p>
                   <p style={{ ...descStyle, marginBottom: 0 }}>
-                    Invite admins, manage roles, and control who has access to this dashboard.
+                    Invite admins and choose who can open this dashboard.
                   </p>
                 </div>
                 <svg
@@ -215,37 +220,50 @@ export function SettingsTabs({
 
           <Panel style={cardPad}>
             <p style={titleStyle}>Appearance</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>Choose how the admin panel looks.</p>
+            <p style={{ ...descStyle, marginBottom: 18 }}>Light or dark admin theme.</p>
             <AppearancePicker />
           </Panel>
 
-          <Panel style={cardPad}>
-            <p style={sectionKicker}>Taxonomy</p>
-            <p style={titleStyle}>Contractor categories</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>
-              One business category per contractor. Categories do not determine project-service
-              eligibility.
-            </p>
-            <ContractorCategoriesManager categories={contractorCategories} />
-          </Panel>
-
-          <Panel style={cardPad}>
-            <p style={titleStyle}>Land types</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>
-              Property classifications for leads. Renaming is safe; delete only when no leads use
-              the type.
-            </p>
-            <LandTypesManager landTypes={landTypes} />
-          </Panel>
-
-          <Panel style={cardPad}>
-            <p style={titleStyle}>Projects</p>
-            <p style={{ ...descStyle, marginBottom: 18 }}>
-            Jobs landowners request and contractors fulfill. Success fee rates are configured under
-            Success fee tiers — not here. Rename anytime and delete only when unused.
-            </p>
-            <CategoriesManager categories={projects} />
-          </Panel>
+          <button
+            type="button"
+            onClick={() => setTab("directories")}
+            style={{
+              all: "unset",
+              cursor: "pointer",
+              display: "block",
+            }}
+          >
+            <Panel
+              style={{
+                ...cardPad,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+              }}
+            >
+              <div>
+                <p style={titleStyle}>Directories</p>
+                <p style={{ ...descStyle, marginBottom: 0 }}>
+                  Projects, land types, and contractor categories — names used across leads, not
+                  fee rules.
+                </p>
+              </div>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--ink2)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ flexShrink: 0 }}
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </Panel>
+          </button>
         </div>
       )}
 
@@ -253,8 +271,7 @@ export function SettingsTabs({
         <Panel style={{ ...cardPad, maxWidth: 560 }}>
           <p style={titleStyle}>Opportunity distribution</p>
           <p style={descStyle}>
-            When Unlimited is disabled, only the first X eligible contractors who accept receive
-            the landowner contact details.
+            Control how many contractors can accept an opportunity and how long it stays open.
           </p>
           <OpportunityDistributionForm
             maxLeadPurchases={maxLeadPurchases}
@@ -265,11 +282,11 @@ export function SettingsTabs({
       )}
 
       {activeTab === "fees" && (
-        <Panel style={{ ...cardPad, maxWidth: 560 }}>
+        <Panel style={{ ...cardPad, maxWidth: 920 }}>
           <p style={titleStyle}>Success fee tiers</p>
           <p style={descStyle}>
-            Thresholds and rates for SMALL, MEDIUM, and LARGE jobs. Defaults: &lt; $10,000 = 5%,
-            $10,000–$24,999 = 4%, $25,000+ = 3%.
+            SMALL / MEDIUM / LARGE bands by final contract value. Defaults: under $10k → 5%,
+            $10k–$24,999 → 4%, $25k+ → 3%.
           </p>
           <SuccessFeeTiersForm tiers={successFeeTiers} />
         </Panel>
@@ -279,7 +296,7 @@ export function SettingsTabs({
         <Panel style={{ ...cardPad, maxWidth: 560 }}>
           <p style={titleStyle}>Follow-ups</p>
           <p style={descStyle}>
-            Timing for contractor outcome and payment check-ins after an opportunity is accepted.
+            When to nudge contractors about outcomes and payment after they accept an opportunity.
           </p>
           <FollowUpSettingsForm
             followUpOutcomeDelayHours={followUpOutcomeDelayHours}
@@ -287,6 +304,38 @@ export function SettingsTabs({
             followUpPaymentRetryHours={followUpPaymentRetryHours}
           />
         </Panel>
+      )}
+
+      {activeTab === "directories" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <p style={{ margin: "0 0 2px", font: "400 14px/1.5 'Inter'", color: "var(--ink3)" }}>
+            These are labels used on leads and contractors — not AppSetting product rules.
+          </p>
+
+          <Panel style={cardPad}>
+            <p style={titleStyle}>Contractor categories</p>
+            <p style={{ ...descStyle, marginBottom: 18 }}>
+              One business category per contractor. Categories do not control project eligibility.
+            </p>
+            <ContractorCategoriesManager categories={contractorCategories} />
+          </Panel>
+
+          <Panel style={cardPad}>
+            <p style={titleStyle}>Land types</p>
+            <p style={{ ...descStyle, marginBottom: 18 }}>
+              Property classifications for leads. Rename freely; delete only when unused.
+            </p>
+            <LandTypesManager landTypes={landTypes} />
+          </Panel>
+
+          <Panel style={cardPad}>
+            <p style={titleStyle}>Projects</p>
+            <p style={{ ...descStyle, marginBottom: 18 }}>
+              Jobs landowners request. Success fee rates live under Success fee tiers — not here.
+            </p>
+            <CategoriesManager categories={projects} />
+          </Panel>
+        </div>
       )}
     </div>
   );

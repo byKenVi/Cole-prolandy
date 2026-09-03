@@ -3,25 +3,21 @@
 import { useState, useTransition } from "react";
 import { updateSuccessFeeTiers } from "@/app/actions/admin";
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  font: "600 13px/1 'Inter'",
-  color: "var(--ink)",
-  marginBottom: 8,
+const hintStyle: React.CSSProperties = {
+  font: "400 13px/1.45 'Inter'",
+  color: "var(--ink3)",
 };
+
 const inputStyle: React.CSSProperties = {
   width: "100%",
   height: 46,
-  padding: "0 14px",
+  padding: "0 12px",
   border: "1px solid var(--fieldLine)",
   borderRadius: 11,
   background: "var(--field)",
   color: "var(--ink)",
   fontFamily: "Inter",
-};
-const hintStyle: React.CSSProperties = {
-  font: "400 12px/1.4 'Inter'",
-  color: "var(--ink3)",
+  fontSize: 15,
 };
 
 export type SuccessFeeTierFormRow = {
@@ -47,18 +43,26 @@ function tierHeading(sortOrder: number) {
   return "LARGE";
 }
 
-function tierThresholdCopy(
+function tierAccent(sortOrder: number): { bar: string; soft: string } {
+  if (sortOrder === 1) return { bar: "var(--gold)", soft: "var(--goldSoft)" };
+  if (sortOrder === 2) return { bar: "var(--sageFg)", soft: "var(--posBg)" };
+  return { bar: "var(--ink2)", soft: "var(--card2)" };
+}
+
+function tierRangeCopy(
   sortOrder: number,
   maxValueDollars: number | null,
   previousMax: number | null,
 ) {
   if (sortOrder === 1) {
-    return `Up to ${formatUsd(maxValueDollars)}`;
+    return `Jobs up to ${formatUsd(maxValueDollars)}`;
   }
   if (sortOrder === 2) {
-    return `From ${formatUsd(previousMax)} / Up to ${formatUsd(maxValueDollars)}`;
+    const from = previousMax != null ? previousMax + 1 : null;
+    return `${formatUsd(from)} – ${formatUsd(maxValueDollars)}`;
   }
-  return `From ${formatUsd(previousMax)} / No maximum`;
+  const from = previousMax != null ? previousMax + 1 : null;
+  return `${formatUsd(from)} and above`;
 }
 
 export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] }) {
@@ -100,68 +104,193 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
 
   return (
     <form onSubmit={onSubmit}>
-      <p style={{ ...hintStyle, margin: "0 0 18px", lineHeight: 1.5 }}>
-        The applicable rate is snapshotted when a contractor reports a job as Won using the final
-        contract value. Existing fees are not changed when these settings are edited.
+      <p style={{ ...hintStyle, margin: "0 0 20px" }}>
+        Rate is locked in when a contractor reports Won with a final contract value. Changing tiers
+        here doesn&apos;t rewrite existing fees.
       </p>
-      {sorted.map((tier, index) => {
-        const previousMax = index > 0 ? sorted[index - 1].maxValueDollars : null;
-        return (
-          <div key={tier.id} style={{ marginBottom: 20 }}>
-            <p style={{ ...labelStyle, marginBottom: 4 }}>{tierHeading(tier.sortOrder)}</p>
-            <p style={{ ...hintStyle, margin: "0 0 10px" }}>
-              {tierThresholdCopy(tier.sortOrder, tier.maxValueDollars, previousMax)}
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {tier.sortOrder < 3 ? (
-                <div>
-                  <label style={{ ...hintStyle, display: "block", marginBottom: 6 }}>
-                    Up to (USD)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={tier.maxValueDollars ?? ""}
-                    onChange={(e) =>
-                      updateRow(tier.id, { maxValueDollars: Number(e.target.value) || 0 })
-                    }
-                    style={inputStyle}
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label style={{ ...hintStyle, display: "block", marginBottom: 6 }}>
-                    Threshold
-                  </label>
-                  <input
-                    type="text"
-                    disabled
-                    value="No maximum"
-                    style={{ ...inputStyle, opacity: 0.7 }}
-                  />
-                </div>
-              )}
-              <div>
-                <label style={{ ...hintStyle, display: "block", marginBottom: 6 }}>
-                  Success fee rate (%)
-                </label>
-                <input
-                  type="number"
-                  min="0.01"
-                  max="100"
-                  step="0.01"
-                  value={tier.ratePercent}
-                  onChange={(e) =>
-                    updateRow(tier.id, { ratePercent: Number(e.target.value) || 0 })
-                  }
-                  style={inputStyle}
+
+      <div
+        className="success-fee-tier-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: 14,
+          marginBottom: 22,
+        }}
+      >
+        {sorted.map((tier, index) => {
+          const previousMax = index > 0 ? sorted[index - 1].maxValueDollars : null;
+          const accent = tierAccent(tier.sortOrder);
+          const heading = tierHeading(tier.sortOrder);
+
+          return (
+            <div
+              key={tier.id}
+              style={{
+                borderRadius: 16,
+                border: "1px solid var(--line)",
+                background: "var(--card)",
+                overflow: "hidden",
+                boxShadow: "var(--shadow)",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <div
+                style={{
+                  padding: "16px 16px 14px",
+                  background: accent.soft,
+                  borderBottom: "1px solid var(--line)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 4,
+                    borderRadius: 999,
+                    background: accent.bar,
+                    marginBottom: 10,
+                  }}
                 />
+                <p
+                  style={{
+                    margin: 0,
+                    font: "700 13px/1 var(--mono)",
+                    letterSpacing: ".1em",
+                    color: "var(--ink)",
+                  }}
+                >
+                  {heading}
+                </p>
+                <p style={{ margin: "8px 0 0", font: "500 13px/1.35 'Inter'", color: "var(--ink2)" }}>
+                  {tierRangeCopy(tier.sortOrder, tier.maxValueDollars, previousMax)}
+                </p>
+              </div>
+
+              <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
+                {tier.sortOrder < 3 ? (
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        font: "600 11px/1 var(--mono)",
+                        letterSpacing: ".04em",
+                        textTransform: "uppercase",
+                        color: "var(--ink3)",
+                        marginBottom: 7,
+                      }}
+                    >
+                      Up to (USD)
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: 12,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          color: "var(--ink3)",
+                          font: "500 14px/1 'Inter'",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={tier.maxValueDollars ?? ""}
+                        onChange={(e) =>
+                          updateRow(tier.id, { maxValueDollars: Number(e.target.value) || 0 })
+                        }
+                        style={{ ...inputStyle, paddingLeft: 26 }}
+                        aria-label={`${heading} maximum contract value`}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        font: "600 11px/1 var(--mono)",
+                        letterSpacing: ".04em",
+                        textTransform: "uppercase",
+                        color: "var(--ink3)",
+                        marginBottom: 7,
+                      }}
+                    >
+                      Ceiling
+                    </label>
+                    <div
+                      style={{
+                        ...inputStyle,
+                        display: "flex",
+                        alignItems: "center",
+                        opacity: 0.75,
+                        color: "var(--ink2)",
+                      }}
+                    >
+                      No maximum
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      font: "600 11px/1 var(--mono)",
+                      letterSpacing: ".04em",
+                      textTransform: "uppercase",
+                      color: "var(--ink3)",
+                      marginBottom: 7,
+                    }}
+                  >
+                    Landy&apos;s rate
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="number"
+                      min="0.01"
+                      max="100"
+                      step="0.01"
+                      value={tier.ratePercent}
+                      onChange={(e) =>
+                        updateRow(tier.id, { ratePercent: Number(e.target.value) || 0 })
+                      }
+                      style={{ ...inputStyle, paddingRight: 36 }}
+                      aria-label={`${heading} success fee percent`}
+                    />
+                    <span
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "var(--ink3)",
+                        font: "600 14px/1 'Inter'",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      %
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .success-fee-tier-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
 
       {message && (
         <p style={{ margin: "0 0 14px", font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>
@@ -175,6 +304,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
         className="a-gold"
         style={{
           width: "100%",
+          maxWidth: 420,
           height: 50,
           background: "var(--gold)",
           color: "#fff",

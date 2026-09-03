@@ -3,7 +3,6 @@ import { MapPin, Phone, Mail, CheckCircle2, Lock, Hammer } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { AcceptTokenActions } from "@/components/accept-token-actions";
 import { iconSrcFor } from "@/lib/project-icons";
-import { tierPill } from "@/lib/tier-style";
 import { timeUntil } from "@/lib/format";
 import { hasResolvedLeadSnapshot, leadCategoryIcon, leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 
@@ -59,7 +58,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
         project: leadScopeLabel(match.lead),
       })
     : null;
-  const pill = match ? tierPill(match.lead.tier) : null;
+  const categoryName = match ? leadCategoryLabel(match.lead) : null;
 
   return (
     <main className="min-h-screen bg-[#FEFBF6] font-inter">
@@ -72,7 +71,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
 
       {!match ? (
         <div className="px-4 py-8">
-          <Notice text="This lead link is not valid. It may have been mistyped or removed." />
+          <Notice text="This opportunity link is not valid. It may have been mistyped or removed." />
         </div>
       ) : match.status === "ACCEPTED" ? (
         <div className="px-4 py-8">
@@ -99,14 +98,13 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
         </div>
       ) : match.status === "DECLINED" ? (
         <div className="px-4 py-8">
-          <Notice text="You passed on this lead. No charge was made." />
+          <Notice text="You passed on this opportunity." />
         </div>
       ) : expired ? (
         <div className="px-4 py-8">
-          <Notice text="This lead has expired and can no longer be accepted." />
+          <Notice text="This opportunity has expired and can no longer be accepted." />
         </div>
       ) : (
-        /* Above-the-fold Accept: price + CTA first on mobile; details below. */
         <div className="mx-auto w-full max-w-lg px-4 pb-16 pt-4">
           <div className="rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-5 shadow-[0_12px_32px_rgba(58,53,45,0.10)]">
             <div className="mb-3 flex items-start gap-3">
@@ -129,12 +127,11 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
             </div>
 
             <div className="mb-3 flex flex-wrap gap-2">
-              <span
-                className="rounded-full px-2.5 py-1 text-[12px] font-medium"
-                style={pill ? { color: pill.color, background: pill.background } : undefined}
-              >
-                {pill?.label}
-              </span>
+              {categoryName && (
+                <span className="rounded-full bg-[#F4EAD3] px-2.5 py-1 text-[12px] font-medium text-[#8A6B2E]">
+                  {categoryName}
+                </span>
+              )}
               {match.lead.landType && (
                 <span className="rounded-full bg-[#F0EADD] px-2.5 py-1 text-[12px] font-medium text-[#6B6459]">
                   {match.lead.landType.name}

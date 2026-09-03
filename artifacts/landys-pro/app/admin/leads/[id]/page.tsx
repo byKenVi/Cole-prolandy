@@ -235,10 +235,13 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
             label="Normalized budget"
             value={lead.budgetCents != null ? formatMoney(lead.budgetCents) : "—"}
           />
-          <Field label="Resolved tier" value={lead.tier != null ? `Tier ${lead.tier}` : "—"} />
           <Field
-            label="Acceptances"
-            value={`${lead.acceptedCount} / ${lead.maxPurchases}${lead.soldOutAt ? " (sold out)" : ""}`}
+            label="Acceptance cap"
+            value={
+              lead.soldOutAt
+                ? `${lead.acceptedCount} / ${lead.maxPurchases} (cap reached)`
+                : `${lead.acceptedCount} / ${lead.maxPurchases}`
+            }
           />
           <Field label="Review blocker" value={lead.reviewBlocker ?? "—"} />
           <Field label="Urgency" value={lead.urgencyCode ?? lead.urgency ?? "—"} />

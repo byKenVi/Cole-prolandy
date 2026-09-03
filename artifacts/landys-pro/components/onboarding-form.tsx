@@ -10,7 +10,7 @@ import { BusinessHoursPicker } from "@/components/business-hours-picker";
 
 /**
  * Contractor self-service profile editor.
- * Project assignment is read-only here — Landy's assigns projects.
+ * Opportunity matching is read-only here — Landy's assigns trades and work types.
  */
 export function OnboardingForm({
   initial,
@@ -23,7 +23,7 @@ export function OnboardingForm({
     aboutSection: string;
     businessHours: string;
   };
-  /** Admin-assigned projects this contractor receives leads for. */
+  /** Admin-assigned live taxonomy used to match this contractor. */
   assignedProjects: { id: string; name: string }[];
   mode?: "edit" | "claim";
 }) {
@@ -61,10 +61,10 @@ export function OnboardingForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-5">
       <div>
-        <Label>Jobs you receive leads for</Label>
+        <Label>Opportunity matching</Label>
         {assignedProjects.length === 0 ? (
           <p className="mt-2 rounded-[12px] border border-[#EBE3D4] bg-[#F7F0E3] px-3 py-3 text-sm text-[#8A7E68]">
-            No projects assigned yet. Contact Landy’s to get set up.
+            Matching is not configured yet. Contact Landy’s to get set up.
           </p>
         ) : (
           <ul className="mt-2 flex flex-wrap gap-2">
@@ -79,7 +79,7 @@ export function OnboardingForm({
           </ul>
         )}
         <p className="mt-2 text-[13px] text-[#8A7E68]">
-          To change the jobs you receive, contact Landy’s.
+          These trades and job types control which opportunities you receive. Contact Landy’s to change them.
         </p>
       </div>
 

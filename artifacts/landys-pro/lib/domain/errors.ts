@@ -16,7 +16,7 @@ export class InsufficientBalanceError extends DomainError {
   constructor(shortfallCents: number) {
     super(
       "INSUFFICIENT_BALANCE",
-      "Wallet balance is too low to accept this lead.",
+      "This opportunity can't be accepted right now. Please try again or contact Landy's.",
     );
     this.name = "InsufficientBalanceError";
     this.shortfallCents = shortfallCents;
@@ -46,7 +46,10 @@ export class LeadExpiredError extends DomainError {
 
 export class LeadSoldOutError extends DomainError {
   constructor() {
-    super("LEAD_SOLD_OUT", "This lead is sold out and no longer available.");
+    super(
+      "LEAD_SOLD_OUT",
+      "This opportunity has reached its acceptance cap and is no longer available.",
+    );
     this.name = "LeadSoldOutError";
   }
 }

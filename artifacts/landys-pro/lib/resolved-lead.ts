@@ -1,11 +1,12 @@
 export function hasResolvedLeadSnapshot<
   T extends {
-    tier: number | null;
-    priceCents: number | null;
     expiresAt: Date | null;
   },
->(lead: T): lead is T & { tier: number; priceCents: number; expiresAt: Date } {
-  return lead.tier !== null && lead.priceCents !== null && lead.expiresAt !== null;
+>(lead: T): lead is T & { expiresAt: Date } {
+  // V2 opportunities are free to review and intentionally have no legacy
+  // pay-per-lead tier or price. Expiration is the only required delivery
+  // snapshot; labels resolve from the live work/category taxonomy below.
+  return lead.expiresAt !== null;
 }
 
 export function leadScopeLabel(lead: {

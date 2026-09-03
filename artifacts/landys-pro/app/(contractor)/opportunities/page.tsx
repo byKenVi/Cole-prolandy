@@ -67,7 +67,7 @@ export default async function OpportunitiesPage({
         const { rateBasisPoints } = resolveSuccessFeeForValue(tiers, estimate);
         feeRatePercent = rateBasisPoints / 100;
       } catch {
-        // Non-fatal — card renders without a rate preview.
+        /* non-fatal */
       }
     }
     return [
@@ -77,7 +77,8 @@ export default async function OpportunitiesPage({
         categoryName: leadCategoryLabel(m.lead),
         categoryIcon: leadCategoryIcon(m.lead) ?? null,
         location: m.lead.propertyLocation,
-        tier: m.lead.tier,
+        description: m.lead.description,
+        landTypeName: m.lead.landType?.name ?? null,
         feeRatePercent,
         estimatedValueLabel: estimate && estimate > 0 ? formatMoney(estimate) : null,
         receivedAt: m.createdAt,

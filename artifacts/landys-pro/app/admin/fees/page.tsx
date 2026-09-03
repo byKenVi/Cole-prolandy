@@ -1,6 +1,12 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { PageHeader, Chip, Panel } from "@/components/admin/ui";
+import {
+  PageHeader,
+  Chip,
+  Panel,
+  AdminTabBar,
+  AdminTabLink,
+  AdminEmptyState,
+} from "@/components/admin/ui";
 import { MarkFeePaidButton } from "@/components/admin/mark-fee-paid-button";
 import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
@@ -21,7 +27,7 @@ const thStyle: React.CSSProperties = {
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "13px 20px",
+  padding: "14px 20px",
   font: "400 14px/1.35 'Inter'",
   verticalAlign: "top",
 };
@@ -41,6 +47,7 @@ function statusFilter(tab: FeeTab): { status: SuccessFeeStatus | { in: SuccessFe
 function feeStatusMeta(status: string): {
   label: string;
   short: string;
+  hint: string;
   bg: string;
   fg: string;
 } {
@@ -49,6 +56,7 @@ function feeStatusMeta(status: string): {
       return {
         label: "Awaiting contractor payment",
         short: "Awaiting",
+        hint: "Won — waiting for the contractor to confirm the landowner paid them.",
         bg: "var(--goldSoft)",
         fg: "var(--goldSoftFg)",
       };
@@ -56,6 +64,7 @@ function feeStatusMeta(status: string): {
       return {
         label: "Due",
         short: "Due",
+        hint: "Contractor confirmed paid. Landy's fee is owed.",
         bg: "var(--dangerBg)",
         fg: "var(--danger)",
       };
@@ -63,11 +72,18 @@ function feeStatusMeta(status: string): {
       return {
         label: "Paid",
         short: "Paid",
+        hint: "Settled with Landy's.",
         bg: "var(--posBg)",
         fg: "var(--pos)",
       };
     default:
-      return { label: status, short: status, bg: "var(--chipBg)", fg: "var(--ink3)" };
+      return {
+        label: status,
+        short: status,
+        hint: "",
+        bg: "var(--chipBg)",
+        fg: "var(--ink3)",
+      };
   }
 }
 
@@ -76,11 +92,18 @@ function formatRate(bps: number): string {
   return pct % 1 === 0 ? `${pct.toFixed(0)}%` : `${pct.toFixed(1)}%`;
 }
 
-function paymentMethodLabel(method: string | null | undefined): string {
-  if (!method) return "Paid";
-  if (method === "manual") return "Manual";
-  if (method === "stripe") return "Stripe";
-  return method;
+function paymentMethodMeta(method: string | null | undefined): {
+  label: string;
+  bg: string;
+  fg: string;
+} {
+  if (method === "stripe") {
+    return { label: "Stripe", bg: "var(--posBg)", fg: "var(--pos)" };
+  }
+  if (method === "manual" || !method) {
+    return { label: "Manual / Check", bg: "var(--chipBg)", fg: "var(--ink2)" };
+  }
+  return { label: method, bg: "var(--chipBg)", fg: "var(--ink2)" };
 }
 
 function relevantDate(fee: {
@@ -90,67 +113,61 @@ function relevantDate(fee: {
   createdAt: Date;
 }): { label: string; value: Date } {
   if (fee.status === "PAID" && fee.paidAt) return { label: "Paid", value: fee.paidAt };
-  if (fee.status === "DUE" && fee.dueAt) return { label: "Due", value: fee.dueAt };
+  if (fee.status === "DUE" && fee.dueAt) return { label: "Due since", value: fee.dueAt };
+  if (fee.status === "AWAITING_CONTRACTOR_PAYMENT") {
+    return { label: "Opened", value: fee.createdAt };
+  }
   if (fee.dueAt) return { label: "Due", value: fee.dueAt };
   return { label: "Created", value: fee.createdAt };
 }
 
-function emptyMessage(tab: FeeTab): string {
+function emptyCopy(tab: FeeTab): { title: string; description: string } {
   switch (tab) {
     case "awaiting":
-      return "No fees awaiting contractor payment.";
+      return {
+        title: "Nothing awaiting contractor payment",
+        description:
+          "Fees land here after a contractor reports a won job — until they confirm the landowner paid them.",
+      };
     case "due":
-      return "No fees are due right now.";
+      return {
+        title: "No fees due",
+        description:
+          "When a contractor confirms they were paid, the Landy's success fee shows up here for collection.",
+      };
     case "paid":
-      return "No paid fees yet.";
+      return {
+        title: "No paid fees yet",
+        description: "Stripe checkouts and manual / check settlements appear in this list.",
+      };
     default:
-      return "No success fees yet. Fees appear here after contractors report won jobs.";
+      return {
+        title: "No success fees yet",
+        description:
+          "Fees appear after contractors report won jobs — then move from awaiting → due → paid.",
+      };
   }
 }
 
-function TabLink({
-  href,
-  active,
-  children,
-  count,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-  count?: number;
-}) {
+function tabHint(tab: FeeTab): string {
+  switch (tab) {
+    case "awaiting":
+      return "Contractor won the job. Waiting for them to confirm the landowner paid.";
+    case "due":
+      return "Landy's fee is owed. Mark paid when you receive a check or manual payment.";
+    case "paid":
+      return "Settled fees — Stripe online, or Manual / Check when recorded by admin.";
+    default:
+      return "Track every success fee from won job through settlement.";
+  }
+}
+
+function FeeEmptyIcon() {
   return (
-    <Link
-      href={href}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 7,
-        textDecoration: "none",
-        border: "none",
-        font: "600 13px/1 'Inter'",
-        padding: "9px 15px",
-        borderRadius: 9,
-        background: active ? "var(--card)" : "transparent",
-        color: active ? "var(--ink)" : "var(--ink2)",
-        boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
-      }}
-    >
-      {children}
-      {typeof count === "number" && (
-        <span
-          style={{
-            font: "600 11px/1 var(--mono)",
-            color: active ? "var(--gold)" : "var(--ink3)",
-            background: active ? "var(--goldSoft)" : "var(--chipBg)",
-            padding: "3px 7px",
-            borderRadius: 999,
-          }}
-        >
-          {count}
-        </span>
-      )}
-    </Link>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+    </svg>
   );
 }
 
@@ -189,72 +206,56 @@ export default async function AdminFeesPage({
   ]);
 
   const allCount = awaitingCount + dueCount + paidCount;
+  const empty = emptyCopy(tab);
 
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker="Success fees"
-        title="Fees"
-        subtitle="Track success fees from won jobs through contractor payment confirmation and settlement with Landy's."
+        kicker="Revenue"
+        title="Success fees"
+        subtitle="Landy's cut on won jobs — from contractor payment confirmation through settlement."
       />
 
-      <Panel style={{ padding: "14px 18px", marginBottom: 18 }}>
-        <p
-          style={{
-            margin: "0 0 10px",
-            font: "600 10px/1 var(--mono)",
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "var(--ink3)",
-          }}
+      <AdminTabBar aria-label="Fee status">
+        <AdminTabLink href="/admin/fees?tab=all" active={tab === "all"} count={allCount}>
+          All
+        </AdminTabLink>
+        <AdminTabLink
+          href="/admin/fees?tab=awaiting"
+          active={tab === "awaiting"}
+          count={awaitingCount}
+          tone="gold"
         >
-          Status legend
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ margin: 0, font: "400 13px/1.45 'Inter'", color: "var(--ink2)" }}>
-            <strong style={{ color: "var(--goldSoftFg)" }}>Awaiting contractor payment</strong>
-            {" — "}
-            contractor won but hasn&apos;t confirmed the landowner paid them.
-          </p>
-          <p style={{ margin: 0, font: "400 13px/1.45 'Inter'", color: "var(--ink2)" }}>
-            <strong style={{ color: "var(--danger)" }}>Due</strong>
-            {" — "}
-            contractor confirmed paid; fee is owed to Landy&apos;s.
-          </p>
-          <p style={{ margin: 0, font: "400 13px/1.45 'Inter'", color: "var(--ink2)" }}>
-            <strong style={{ color: "var(--sageFg)" }}>Paid</strong>
-            {" — "}
-            settled via Stripe or marked paid manually.
-          </p>
-        </div>
-      </Panel>
+          Awaiting Contractor Payment
+        </AdminTabLink>
+        <AdminTabLink
+          href="/admin/fees?tab=due"
+          active={tab === "due"}
+          count={dueCount}
+          tone="danger"
+        >
+          Due
+        </AdminTabLink>
+        <AdminTabLink
+          href="/admin/fees?tab=paid"
+          active={tab === "paid"}
+          count={paidCount}
+          tone="pos"
+        >
+          Paid
+        </AdminTabLink>
+      </AdminTabBar>
 
-      <div
+      <p
         style={{
-          display: "flex",
-          gap: 3,
-          background: "var(--card2)",
-          padding: 4,
-          borderRadius: 12,
-          marginBottom: 16,
-          flexWrap: "wrap",
-          width: "fit-content",
-          maxWidth: "100%",
+          margin: "-6px 0 16px",
+          font: "400 13px/1.45 'Inter'",
+          color: "var(--ink3)",
+          maxWidth: 640,
         }}
       >
-        <TabLink href="/admin/fees?tab=all" active={tab === "all"} count={allCount}>
-          All
-        </TabLink>
-        <TabLink href="/admin/fees?tab=awaiting" active={tab === "awaiting"} count={awaitingCount}>
-          Awaiting Contractor Payment
-        </TabLink>
-        <TabLink href="/admin/fees?tab=due" active={tab === "due"} count={dueCount}>
-          Due
-        </TabLink>
-        <TabLink href="/admin/fees?tab=paid" active={tab === "paid"} count={paidCount}>
-          Paid
-        </TabLink>
-      </div>
+        {tabHint(tab)}
+      </p>
 
       <div
         style={{
@@ -266,9 +267,7 @@ export default async function AdminFeesPage({
         }}
       >
         {fees.length === 0 ? (
-          <p style={{ padding: "28px 24px", font: "400 14px/1.5 'Inter'", color: "var(--ink3)", textAlign: "center" }}>
-            {emptyMessage(tab)}
-          </p>
+          <AdminEmptyState title={empty.title} description={empty.description} icon={<FeeEmptyIcon />} />
         ) : (
           <>
             <table className="admin-table-desktop" style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -276,13 +275,14 @@ export default async function AdminFeesPage({
                 <tr style={{ background: "var(--card2)", borderBottom: "1px solid var(--line)" }}>
                   <th style={thStyle}>Project</th>
                   <th style={thStyle}>Contractor</th>
-                  <th style={thStyle}>Landowner</th>
-                  <th style={thStyle}>Final value</th>
-                  <th style={thStyle}>Rate</th>
+                  <th style={thStyle}>Final contract value</th>
+                  <th style={thStyle}>Success-fee %</th>
                   <th style={thStyle}>Landy&apos;s fee</th>
                   <th style={thStyle}>Status</th>
                   <th style={thStyle}>Date</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Action</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>
+                    {tab === "due" ? "Collect" : tab === "paid" ? "Method" : ""}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -290,14 +290,31 @@ export default async function AdminFeesPage({
                   const meta = feeStatusMeta(fee.status);
                   const project = leadScopeLabel(fee.leadMatch.lead);
                   const when = relevantDate(fee);
+                  const pay = fee.status === "PAID" ? paymentMethodMeta(fee.paymentMethod) : null;
+                  const isDue = fee.status === "DUE";
+
                   return (
-                    <tr key={fee.id} style={{ borderBottom: "1px solid var(--line2)" }}>
+                    <tr
+                      key={fee.id}
+                      style={{
+                        borderBottom: "1px solid var(--line2)",
+                        background: isDue ? "color-mix(in srgb, var(--dangerBg) 35%, transparent)" : undefined,
+                      }}
+                    >
                       <td style={{ ...tdStyle, color: "var(--ink)" }}>
                         <span style={{ fontWeight: 600 }}>{project}</span>
                         <br />
                         <span style={{ fontSize: 12, color: "var(--ink3)" }}>
                           {fee.leadMatch.lead.propertyLocation}
                         </span>
+                        {fee.leadMatch.lead.landownerName && (
+                          <>
+                            <br />
+                            <span style={{ fontSize: 12, color: "var(--ink3)" }}>
+                              {fee.leadMatch.lead.landownerName}
+                            </span>
+                          </>
+                        )}
                       </td>
                       <td style={{ ...tdStyle, color: "var(--ink)" }}>
                         <span style={{ fontWeight: 600 }}>{fee.leadMatch.contractor.name}</span>
@@ -306,9 +323,6 @@ export default async function AdminFeesPage({
                           {fee.leadMatch.contractor.email}
                         </span>
                       </td>
-                      <td style={{ ...tdStyle, color: "var(--ink2)" }}>
-                        {fee.leadMatch.lead.landownerName ?? "—"}
-                      </td>
                       <td style={{ ...tdStyle, fontVariantNumeric: "tabular-nums", color: "var(--ink)" }}>
                         {formatMoney(fee.finalValueCents)}
                       </td>
@@ -316,42 +330,35 @@ export default async function AdminFeesPage({
                       <td
                         style={{
                           ...tdStyle,
-                          fontWeight: 600,
+                          fontWeight: 700,
                           fontVariantNumeric: "tabular-nums",
-                          color: "var(--ink)",
+                          color: isDue ? "var(--danger)" : "var(--ink)",
+                          fontSize: 15,
                         }}
                       >
                         {formatMoney(fee.feeAmountCents)}
                       </td>
                       <td style={tdStyle}>
-                        <Chip bg={meta.bg} fg={meta.fg} dot>
-                          {meta.label}
-                        </Chip>
+                        <span title={meta.hint}>
+                          <Chip bg={meta.bg} fg={meta.fg} dot>
+                            {meta.label}
+                          </Chip>
+                        </span>
                       </td>
                       <td style={{ ...tdStyle, color: "var(--ink2)", whiteSpace: "nowrap" }}>
                         <span style={{ fontSize: 11, color: "var(--ink3)", display: "block", marginBottom: 2 }}>
                           {when.label}
                         </span>
                         {formatDate(when.value)}
-                        {fee.status === "PAID" && fee.paymentMethod && (
-                          <>
-                            <br />
-                            <span style={{ fontSize: 12, color: "var(--ink3)" }}>
-                              {paymentMethodLabel(fee.paymentMethod)}
-                            </span>
-                          </>
-                        )}
                       </td>
                       <td style={{ ...tdStyle, textAlign: "right" }}>
-                        {fee.status === "DUE" ? (
-                          <MarkFeePaidButton leadMatchId={fee.leadMatchId} />
-                        ) : fee.status === "PAID" ? (
-                          <span style={{ fontSize: 12, color: "var(--ink3)" }}>
-                            {paymentMethodLabel(fee.paymentMethod)}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 12, color: "var(--ink3)" }}>—</span>
-                        )}
+                        {isDue ? (
+                          <MarkFeePaidButton leadMatchId={fee.leadMatchId} prominent />
+                        ) : pay ? (
+                          <Chip bg={pay.bg} fg={pay.fg}>
+                            {pay.label}
+                          </Chip>
+                        ) : null}
                       </td>
                     </tr>
                   );
@@ -364,6 +371,9 @@ export default async function AdminFeesPage({
                 const meta = feeStatusMeta(fee.status);
                 const project = leadScopeLabel(fee.leadMatch.lead);
                 const when = relevantDate(fee);
+                const pay = fee.status === "PAID" ? paymentMethodMeta(fee.paymentMethod) : null;
+                const isDue = fee.status === "DUE";
+
                 return (
                   <div
                     key={fee.id}
@@ -371,9 +381,10 @@ export default async function AdminFeesPage({
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: 10,
-                      padding: "16px 18px",
+                      gap: 12,
+                      padding: "18px 18px",
                       borderBottom: "1px solid var(--line2)",
+                      background: isDue ? "color-mix(in srgb, var(--dangerBg) 40%, transparent)" : undefined,
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
@@ -383,57 +394,79 @@ export default async function AdminFeesPage({
                           {fee.leadMatch.lead.propertyLocation}
                         </p>
                       </div>
-                      <Chip bg={meta.bg} fg={meta.fg} dot>
-                        {meta.short}
-                      </Chip>
+                      <span title={meta.hint}>
+                        <Chip bg={meta.bg} fg={meta.fg} dot>
+                          {meta.short}
+                        </Chip>
+                      </span>
                     </div>
 
-                    <div style={{ display: "grid", gap: 6, font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                        font: "400 13px/1.4 'Inter'",
+                        color: "var(--ink2)",
+                      }}
+                    >
                       <div>
-                        <span style={{ color: "var(--ink3)" }}>Contractor · </span>
-                        {fee.leadMatch.contractor.name}
-                        <span style={{ color: "var(--ink3)" }}> · {fee.leadMatch.contractor.email}</span>
-                      </div>
-                      <div>
-                        <span style={{ color: "var(--ink3)" }}>Landowner · </span>
-                        {fee.leadMatch.lead.landownerName ?? "—"}
-                      </div>
-                      <div>
-                        <span style={{ color: "var(--ink3)" }}>Final value · </span>
-                        {formatMoney(fee.finalValueCents)}
-                        <span style={{ color: "var(--ink3)" }}> · Rate · </span>
-                        {formatRate(fee.rateBasisPoints)}
-                      </div>
-                      <div>
-                        <span style={{ color: "var(--ink3)" }}>{when.label} · </span>
-                        {formatDate(when.value)}
-                        {fee.status === "PAID" && fee.paymentMethod && (
-                          <span style={{ color: "var(--ink3)" }}>
-                            {" · "}
-                            {paymentMethodLabel(fee.paymentMethod)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                      <p
-                        style={{
-                          margin: 0,
-                          font: "600 18px/1 var(--display)",
-                          color: "var(--ink)",
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        {formatMoney(fee.feeAmountCents)}
-                      </p>
-                      {fee.status === "DUE" ? (
-                        <MarkFeePaidButton leadMatchId={fee.leadMatchId} />
-                      ) : fee.status === "PAID" ? (
-                        <span style={{ fontSize: 12, color: "var(--ink3)" }}>
-                          {paymentMethodLabel(fee.paymentMethod)}
+                        <span style={{ display: "block", fontSize: 11, color: "var(--ink3)", marginBottom: 2 }}>
+                          Contractor
                         </span>
-                      ) : null}
+                        {fee.leadMatch.contractor.name}
+                      </div>
+                      <div>
+                        <span style={{ display: "block", fontSize: 11, color: "var(--ink3)", marginBottom: 2 }}>
+                          Final value
+                        </span>
+                        {formatMoney(fee.finalValueCents)} · {formatRate(fee.rateBasisPoints)}
+                      </div>
+                      <div>
+                        <span style={{ display: "block", fontSize: 11, color: "var(--ink3)", marginBottom: 2 }}>
+                          {when.label}
+                        </span>
+                        {formatDate(when.value)}
+                      </div>
+                      {pay && (
+                        <div>
+                          <span style={{ display: "block", fontSize: 11, color: "var(--ink3)", marginBottom: 2 }}>
+                            Method
+                          </span>
+                          <Chip bg={pay.bg} fg={pay.fg}>
+                            {pay.label}
+                          </Chip>
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                        paddingTop: 4,
+                        borderTop: isDue ? "1px solid var(--line2)" : undefined,
+                        marginTop: isDue ? 2 : 0,
+                      }}
+                    >
+                      <div>
+                        <span style={{ display: "block", fontSize: 11, color: "var(--ink3)", marginBottom: 2 }}>
+                          Landy&apos;s fee
+                        </span>
+                        <p
+                          style={{
+                            margin: 0,
+                            font: "700 20px/1 var(--display)",
+                            color: isDue ? "var(--danger)" : "var(--ink)",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {formatMoney(fee.feeAmountCents)}
+                        </p>
+                      </div>
+                      {isDue && <MarkFeePaidButton leadMatchId={fee.leadMatchId} prominent />}
                     </div>
                   </div>
                 );
@@ -442,6 +475,40 @@ export default async function AdminFeesPage({
           </>
         )}
       </div>
+
+      {tab === "all" && fees.length > 0 && (
+        <Panel style={{ padding: "12px 16px", marginTop: 14 }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "10px 18px",
+              alignItems: "center",
+              font: "400 12px/1.4 'Inter'",
+              color: "var(--ink3)",
+            }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Chip bg="var(--goldSoft)" fg="var(--goldSoftFg)" dot>
+                Awaiting
+              </Chip>
+              contractor not yet paid
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Chip bg="var(--dangerBg)" fg="var(--danger)" dot>
+                Due
+              </Chip>
+              Landy&apos;s is owed
+            </span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Chip bg="var(--posBg)" fg="var(--pos)" dot>
+                Paid
+              </Chip>
+              settled
+            </span>
+          </div>
+        </Panel>
+      )}
     </div>
   );
 }

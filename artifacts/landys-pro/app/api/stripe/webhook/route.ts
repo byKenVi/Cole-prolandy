@@ -78,15 +78,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ received: true, status: setupResult.status, kind: "card_setup" });
     }
 
-    const parsed = parseTopUpEvent(event);
-    if (parsed) {
-      const result = await creditTopUp(parsed);
-      console.log(
-        `[stripe-webhook] top-up ${result.status} — event=${event.id} type=${event.type} contractor=${parsed.contractorId} amountCents=${parsed.amountCents}`,
-      );
-      return NextResponse.json({ received: true, status: result.status });
-    }
-
+    // Success-fee PaymentIntents also carry contractorId and amount metadata,
+    // so dispatch them before the legacy top-up parser.
     const feeParsed = parseSuccessFeeEvent(event);
     if (feeParsed) {
       const result = await confirmSuccessFeePayment(feeParsed);
@@ -94,6 +87,15 @@ export async function POST(req: NextRequest) {
         `[stripe-webhook] success-fee ${result.status} — event=${event.id} leadMatch=${feeParsed.leadMatchId}`,
       );
       return NextResponse.json({ received: true, status: result.status, kind: "success_fee" });
+    }
+
+    const parsed = parseTopUpEvent(event);
+    if (parsed) {
+      const result = await creditTopUp(parsed);
+      console.log(
+        `[stripe-webhook] top-up ${result.status} — event=${event.id} type=${event.type} contractor=${parsed.contractorId} amountCents=${parsed.amountCents}`,
+      );
+      return NextResponse.json({ received: true, status: result.status });
     }
 
     // Event type we don't act on — acknowledge so Stripe stops retrying.

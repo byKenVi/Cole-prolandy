@@ -60,7 +60,7 @@ export default function LandingPage() {
         <section className="grid items-center gap-10 py-12 md:grid-cols-2 md:py-16">
           <div className="flex flex-col gap-4 fill-mode-both duration-700 animate-in fade-in slide-in-from-bottom-4">
             <p className="font-script text-4xl leading-none text-accent">More quality jobs</p>
-            <h1 className="font-sans text-5xl font-black leading-[0.95] tracking-tight text-text sm:text-6xl">
+            <h1 className="font-sans text-5xl font-black leading-[0.95] tracking-tight text-[#4A3E2D] sm:text-6xl">
               Less hassle.
             </h1>
             <p className="mt-1 max-w-md text-base leading-relaxed text-text-muted">

@@ -8,16 +8,38 @@ import { leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 
 export const dynamic = "force-dynamic";
 
-function feeStatusDisplay(status: string): { label: string; color: string; bg: string } {
+type FeeStatus = "DUE" | "PAID" | "AWAITING_CONTRACTOR_PAYMENT" | string;
+
+function statusMeta(status: FeeStatus): {
+  label: string;
+  hint: string;
+  color: string;
+  bg: string;
+} {
   switch (status) {
     case "DUE":
-      return { label: "Due", color: "#9A3B2E", bg: "#F6E4E1" };
+      return {
+        label: "Due",
+        hint: "Pay Landy's now",
+        color: "#9A3B2E",
+        bg: "#F6E4E1",
+      };
     case "PAID":
-      return { label: "Paid", color: "#2F4A3C", bg: "#E8F0EA" };
+      return {
+        label: "Paid",
+        hint: "Settled with Landy's",
+        color: "#2F4A3C",
+        bg: "#E8F0EA",
+      };
     case "AWAITING_CONTRACTOR_PAYMENT":
-      return { label: "Awaiting your payment from landowner", color: "#8A6B2E", bg: "#F4EAD3" };
+      return {
+        label: "Awaiting your payment",
+        hint: "Landowner pays you directly first",
+        color: "#8A6B2E",
+        bg: "#F4EAD3",
+      };
     default:
-      return { label: status, color: "#6B6459", bg: "#F0EADD" };
+      return { label: status, hint: "", color: "#6B6459", bg: "#F0EADD" };
   }
 }
 
@@ -39,7 +61,7 @@ export default async function FeesPage({
 
   const fees = await prisma.successFee.findMany({
     where: { leadMatch: { contractorId: session.contractorId } },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: {
       leadMatch: {
         include: { lead: { include: leadDisplayInclude } },
@@ -47,84 +69,186 @@ export default async function FeesPage({
     },
   });
 
+  const due = fees.filter((f) => f.status === "DUE");
+  const awaiting = fees.filter((f) => f.status === "AWAITING_CONTRACTOR_PAYMENT");
+  const paidFees = fees.filter((f) => f.status === "PAID");
+  const other = fees.filter(
+    (f) =>
+      f.status !== "DUE" &&
+      f.status !== "AWAITING_CONTRACTOR_PAYMENT" &&
+      f.status !== "PAID",
+  );
+
   return (
     <div className="contractor-page flex min-h-full flex-col">
-      <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-[26px]">
-        <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
+      <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-7">
+        <h1 className="font-fraunces text-[28px] font-semibold tracking-[-0.01em] text-[#4A3E2D] sm:text-[32px]">
           Fees &amp; payments
         </h1>
-        <p className="mt-[5px] text-[14px] leading-relaxed text-[#8A7E68]">
-          Your success fees to Landy&apos;s — separate from what the landowner pays you directly.
+        <p className="mt-2 max-w-[48ch] text-[15px] leading-relaxed text-[#6B6459]">
+          <span className="font-semibold text-[#4A3E2D]">Landowners pay you directly.</span>{" "}
+          Landy&apos;s only collects a success fee after you confirm you&apos;ve been paid — never for
+          reviewing opportunities.
         </p>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 py-6 sm:px-5 md:px-[34px]">
+      <div className="flex flex-1 flex-col gap-8 px-4 py-6 sm:px-5 md:px-[34px]">
         {paid && (
-          <div className="flex items-center gap-2 rounded-[14px] bg-[#E8F0EA] px-4 py-3 text-[14px] font-medium text-[#2F4A3C]">
-            <CheckCircle2 className="h-4 w-4 flex-none" aria-hidden />
+          <div className="flex items-center gap-2 rounded-[14px] bg-[#E8F0EA] px-4 py-3.5 text-[15px] font-medium text-[#2F4A3C]">
+            <CheckCircle2 className="h-5 w-5 flex-none" aria-hidden />
             Payment received — thank you.
           </div>
         )}
 
         {fees.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center rounded-[18px] border border-[#EBE3D4] bg-white px-10 py-16 text-center shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
-            <p className="mb-2 font-fraunces text-[22px] font-medium text-[#3A352D]">No success fees yet</p>
-            <p className="max-w-[44ch] text-[15px] leading-[1.6] text-[#6B6459]">
-              When you win a job and confirm you&apos;ve been paid, your success fee will appear here.
+          <div className="contractor-card flex flex-1 flex-col items-center justify-center px-8 py-16 text-center">
+            <p className="mb-2 font-fraunces text-[22px] font-medium text-[#4A3E2D]">
+              No success fees yet
             </p>
+            <p className="max-w-[40ch] text-[15px] leading-relaxed text-[#6B6459]">
+              When you win a job and confirm the landowner paid you, Landy&apos;s fee appears here.
+            </p>
+            <Link href="/jobs" className="contractor-action-secondary mt-6">
+              View my jobs
+            </Link>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
-            {fees.map((fee) => {
-              const lead = fee.leadMatch.lead;
-              const status = feeStatusDisplay(fee.status);
-              const ratePercent = fee.rateBasisPoints / 100;
-              const rateLabel =
-                ratePercent % 1 === 0 ? `${ratePercent.toFixed(0)}%` : `${ratePercent.toFixed(1)}%`;
-
-              return (
-                <div
-                  key={fee.id}
-                  className="flex flex-col gap-4 border-b border-[#F2EBDD] px-4 py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:px-6"
-                >
-                  <div className="min-w-0">
-                    <Link
-                      href={`/jobs/${fee.leadMatchId}`}
-                      className="truncate text-[16px] font-semibold text-[#3A352D] hover:text-[#C0803C]"
-                    >
-                      {leadScopeLabel(lead)}
-                    </Link>
-                    <p className="mt-0.5 truncate text-[13px] text-[#8A7E68]">{lead.propertyLocation}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span
-                        className="rounded-full px-[10px] py-1 text-[11px] font-semibold"
-                        style={{ color: status.color, background: status.bg }}
-                      >
-                        {status.label}
-                      </span>
-                      <span className="text-[13px] text-[#8A7E68]">
-                        {rateLabel} of {formatMoney(fee.finalValueCents)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-none items-center gap-3">
-                    <p className="text-[22px] font-semibold tabular-nums text-[#4A3E2D]">
-                      {formatMoney(fee.feeAmountCents)}
-                    </p>
-                    {fee.status === "DUE" && (
-                      <FeePayButton
-                        leadMatchId={fee.leadMatchId}
-                        amountLabel={formatMoney(fee.feeAmountCents)}
-                      />
-                    )}
-                  </div>
+          <>
+            {due.length > 0 && (
+              <section>
+                <h2 className="font-fraunces text-[20px] font-semibold text-[#9A3B2E]">Due now</h2>
+                <p className="mt-0.5 text-[13px] text-[#8A7E68]">
+                  Landowner paid you · Landy&apos;s fee is ready
+                </p>
+                <div className="mt-3 flex flex-col gap-3">
+                  {due.map((fee) => (
+                    <FeeCard key={fee.id} fee={fee} emphasize />
+                  ))}
                 </div>
-              );
-            })}
-          </div>
+              </section>
+            )}
+
+            {awaiting.length > 0 && (
+              <FeeSection title="Awaiting landowner payment" fees={awaiting} />
+            )}
+            {paidFees.length > 0 && <FeeSection title="Paid" fees={paidFees} />}
+            {other.length > 0 && <FeeSection title="Other" fees={other} />}
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+function FeeSection({
+  title,
+  fees,
+}: {
+  title: string;
+  fees: Array<{
+    id: string;
+    status: string;
+    feeAmountCents: number;
+    finalValueCents: number;
+    rateBasisPoints: number;
+    leadMatchId: string;
+    paymentMethod: string | null;
+    leadMatch: { lead: Parameters<typeof leadScopeLabel>[0] & { propertyLocation: string } };
+  }>;
+}) {
+  return (
+    <section>
+      <h2 className="font-fraunces text-[20px] font-semibold text-[#4A3E2D]">{title}</h2>
+      <div className="mt-3 flex flex-col gap-3">
+        {fees.map((fee) => (
+          <FeeCard key={fee.id} fee={fee} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FeeCard({
+  fee,
+  emphasize = false,
+}: {
+  fee: {
+    id: string;
+    status: string;
+    feeAmountCents: number;
+    finalValueCents: number;
+    rateBasisPoints: number;
+    leadMatchId: string;
+    paymentMethod?: string | null;
+    leadMatch: { lead: Parameters<typeof leadScopeLabel>[0] & { propertyLocation: string } };
+  };
+  emphasize?: boolean;
+}) {
+  const status = statusMeta(fee.status);
+  const ratePercent = fee.rateBasisPoints / 100;
+  const rateLabel =
+    ratePercent % 1 === 0 ? `${ratePercent.toFixed(0)}%` : `${ratePercent.toFixed(1)}%`;
+  const method =
+    fee.status === "PAID"
+      ? fee.paymentMethod === "stripe"
+        ? "Paid via card"
+        : fee.paymentMethod
+          ? `Paid · ${fee.paymentMethod}`
+          : "Paid"
+      : null;
+
+  return (
+    <article
+      className={`rounded-[18px] border p-4 sm:p-5 ${
+        emphasize
+          ? "border-[#E8C4BE] bg-[#FDF5F3]"
+          : "border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]"
+      }`}
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <Link
+            href={`/jobs/${fee.leadMatchId}`}
+            className="truncate text-[17px] font-semibold text-[#4A3E2D] hover:text-[#C0803C]"
+          >
+            {leadScopeLabel(fee.leadMatch.lead)}
+          </Link>
+          <p className="mt-0.5 truncate text-[13px] text-[#8A7E68]">
+            {fee.leadMatch.lead.propertyLocation}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span
+              className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+              style={{ color: status.color, background: status.bg }}
+            >
+              {status.label}
+            </span>
+            <span className="text-[13px] text-[#8A7E68]">
+              {rateLabel} of {formatMoney(fee.finalValueCents)} contract
+            </span>
+            {method && <span className="text-[13px] font-medium text-[#2F4A3C]">{method}</span>}
+          </div>
+        </div>
+
+        <div className="flex flex-col items-stretch gap-3 sm:min-w-[200px] sm:items-end">
+          <div className="text-left sm:text-right">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8A7E68]">
+              Landy&apos;s fee
+            </p>
+            <p className="font-fraunces text-[28px] font-semibold tabular-nums text-[#4A3E2D]">
+              {formatMoney(fee.feeAmountCents)}
+            </p>
+          </div>
+          {fee.status === "DUE" && (
+            <div className="w-full sm:w-auto [&_button]:h-12 [&_button]:w-full [&_button]:min-w-[180px] [&_button]:text-[16px]">
+              <FeePayButton
+                leadMatchId={fee.leadMatchId}
+                amountLabel={formatMoney(fee.feeAmountCents)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }

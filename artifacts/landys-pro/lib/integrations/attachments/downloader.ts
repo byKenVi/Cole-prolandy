@@ -2,11 +2,14 @@ import { createHash } from "node:crypto";
 import { getStorageAdmin } from "@/lib/supabase-storage";
 import type { WixEstimateAttachment } from "@/lib/integrations/wix/estimate-contract";
 import { assertSafeDownloadUrl } from "@/lib/integrations/attachments/url-safety";
+import {
+  LEAD_ATTACHMENTS_BUCKET,
+  MAX_ATTACHMENT_BYTES,
+} from "@/lib/storage-buckets";
 
 export { assertSafeDownloadUrl } from "@/lib/integrations/attachments/url-safety";
 
-export const LEAD_ATTACHMENTS_BUCKET = "lead-attachments-private";
-export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+export { LEAD_ATTACHMENTS_BUCKET, MAX_ATTACHMENT_BYTES } from "@/lib/storage-buckets";
 const DOWNLOAD_TIMEOUT_MS = 30_000;
 const MAX_REDIRECTS = 3;
 

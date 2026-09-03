@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { claimPendingAdminInvite } from "@/lib/admin-invites";
+import { isLocal } from "@/lib/runtime-environment";
 
 /**
  * Auth abstraction.
@@ -89,7 +90,13 @@ export function parseAdminEmails(raw: string | undefined | null): string[] {
 }
 
 function adminEmails(): string[] {
-  return parseAdminEmails(process.env.ADMIN_EMAILS);
+  const fromEnv = parseAdminEmails(process.env.ADMIN_EMAILS);
+  if (!isLocal()) return fromEnv;
+  const localAdmin = process.env.LOCAL_ADMIN_EMAIL?.trim().toLowerCase();
+  if (localAdmin?.includes("@") && !fromEnv.includes(localAdmin)) {
+    return [localAdmin, ...fromEnv];
+  }
+  return fromEnv;
 }
 
 /** Resolve the current session. */

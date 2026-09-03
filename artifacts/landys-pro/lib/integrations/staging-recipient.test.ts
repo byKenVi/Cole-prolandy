@@ -6,7 +6,7 @@ afterEach(() => {
   process.env = originalEnv;
 });
 
-describe("staging notification recipient isolation", () => {
+describe("notification recipient isolation", () => {
   it("leaves production recipients unchanged", () => {
     process.env = { ...originalEnv, LANDYS_ENV: "production" };
     expect(safeEmailRecipient("real@example.com")).toBe("real@example.com");
@@ -30,5 +30,24 @@ describe("staging notification recipient isolation", () => {
     delete process.env.STAGING_NOTIFICATION_PHONE;
     expect(() => safeEmailRecipient("real@example.com")).toThrow(/refusing/i);
     expect(() => safeSmsRecipient("+14155550100")).toThrow(/refusing/i);
+  });
+
+  it("redirects every local recipient to LOCAL_NOTIFICATION overrides", () => {
+    process.env = {
+      ...originalEnv,
+      LANDYS_ENV: "local",
+      LOCAL_NOTIFICATION_EMAIL: "local-qa@localhost.test",
+      LOCAL_NOTIFICATION_PHONE: "+15005550099",
+    };
+    expect(safeEmailRecipient("real@example.com")).toBe("local-qa@localhost.test");
+    expect(safeSmsRecipient("+14155550100")).toBe("+15005550099");
+  });
+
+  it("fails closed in local when an override is missing", () => {
+    process.env = { ...originalEnv, LANDYS_ENV: "local" };
+    delete process.env.LOCAL_NOTIFICATION_EMAIL;
+    delete process.env.LOCAL_NOTIFICATION_PHONE;
+    expect(() => safeEmailRecipient("real@example.com")).toThrow(/LOCAL_NOTIFICATION_EMAIL/);
+    expect(() => safeSmsRecipient("+14155550100")).toThrow(/LOCAL_NOTIFICATION_PHONE/);
   });
 });

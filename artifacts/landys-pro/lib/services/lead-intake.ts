@@ -7,11 +7,10 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { distributeLead } from "@/lib/domain/leads";
-import { resolveLeadBudget } from "@/lib/domain/budget";
+import { inferBudgetBandFromCents, resolveLeadBudget } from "@/lib/domain/budget";
 import {
   snapshotLeadPricing,
-  snapshotLiveLeadPricing,
-  snapshotLiveLeadPricingFromExactBudget,
+  resolveTierForBudgetBand,
 } from "@/lib/domain/tier-resolution";
 import { REVIEW_BLOCKERS } from "@/lib/taxonomy/live-v3";
 import {
@@ -472,19 +471,20 @@ async function resolveLeadPricingSnapshot(
   },
 ): Promise<{ tier: 1 | 2 | 3; priceCents: number; pricingRequired: boolean }> {
   if (lead.workTypeId) {
-    if (lead.budgetBand) {
-      return snapshotLiveLeadPricing(tx, {
-        workTypeId: lead.workTypeId,
-        budgetBand: lead.budgetBand,
-      });
-    }
-    if (lead.budgetCents != null) {
-      return snapshotLiveLeadPricingFromExactBudget(tx, {
-        workTypeId: lead.workTypeId,
-        budgetCents: lead.budgetCents,
-      });
-    }
-    throw new InvalidStateError("This lead requires budget review before routing.");
+    const budgetBand =
+      lead.budgetBand ??
+      (lead.budgetCents == null ? null : inferBudgetBandFromCents(lead.budgetCents));
+    if (!budgetBand) throw new InvalidStateError("This lead requires budget review before routing.");
+
+    const resolved = await resolveTierForBudgetBand(tx, {
+      workTypeId: lead.workTypeId,
+      budgetBand,
+    });
+    if (!resolved.ok) throw new InvalidStateError(resolved.reason);
+
+    // Live-v3 routes free opportunities. The tier remains a routing/display
+    // snapshot, but the retired pay-per-lead price is deliberately zero.
+    return { tier: resolved.tier, priceCents: 0, pricingRequired: false };
   }
 
   if (!lead.projectType || lead.projectTypeId == null || lead.budgetCents == null) {
@@ -689,7 +689,7 @@ async function autoRouteLead(params: {
       recipients: distributed.matches.length,
       heldForReview: false,
     };
-  });
+  }, { maxWait: 20_000, timeout: 60_000 });
 
   if (result.heldForReview) {
     if (result.lead.pricingReviewRequired) blockers.push("pricing_review");

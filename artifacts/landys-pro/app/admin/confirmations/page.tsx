@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { PageHeader, Chip, Panel } from "@/components/admin/ui";
+import {
+  PageHeader,
+  Chip,
+  Panel,
+  AdminTabBar,
+  AdminTabLink,
+  AdminEmptyState,
+} from "@/components/admin/ui";
 import { ResolveMismatchButton } from "@/components/admin/resolve-mismatch-button";
 import { formatDate } from "@/lib/format";
 import { leadScopeLabel } from "@/lib/resolved-lead";
@@ -8,10 +15,10 @@ import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-type ConfirmationTab = "pending" | "confirmed" | "mismatches" | "all";
+type ConfirmationTab = "pending" | "confirmed" | "mismatches";
 
 const thStyle: React.CSSProperties = {
-  padding: "12px 20px",
+  padding: "12px 18px",
   textAlign: "left",
   font: "600 10px/1 var(--mono)",
   letterSpacing: ".06em",
@@ -20,13 +27,22 @@ const thStyle: React.CSSProperties = {
 };
 
 const tdStyle: React.CSSProperties = {
-  padding: "13px 20px",
+  padding: "14px 18px",
   font: "400 14px/1.35 'Inter'",
   verticalAlign: "top",
 };
 
+const fieldLabel: React.CSSProperties = {
+  display: "block",
+  font: "600 10px/1 var(--mono)",
+  letterSpacing: ".05em",
+  textTransform: "uppercase",
+  color: "var(--ink3)",
+  marginBottom: 4,
+};
+
 function parseTab(raw: string | undefined): ConfirmationTab {
-  if (raw === "pending" || raw === "confirmed" || raw === "mismatches" || raw === "all") return raw;
+  if (raw === "pending" || raw === "confirmed" || raw === "mismatches") return raw;
   return "pending";
 }
 
@@ -38,8 +54,6 @@ function tabWhere(tab: ConfirmationTab): Prisma.LandownerConfirmationWhereInput 
       return { respondedAt: { not: null }, mismatchFlagged: false };
     case "mismatches":
       return { mismatchFlagged: true };
-    default:
-      return {};
   }
 }
 
@@ -49,16 +63,23 @@ function outcomeLabel(outcome: string): string {
   return "Open";
 }
 
-function emptyMessage(tab: ConfirmationTab): string {
+function emptyCopy(tab: ConfirmationTab): { title: string; description: string } {
   switch (tab) {
     case "pending":
-      return "No pending landowner confirmations.";
+      return {
+        title: "No pending confirmations",
+        description: "When landowners are asked who they hired, unanswered follow-ups show up here.",
+      };
     case "confirmed":
-      return "No confirmed responses yet.";
+      return {
+        title: "No confirmations yet",
+        description: "Landowner responses that match contractor claims land in this list.",
+      };
     case "mismatches":
-      return "No mismatches to review.";
-    default:
-      return "No landowner confirmations yet.";
+      return {
+        title: "No mismatches",
+        description: "Conflicts between contractor claims and landowner answers will appear here for review.",
+      };
   }
 }
 
@@ -98,50 +119,15 @@ function humanMismatchReason(params: {
   return mismatchReason ?? "Mismatch flagged for review.";
 }
 
-function TabLink({
-  href,
-  active,
-  children,
-  count,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-  count?: number;
-}) {
-  return (
-    <Link
-      href={href}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 7,
-        textDecoration: "none",
-        border: "none",
-        font: "600 13px/1 'Inter'",
-        padding: "9px 15px",
-        borderRadius: 9,
-        background: active ? "var(--card)" : "transparent",
-        color: active ? "var(--ink)" : "var(--ink2)",
-        boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
-      }}
-    >
-      {children}
-      {typeof count === "number" && (
-        <span
-          style={{
-            font: "600 11px/1 var(--mono)",
-            color: active ? "var(--gold)" : "var(--ink3)",
-            background: active ? "var(--goldSoft)" : "var(--chipBg)",
-            padding: "3px 7px",
-            borderRadius: 999,
-          }}
-        >
-          {count}
-        </span>
-      )}
-    </Link>
-  );
+function tabHint(tab: ConfirmationTab): string {
+  switch (tab) {
+    case "pending":
+      return "Waiting on the landowner — no response yet.";
+    case "confirmed":
+      return "Landowner answered, and it lines up with contractor claims.";
+    case "mismatches":
+      return "Stories don't match. Review and mark resolved when you've sorted it out.";
+  }
 }
 
 const confirmationInclude = {
@@ -183,32 +169,32 @@ function statusChip(row: ConfirmationRow): { label: string; bg: string; fg: stri
   return { label: "Confirmed", bg: "var(--posBg)", fg: "var(--pos)" };
 }
 
-function getConfirmationDetails(row: ConfirmationRow) {
-  const project = leadScopeLabel(row.lead);
-  const chip = statusChip(row);
-  const wonNames = row.lead.matches
-    .filter((m) => m.jobOutcome === "WON")
-    .map((m) => m.contractor.name);
-  const hiredName = row.hiredLeadMatch?.contractor.name ?? null;
-  const wasFlagged = Boolean(row.mismatchReason);
-  const reviewed = wasFlagged && !row.mismatchFlagged;
-  const mismatchText =
-    row.mismatchFlagged || wasFlagged
-      ? humanMismatchReason({
-          mismatchReason: row.mismatchReason,
-          wonNames,
-          hiredName,
-        })
-      : null;
+function contractorClaimSummary(matches: ConfirmationRow["lead"]["matches"]): {
+  wonNames: string[];
+  lines: { id: string; name: string; outcome: string }[];
+} {
+  const wonNames = matches.filter((m) => m.jobOutcome === "WON").map((m) => m.contractor.name);
+  const lines = matches.map((m) => ({
+    id: m.id,
+    name: m.contractor.name,
+    outcome: m.jobOutcome,
+  }));
+  return { wonNames, lines };
+}
 
-  return {
-    project,
-    chip,
-    wonNames,
-    hiredName,
-    reviewed,
-    mismatchText,
-  };
+function landownerConfirmationText(row: ConfirmationRow, hiredName: string | null): string {
+  if (!row.respondedAt) return "Waiting for response";
+  if (row.hired) return hiredName ?? "Hired (contractor unknown)";
+  return "Did not hire anyone";
+}
+
+function ConfirmEmptyIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  );
 }
 
 export default async function AdminConfirmationsPage({
@@ -219,13 +205,12 @@ export default async function AdminConfirmationsPage({
   const { tab: tabRaw } = await searchParams;
   const tab = parseTab(tabRaw);
 
-  const [pendingCount, confirmedCount, mismatchCount, allCount, confirmations] = await Promise.all([
+  const [pendingCount, confirmedCount, mismatchCount, confirmations] = await Promise.all([
     prisma.landownerConfirmation.count({ where: { respondedAt: null } }),
     prisma.landownerConfirmation.count({
       where: { respondedAt: { not: null }, mismatchFlagged: false },
     }),
     prisma.landownerConfirmation.count({ where: { mismatchFlagged: true } }),
-    prisma.landownerConfirmation.count(),
     prisma.landownerConfirmation.findMany({
       where: tabWhere(tab),
       orderBy: [{ mismatchFlagged: "desc" }, { respondedAt: "desc" }, { createdAt: "desc" }],
@@ -234,79 +219,66 @@ export default async function AdminConfirmationsPage({
     }),
   ]);
 
+  const empty = emptyCopy(tab);
+
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker="Landowner follow-up"
+        kicker="Trust check"
         title="Confirmations"
-        subtitle="Compare landowner responses with contractor-reported outcomes and review mismatches."
+        subtitle="Did the landowner hire who the contractor claimed? This page catches mismatches before a success fee sticks."
       />
 
-      <Panel style={{ padding: "14px 18px", marginBottom: 18 }}>
-        <p
-          style={{
-            margin: "0 0 10px",
-            font: "600 10px/1 var(--mono)",
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "var(--ink3)",
-          }}
-        >
-          How to read this page
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ margin: 0, font: "400 13px/1.45 'Inter'", color: "var(--ink2)" }}>
-            <strong style={{ color: "var(--goldSoftFg)" }}>Pending</strong>
-            {" — "}
-            waiting for the landowner to respond.
-          </p>
-          <p style={{ margin: 0, font: "400 13px/1.45 'Inter'", color: "var(--ink2)" }}>
-            <strong style={{ color: "var(--sageFg)" }}>Confirmed</strong>
-            {" — "}
-            landowner responded with no open mismatch.
-          </p>
-          <p style={{ margin: 0, font: "400 13px/1.45 'Inter'", color: "var(--ink2)" }}>
-            <strong style={{ color: "var(--danger)" }}>Mismatch</strong>
-            {" — "}
-            landowner selection disagrees with a contractor who claimed Won (or similar conflict).
-          </p>
-        </div>
-      </Panel>
-
-      <div
+      <Panel
         style={{
-          display: "flex",
-          gap: 3,
-          background: "var(--card2)",
-          padding: 4,
-          borderRadius: 12,
-          marginBottom: 16,
-          flexWrap: "wrap",
-          width: "fit-content",
-          maxWidth: "100%",
+          padding: "14px 18px",
+          marginBottom: 18,
+          background: "linear-gradient(135deg, var(--card) 0%, var(--card2) 100%)",
         }}
       >
-        <TabLink href="/admin/confirmations?tab=pending" active={tab === "pending"} count={pendingCount}>
+        <p style={{ margin: 0, font: "500 14px/1.5 'Inter'", color: "var(--ink2)" }}>
+          Contractors report outcomes. Landowners confirm who they hired.{" "}
+          <span style={{ color: "var(--ink)", fontWeight: 600 }}>When those disagree, you review here.</span>
+        </p>
+      </Panel>
+
+      <AdminTabBar aria-label="Confirmation status">
+        <AdminTabLink
+          href="/admin/confirmations?tab=pending"
+          active={tab === "pending"}
+          count={pendingCount}
+          tone="gold"
+        >
           Pending
-        </TabLink>
-        <TabLink
+        </AdminTabLink>
+        <AdminTabLink
           href="/admin/confirmations?tab=confirmed"
           active={tab === "confirmed"}
           count={confirmedCount}
+          tone="pos"
         >
           Confirmed
-        </TabLink>
-        <TabLink
+        </AdminTabLink>
+        <AdminTabLink
           href="/admin/confirmations?tab=mismatches"
           active={tab === "mismatches"}
           count={mismatchCount}
+          tone="danger"
         >
           Mismatches
-        </TabLink>
-        <TabLink href="/admin/confirmations?tab=all" active={tab === "all"} count={allCount}>
-          All
-        </TabLink>
-      </div>
+        </AdminTabLink>
+      </AdminTabBar>
+
+      <p
+        style={{
+          margin: "-6px 0 16px",
+          font: "400 13px/1.45 'Inter'",
+          color: "var(--ink3)",
+          maxWidth: 560,
+        }}
+      >
+        {tabHint(tab)}
+      </p>
 
       <div
         style={{
@@ -318,9 +290,7 @@ export default async function AdminConfirmationsPage({
         }}
       >
         {confirmations.length === 0 ? (
-          <p style={{ padding: "28px 24px", font: "400 14px/1.5 'Inter'", color: "var(--ink3)", textAlign: "center" }}>
-            {emptyMessage(tab)}
-          </p>
+          <AdminEmptyState title={empty.title} description={empty.description} icon={<ConfirmEmptyIcon />} />
         ) : (
           <>
             <table className="admin-table-desktop" style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -328,33 +298,68 @@ export default async function AdminConfirmationsPage({
                 <tr style={{ background: "var(--card2)", borderBottom: "1px solid var(--line)" }}>
                   <th style={thStyle}>Project</th>
                   <th style={thStyle}>Landowner</th>
-                  <th style={thStyle}>Connected contractors</th>
-                  <th style={thStyle}>Reported outcomes</th>
-                  <th style={thStyle}>Landowner selected</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Response</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Action</th>
+                  <th style={thStyle}>Contractors connected</th>
+                  <th style={thStyle}>Contractor claim</th>
+                  <th style={thStyle}>Landowner confirmation</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>
+                    {tab === "mismatches" ? "Review" : ""}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {confirmations.map((row) => {
-                  const d = getConfirmationDetails(row);
+                  const project = leadScopeLabel(row.lead);
+                  const chip = statusChip(row);
+                  const { wonNames, lines } = contractorClaimSummary(row.lead.matches);
+                  const hiredName = row.hiredLeadMatch?.contractor.name ?? null;
+                  const wasFlagged = Boolean(row.mismatchReason);
+                  const reviewed = wasFlagged && !row.mismatchFlagged;
+                  const mismatchText =
+                    row.mismatchFlagged || wasFlagged
+                      ? humanMismatchReason({
+                          mismatchReason: row.mismatchReason,
+                          wonNames,
+                          hiredName,
+                        })
+                      : null;
+                  const confirmation = landownerConfirmationText(row, hiredName);
+
                   return (
-                    <tr key={row.id} style={{ borderBottom: "1px solid var(--line2)" }}>
+                    <tr
+                      key={row.id}
+                      style={{
+                        borderBottom: "1px solid var(--line2)",
+                        background: row.mismatchFlagged
+                          ? "color-mix(in srgb, var(--dangerBg) 32%, transparent)"
+                          : undefined,
+                      }}
+                    >
                       <td style={{ ...tdStyle, color: "var(--ink)" }}>
                         <Link
                           href={`/admin/leads/${row.leadId}`}
                           style={{ color: "inherit", fontWeight: 600, textDecoration: "none" }}
                         >
-                          {d.project}
+                          {project}
                         </Link>
                         <br />
                         <span style={{ fontSize: 12, color: "var(--ink3)" }}>
                           {row.lead.propertyLocation}
                         </span>
+                        <div style={{ marginTop: 8 }}>
+                          <Chip bg={chip.bg} fg={chip.fg} dot>
+                            {chip.label}
+                          </Chip>
+                          {reviewed && (
+                            <span style={{ marginLeft: 8, fontSize: 12, color: "var(--sageFg)" }}>
+                              Reviewed
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ ...tdStyle, color: "var(--ink2)" }}>
-                        {row.lead.landownerName ?? "—"}
+                        <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                          {row.lead.landownerName ?? "—"}
+                        </span>
                         <br />
                         <span style={{ fontSize: 12, color: "var(--ink3)" }}>
                           {row.lead.landownerEmail}
@@ -364,72 +369,61 @@ export default async function AdminConfirmationsPage({
                         {row.lead.matches.length === 0
                           ? "—"
                           : row.lead.matches.map((m) => (
-                              <div key={m.id}>{m.contractor.name}</div>
+                              <div key={m.id} style={{ marginBottom: 2 }}>
+                                {m.contractor.name}
+                              </div>
                             ))}
                       </td>
                       <td style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>
-                        {row.lead.matches.length === 0
-                          ? "—"
-                          : row.lead.matches.map((m) => (
-                              <div key={m.id}>
-                                {m.contractor.name}:{" "}
-                                <span
-                                  style={{
-                                    fontWeight: m.jobOutcome === "WON" ? 600 : 400,
-                                    color:
-                                      m.jobOutcome === "WON"
-                                        ? "var(--sageFg)"
-                                        : m.jobOutcome === "LOST"
-                                          ? "var(--ink3)"
-                                          : "var(--ink2)",
-                                  }}
-                                >
-                                  {outcomeLabel(m.jobOutcome)}
-                                </span>
-                              </div>
-                            ))}
-                        {d.wonNames.length > 0 && (
-                          <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--ink3)" }}>
-                            Claimed Won: {d.wonNames.join(", ")}
-                          </p>
+                        {lines.length === 0 ? (
+                          "—"
+                        ) : (
+                          lines.map((line) => (
+                            <div key={line.id} style={{ marginBottom: 3 }}>
+                              <span style={{ color: "var(--ink3)" }}>{line.name}: </span>
+                              <span
+                                style={{
+                                  fontWeight: line.outcome === "WON" ? 700 : 400,
+                                  color:
+                                    line.outcome === "WON"
+                                      ? "var(--sageFg)"
+                                      : line.outcome === "LOST"
+                                        ? "var(--ink3)"
+                                        : "var(--ink2)",
+                                }}
+                              >
+                                {outcomeLabel(line.outcome)}
+                              </span>
+                            </div>
+                          ))
                         )}
                       </td>
-                      <td style={{ ...tdStyle, color: "var(--ink)" }}>
-                        {row.respondedAt
-                          ? row.hired
-                            ? (d.hiredName ?? "Hired (contractor unknown)")
-                            : "No / not yet"
-                          : "—"}
-                      </td>
-                      <td style={tdStyle}>
-                        <Chip bg={d.chip.bg} fg={d.chip.fg} dot>
-                          {d.chip.label}
-                        </Chip>
-                        {!row.respondedAt && (
-                          <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--ink3)" }}>
-                            Waiting for landowner response.
+                      <td style={{ ...tdStyle, color: "var(--ink)", maxWidth: 280 }}>
+                        <span style={{ fontWeight: 600 }}>{confirmation}</span>
+                        {row.respondedAt && (
+                          <span style={{ display: "block", marginTop: 4, fontSize: 12, color: "var(--ink3)" }}>
+                            {formatDate(row.respondedAt)}
+                          </span>
+                        )}
+                        {mismatchText && (row.mismatchFlagged || reviewed) && (
+                          <p
+                            style={{
+                              margin: "10px 0 0",
+                              padding: "10px 12px",
+                              borderRadius: 10,
+                              background: row.mismatchFlagged ? "var(--dangerBg)" : "var(--card2)",
+                              color: row.mismatchFlagged ? "var(--danger)" : "var(--ink2)",
+                              font: "500 13px/1.45 'Inter'",
+                            }}
+                          >
+                            {mismatchText}
                           </p>
                         )}
-                        {d.reviewed && (
-                          <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--sageFg)" }}>
-                            Reviewed
-                          </p>
-                        )}
-                        {d.mismatchText && (row.mismatchFlagged || d.reviewed) && (
-                          <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--ink3)", maxWidth: 260 }}>
-                            {d.mismatchText}
-                          </p>
-                        )}
-                      </td>
-                      <td style={{ ...tdStyle, color: "var(--ink2)", whiteSpace: "nowrap" }}>
-                        {row.respondedAt ? formatDate(row.respondedAt) : "—"}
                       </td>
                       <td style={{ ...tdStyle, textAlign: "right" }}>
                         {row.mismatchFlagged ? (
                           <ResolveMismatchButton confirmationId={row.id} />
-                        ) : (
-                          <span style={{ fontSize: 12, color: "var(--ink3)" }}>—</span>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   );
@@ -439,7 +433,22 @@ export default async function AdminConfirmationsPage({
 
             <div className="admin-table-mobile" style={{ display: "none", flexDirection: "column" }}>
               {confirmations.map((row) => {
-                const d = getConfirmationDetails(row);
+                const project = leadScopeLabel(row.lead);
+                const chip = statusChip(row);
+                const { wonNames, lines } = contractorClaimSummary(row.lead.matches);
+                const hiredName = row.hiredLeadMatch?.contractor.name ?? null;
+                const wasFlagged = Boolean(row.mismatchReason);
+                const reviewed = wasFlagged && !row.mismatchFlagged;
+                const mismatchText =
+                  row.mismatchFlagged || wasFlagged
+                    ? humanMismatchReason({
+                        mismatchReason: row.mismatchReason,
+                        wonNames,
+                        hiredName,
+                      })
+                    : null;
+                const confirmation = landownerConfirmationText(row, hiredName);
+
                 return (
                   <div
                     key={row.id}
@@ -447,9 +456,12 @@ export default async function AdminConfirmationsPage({
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: 10,
-                      padding: "16px 18px",
+                      gap: 14,
+                      padding: "18px",
                       borderBottom: "1px solid var(--line2)",
+                      background: row.mismatchFlagged
+                        ? "color-mix(in srgb, var(--dangerBg) 40%, transparent)"
+                        : undefined,
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
@@ -463,61 +475,87 @@ export default async function AdminConfirmationsPage({
                             textDecoration: "none",
                           }}
                         >
-                          {d.project}
+                          {project}
                         </Link>
                         <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
                           {row.lead.propertyLocation}
                         </p>
                       </div>
-                      <Chip bg={d.chip.bg} fg={d.chip.fg} dot>
-                        {d.chip.label}
+                      <Chip bg={chip.bg} fg={chip.fg} dot>
+                        {chip.label}
                       </Chip>
                     </div>
 
-                    <div style={{ display: "grid", gap: 6, font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>
-                      <div>
-                        <span style={{ color: "var(--ink3)" }}>Landowner · </span>
+                    <div>
+                      <span style={fieldLabel}>Landowner</span>
+                      <p style={{ margin: 0, font: "500 14px/1.35 'Inter'", color: "var(--ink)" }}>
                         {row.lead.landownerName ?? "—"}
-                        {row.lead.landownerEmail ? (
-                          <span style={{ color: "var(--ink3)" }}> · {row.lead.landownerEmail}</span>
-                        ) : null}
-                      </div>
-                      <div>
-                        <span style={{ color: "var(--ink3)" }}>Connected · </span>
+                      </p>
+                      <p style={{ margin: "2px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                        {row.lead.landownerEmail}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span style={fieldLabel}>Contractors connected</span>
+                      <p style={{ margin: 0, font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>
                         {row.lead.matches.length === 0
                           ? "—"
                           : row.lead.matches.map((m) => m.contractor.name).join(", ")}
-                      </div>
-                      <div>
-                        <span style={{ color: "var(--ink3)" }}>Outcomes · </span>
-                        {row.lead.matches.length === 0
-                          ? "—"
-                          : row.lead.matches
-                              .map((m) => `${m.contractor.name}: ${outcomeLabel(m.jobOutcome)}`)
-                              .join(" · ")}
-                      </div>
-                      {d.wonNames.length > 0 && (
-                        <div>
-                          <span style={{ color: "var(--ink3)" }}>Claimed Won · </span>
-                          {d.wonNames.join(", ")}
-                        </div>
-                      )}
-                      <div>
-                        <span style={{ color: "var(--ink3)" }}>Selected · </span>
-                        {row.respondedAt
-                          ? row.hired
-                            ? (d.hiredName ?? "Hired (contractor unknown)")
-                            : "No / not yet"
-                          : "Waiting for landowner response."}
-                      </div>
-                      <div>
-                        <span style={{ color: "var(--ink3)" }}>Response · </span>
-                        {row.respondedAt ? formatDate(row.respondedAt) : "—"}
-                      </div>
-                      {d.mismatchText && (row.mismatchFlagged || d.reviewed) && (
-                        <p style={{ margin: 0, fontSize: 12, color: "var(--ink3)" }}>{d.mismatchText}</p>
+                      </p>
+                    </div>
+
+                    <div>
+                      <span style={fieldLabel}>Contractor claim</span>
+                      {lines.length === 0 ? (
+                        <p style={{ margin: 0, color: "var(--ink3)" }}>—</p>
+                      ) : (
+                        lines.map((line) => (
+                          <p key={line.id} style={{ margin: "0 0 2px", font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>
+                            {line.name}:{" "}
+                            <strong
+                              style={{
+                                color:
+                                  line.outcome === "WON"
+                                    ? "var(--sageFg)"
+                                    : line.outcome === "LOST"
+                                      ? "var(--ink3)"
+                                      : "var(--ink)",
+                              }}
+                            >
+                              {outcomeLabel(line.outcome)}
+                            </strong>
+                          </p>
+                        ))
                       )}
                     </div>
+
+                    <div>
+                      <span style={fieldLabel}>Landowner confirmation</span>
+                      <p style={{ margin: 0, font: "600 14px/1.35 'Inter'", color: "var(--ink)" }}>
+                        {confirmation}
+                      </p>
+                      {row.respondedAt && (
+                        <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--ink3)" }}>
+                          {formatDate(row.respondedAt)}
+                        </p>
+                      )}
+                    </div>
+
+                    {mismatchText && (row.mismatchFlagged || reviewed) && (
+                      <p
+                        style={{
+                          margin: 0,
+                          padding: "12px 14px",
+                          borderRadius: 10,
+                          background: row.mismatchFlagged ? "var(--dangerBg)" : "var(--card2)",
+                          color: row.mismatchFlagged ? "var(--danger)" : "var(--ink2)",
+                          font: "500 13px/1.45 'Inter'",
+                        }}
+                      >
+                        {mismatchText}
+                      </p>
+                    )}
 
                     {row.mismatchFlagged && (
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>

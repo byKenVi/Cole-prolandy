@@ -1,19 +1,28 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
+import { Panel, PageHeader } from "@/components/admin/ui";
 import { ManualLeadForm } from "@/components/admin/manual-lead-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewLeadPage() {
-  const [projectTypes, landTypes] = await Promise.all([
-    prisma.projectType.findMany({
-      where: { archivedAt: null },
+  const [contractorCategories, workTypes, landTypes] = await Promise.all([
+    prisma.contractorCategory.findMany({
+      where: { archivedAt: null, isActiveForNewIntake: true },
       orderBy: { name: "asc" },
-      include: { contractorType: { select: { name: true, icon: true } } },
+      select: { code: true, name: true },
     }),
-    prisma.landType.findMany({ where: { archivedAt: null }, orderBy: { name: "asc" } }),
+    prisma.workType.findMany({
+      where: { archivedAt: null, isActiveForNewIntake: true },
+      orderBy: { name: "asc" },
+      select: { code: true, name: true },
+    }),
+    prisma.landType.findMany({
+      where: { archivedAt: null, isActiveForNewIntake: true },
+      orderBy: { name: "asc" },
+      select: { code: true, name: true },
+    }),
   ]);
 
   return (
@@ -21,30 +30,24 @@ export default async function NewLeadPage() {
       <Link
         href="/admin/leads"
         className="flex items-center gap-1 text-sm"
-        style={{ color: "var(--ink2)" }}
+        style={{ color: "var(--ink2)", width: "fit-content" }}
       >
         <ArrowLeft className="h-4 w-4" /> Back to leads
       </Link>
-      <div>
-        <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
-          New lead
-        </h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
-          Manually create an estimate request with an explicit tier. It is distributed to matched
-          contractors immediately — no upfront fee to accept.
-        </p>
-      </div>
-      <Card className="p-8 md:p-10">
+
+      <PageHeader
+        kicker="Opportunities"
+        title="Create opportunity"
+        subtitle="Manually enter a landowner estimate request using the same fields that matter for Wix / Landys.co intake — then distribute to matched contractors."
+      />
+
+      <Panel style={{ padding: "28px 28px 32px" }}>
         <ManualLeadForm
-          projectTypes={projectTypes.map((p) => ({
-            id: p.id,
-            name: p.name,
-            contractorTypeName: p.contractorType.name,
-            icon: p.contractorType.icon,
-          }))}
+          contractorCategories={contractorCategories}
+          workTypes={workTypes}
           landTypes={landTypes}
         />
-      </Card>
+      </Panel>
     </div>
   );
 }

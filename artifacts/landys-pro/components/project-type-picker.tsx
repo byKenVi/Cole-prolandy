@@ -13,7 +13,7 @@ export type ProjectTypeOption = {
 };
 
 /**
- * Flat project picker (Project → Tier hierarchy elsewhere).
+ * Flat project picker for trade / project scope.
  * Search + grid of projects — no nested category step.
  */
 export function ProjectTypePicker({
@@ -76,7 +76,7 @@ export function ProjectTypePicker({
           />
           <div className="min-w-0 flex-1 font-inter text-sm">
             <p className="truncate font-medium text-text">{selected.name}</p>
-            <p className="truncate text-text-muted">Project · 3 price tiers</p>
+            <p className="truncate text-text-muted">{selected.contractorTypeName}</p>
           </div>
           <button
             type="button"

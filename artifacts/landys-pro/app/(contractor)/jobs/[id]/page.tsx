@@ -7,7 +7,6 @@ import { getSession } from "@/lib/auth";
 import { LeadActions } from "@/components/lead-actions";
 import { ExpiryCountdown } from "@/components/expiry-countdown";
 import { iconSrcFor } from "@/lib/project-icons";
-import { tierPill } from "@/lib/tier-style";
 import { formatMoney } from "@/lib/money";
 import {
   hasResolvedLeadSnapshot,
@@ -52,7 +51,6 @@ export default async function JobDetail({
   const declined = match.status === "DECLINED";
   const actionable = !accepted && !declined && !expired;
   const categoryName = leadCategoryLabel(lead);
-  const pill = tierPill(lead.tier);
   const iconSrc = iconSrcFor({
     icon: leadCategoryIcon(lead),
     category: categoryName,
@@ -93,11 +91,8 @@ export default async function JobDetail({
             </div>
 
             <div className="my-6 flex flex-wrap gap-2.5">
-              <span
-                className="rounded-full px-[13px] py-2 text-[13px] font-medium"
-                style={{ color: pill.color, background: pill.background }}
-              >
-                {pill.label}
+              <span className="rounded-full bg-[#F4EAD3] px-[13px] py-2 text-[13px] font-medium text-[#8A6B2E]">
+                {categoryName}
               </span>
               {lead.landType && (
                 <span className="rounded-full bg-[#F0EADD] px-[13px] py-2 text-[13px] font-medium text-[#6B6459]">

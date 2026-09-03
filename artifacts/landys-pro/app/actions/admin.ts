@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { refundLeadMatch } from "@/lib/domain/leads";
 import { chargeContractorSavedCard } from "@/lib/services/recharge";
 import {
-  createAndDistributeLead,
+  createOfficialEstimateRequest,
   finalizeLeadForRouting,
 } from "@/lib/services/lead-intake";
 import { requireAdmin } from "@/lib/auth";
@@ -1238,40 +1238,76 @@ const ManualLeadSchema = z.object({
   landownerName: z.string().min(2),
   landownerEmail: z.string().email(),
   landownerPhone: z.string().min(7),
-  propertyLocation: z.string().min(2),
-  projectTypeId: z.string().min(1),
-  tier: z.coerce.number().int().min(1).max(3),
-  landTypeId: z.string().optional().or(z.literal("")),
+  propertyZip: z.string().regex(/^\d{5}(?:-\d{4})?$/, "Enter a valid property ZIP."),
+  contractorCategoryCode: z.string().min(1),
+  workTypeCode: z.string().min(1),
+  landTypeCode: z.string().min(1),
+  timelineCode: z.string().min(1),
+  urgencyCode: z.string().min(1),
+  description: z.string().trim().min(10).max(4000),
+  budgetCents: z.number().int().positive(),
 });
 
 export async function createManualLead(input: {
   landownerName: string;
   landownerEmail: string;
   landownerPhone: string;
-  propertyLocation: string;
-  projectTypeId: string;
-  tier: number;
-  landTypeId?: string;
-}): Promise<Result & { leadId?: string; recipients?: number }> {
+  propertyZip: string;
+  contractorCategoryCode: string;
+  workTypeCode: string;
+  landTypeCode: string;
+  timelineCode: string;
+  urgencyCode: string;
+  description: string;
+  budgetCents: number;
+}): Promise<
+  Result & {
+    leadId?: string;
+    recipients?: number;
+    reviewStatus?: "pending_review" | "routed";
+    blockers?: string[];
+  }
+> {
   await requireAdmin();
   const parsed = ManualLeadSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   try {
-    const res = await createAndDistributeLead({
-      ...parsed.data,
-      landTypeId: parsed.data.landTypeId || null,
+    const nameParts = parsed.data.landownerName.trim().split(/\s+/);
+    const firstName = nameParts.shift() ?? parsed.data.landownerName.trim();
+    const lastName = nameParts.join(" ") || null;
+    const res = await createOfficialEstimateRequest({
+      firstName,
+      lastName,
+      email: parsed.data.landownerEmail,
+      phone: parsed.data.landownerPhone,
+      propertyZip: parsed.data.propertyZip,
+      contractorCategoryCode: parsed.data.contractorCategoryCode,
+      landTypeCode: parsed.data.landTypeCode,
+      projectTypeCode: parsed.data.workTypeCode,
+      budgetCents: parsed.data.budgetCents,
+      timelineRaw: parsed.data.timelineCode,
+      urgency: parsed.data.urgencyCode,
+      description: parsed.data.description,
       source: "admin_manual",
+      routing: { mode: "general" },
     });
+    const recipients = await prisma.leadMatch.count({ where: { leadId: res.leadId } });
     revalidatePath("/admin/leads");
+    revalidatePath("/admin");
     return {
       ok: true,
-      message: `Lead created and sent to ${res.recipients} contractor(s).`,
+      message:
+        res.reviewStatus === "routed"
+          ? `Opportunity created and sent to ${recipients} contractor(s).`
+          : "Opportunity created and held for review.",
       leadId: res.leadId,
-      recipients: res.recipients,
+      recipients,
+      reviewStatus: res.reviewStatus,
+      blockers: res.blockers,
     };
   } catch (e) {
-    return { ok: false, message: e instanceof DomainError ? e.message : "Failed to create lead." };
+    return { ok: false, message: e instanceof DomainError ? e.message : "Failed to create opportunity." };
   }
 }

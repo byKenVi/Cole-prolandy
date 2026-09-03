@@ -173,6 +173,47 @@ describe("parseTopUpEvent", () => {
       parseTopUpEvent({ id: "evt_3", type: "invoice.paid", data: { object: {} } } as unknown as Stripe.Event),
     ).toBeNull();
   });
+
+  it("never treats success_fee PaymentIntents as wallet top-ups", () => {
+    expect(
+      parseTopUpEvent({
+        id: "evt_sf_pi",
+        type: "payment_intent.succeeded",
+        data: {
+          object: {
+            id: "pi_sf",
+            metadata: {
+              purpose: "success_fee",
+              leadMatchId: "m1",
+              contractorId: "c1",
+            },
+            amount_received: 40_000,
+          },
+        },
+      } as unknown as Stripe.Event),
+    ).toBeNull();
+  });
+
+  it("never treats success_fee checkout sessions as wallet top-ups", () => {
+    expect(
+      parseTopUpEvent({
+        id: "evt_sf_cs",
+        type: "checkout.session.completed",
+        data: {
+          object: {
+            mode: "payment",
+            metadata: {
+              purpose: "success_fee",
+              leadMatchId: "m1",
+              contractorId: "c1",
+            },
+            amount_total: 40_000,
+            payment_intent: "pi_sf",
+          },
+        },
+      } as unknown as Stripe.Event),
+    ).toBeNull();
+  });
 });
 
 function seedDueSuccessFee(amountCents = 40_000) {

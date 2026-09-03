@@ -3,25 +3,25 @@
 import { useState, useTransition } from "react";
 import { updateSetting } from "@/app/actions/admin";
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  font: "600 13px/1 'Inter'",
-  color: "var(--ink)",
-  marginBottom: 8,
-};
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  height: 46,
+  height: 48,
   padding: "0 14px",
   border: "1px solid var(--fieldLine)",
   borderRadius: 11,
   background: "var(--field)",
   color: "var(--ink)",
   fontFamily: "Inter",
+  fontSize: 15,
 };
-const hintStyle: React.CSSProperties = {
-  font: "400 12px/1.4 'Inter'",
-  color: "var(--ink3)",
+
+type TimingRow = {
+  id: string;
+  title: string;
+  plain: string;
+  value: string;
+  setValue: (v: string) => void;
+  unit: string;
 };
 
 export function FollowUpSettingsForm({
@@ -68,66 +68,80 @@ export function FollowUpSettingsForm({
     });
   }
 
+  const rows: TimingRow[] = [
+    {
+      id: "outcomeDelay",
+      title: "Ask if they won the job",
+      plain: "Hours after a contractor accepts before we ask whether they got the work.",
+      value: outcomeDelay,
+      setValue: setOutcomeDelay,
+      unit: "hours after acceptance",
+    },
+    {
+      id: "paymentDelay",
+      title: "Ask if the landowner paid",
+      plain: "Hours after a won job before we ask whether the landowner has paid the contractor.",
+      value: paymentDelay,
+      setValue: setPaymentDelay,
+      unit: "hours after won",
+    },
+    {
+      id: "paymentRetry",
+      title: "Ask again if still unpaid",
+      plain: 'If they say "Not yet," wait this long before checking on payment again.',
+      value: paymentRetry,
+      setValue: setPaymentRetry,
+      unit: 'hours after "Not yet"',
+    },
+  ];
+
   return (
-    <form onSubmit={onSubmit}>
-      <label style={labelStyle} htmlFor="outcomeDelay">
-        Ask contractor if they won the job after
-      </label>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
-        <input
-          id="outcomeDelay"
-          type="number"
-          min="1"
-          value={outcomeDelay}
-          onChange={(e) => setOutcomeDelay(e.target.value)}
-          style={{ ...inputStyle, flex: 1 }}
-        />
-        <span style={{ ...hintStyle, flex: "none" }}>hours</span>
-      </div>
-      <p style={{ ...hintStyle, margin: "0 0 20px" }}>
-        Hours after acceptance before asking the contractor whether they won the job.
-      </p>
-
-      <label style={labelStyle} htmlFor="paymentDelay">
-        Ask whether the landowner has paid after
-      </label>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
-        <input
-          id="paymentDelay"
-          type="number"
-          min="1"
-          value={paymentDelay}
-          onChange={(e) => setPaymentDelay(e.target.value)}
-          style={{ ...inputStyle, flex: 1 }}
-        />
-        <span style={{ ...hintStyle, flex: "none" }}>hours</span>
-      </div>
-      <p style={{ ...hintStyle, margin: "0 0 20px" }}>
-        Hours after a won job before asking whether the landowner has paid.
-      </p>
-
-      <label style={labelStyle} htmlFor="paymentRetry">
-        If not yet paid, ask again after
-      </label>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
-        <input
-          id="paymentRetry"
-          type="number"
-          min="1"
-          value={paymentRetry}
-          onChange={(e) => setPaymentRetry(e.target.value)}
-          style={{ ...inputStyle, flex: 1 }}
-        />
-        <span style={{ ...hintStyle, flex: "none" }}>hours</span>
-      </div>
-      <p style={{ ...hintStyle, margin: "0 0 22px" }}>
-        Hours to wait before re-asking if the contractor selects &ldquo;Not yet&rdquo; on payment.
-      </p>
+    <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {rows.map((row, i) => (
+        <div
+          key={row.id}
+          style={{
+            padding: "18px 18px",
+            borderRadius: 14,
+            border: "1px solid var(--line)",
+            background: "var(--card2)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+            <span
+              style={{
+                font: "700 11px/1 var(--mono)",
+                color: "var(--gold)",
+                letterSpacing: ".06em",
+              }}
+            >
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <label htmlFor={row.id} style={{ font: "600 15px/1.3 'Inter'", color: "var(--ink)" }}>
+              {row.title}
+            </label>
+          </div>
+          <p style={{ margin: "0 0 14px", font: "400 13px/1.45 'Inter'", color: "var(--ink3)" }}>
+            {row.plain}
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 320 }}>
+            <input
+              id={row.id}
+              type="number"
+              min="1"
+              value={row.value}
+              onChange={(e) => row.setValue(e.target.value)}
+              style={inputStyle}
+            />
+            <span style={{ font: "500 13px/1.3 'Inter'", color: "var(--ink2)", flex: "none", whiteSpace: "nowrap" }}>
+              {row.unit}
+            </span>
+          </div>
+        </div>
+      ))}
 
       {message && (
-        <p style={{ margin: "0 0 14px", font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>
-          {message}
-        </p>
+        <p style={{ margin: 0, font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>{message}</p>
       )}
 
       <button
@@ -137,6 +151,7 @@ export function FollowUpSettingsForm({
         style={{
           width: "100%",
           height: 50,
+          marginTop: 6,
           background: "var(--gold)",
           color: "#fff",
           border: "none",

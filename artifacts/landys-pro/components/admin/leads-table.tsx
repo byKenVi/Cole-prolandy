@@ -255,7 +255,7 @@ export function LeadsTable({
             <Link
               key={row.id}
               href={`/admin/leads/${row.id}`}
-              className="a-row admin-fade-up"
+              className="a-row"
               style={{
                 display: "grid",
                 gridTemplateColumns: GRID,

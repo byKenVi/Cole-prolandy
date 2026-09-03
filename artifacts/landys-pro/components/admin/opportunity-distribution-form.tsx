@@ -5,22 +5,23 @@ import { updateBooleanSetting, updateSetting } from "@/app/actions/admin";
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  font: "600 13px/1 'Inter'",
+  font: "600 14px/1.2 'Inter'",
   color: "var(--ink)",
-  marginBottom: 8,
+  marginBottom: 6,
 };
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  height: 46,
+  height: 48,
   padding: "0 14px",
   border: "1px solid var(--fieldLine)",
   borderRadius: 11,
   background: "var(--field)",
   color: "var(--ink)",
   fontFamily: "Inter",
+  fontSize: 15,
 };
 const hintStyle: React.CSSProperties = {
-  font: "400 12px/1.4 'Inter'",
+  font: "400 13px/1.45 'Inter'",
   color: "var(--ink3)",
 };
 
@@ -71,75 +72,85 @@ export function OpportunityDistributionForm({
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      <p style={{ ...hintStyle, margin: "0 0 18px", lineHeight: 1.5 }}>
-        When Unlimited is disabled, only the first X eligible contractors who accept receive the
-        landowner contact details.
-      </p>
-
-      <label
+    <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          font: "600 13px/1 'Inter'",
-          color: "var(--ink)",
-          marginBottom: 16,
-          cursor: "pointer",
+          padding: "16px 18px",
+          borderRadius: 14,
+          border: "1px solid var(--line)",
+          background: unlimited ? "var(--posBg)" : "var(--card2)",
         }}
       >
-        <input
-          type="checkbox"
-          checked={unlimited}
-          onChange={(e) => setUnlimited(e.target.checked)}
-          style={{ width: 18, height: 18, accentColor: "var(--gold)" }}
-        />
-        Unlimited acceptance
-      </label>
-      <p style={{ ...hintStyle, margin: "-8px 0 20px" }}>
-        When enabled, there is no cap on how many contractors can accept the same opportunity.
-      </p>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 12,
+            cursor: "pointer",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={unlimited}
+            onChange={(e) => setUnlimited(e.target.checked)}
+            style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--gold)", flex: "none" }}
+          />
+          <span>
+            <span style={{ display: "block", font: "600 15px/1.3 'Inter'", color: "var(--ink)" }}>
+              Unlimited acceptances
+            </span>
+            <span style={{ ...hintStyle, display: "block", marginTop: 4 }}>
+              Any number of eligible contractors can accept and receive landowner contact details.
+            </span>
+          </span>
+        </label>
+      </div>
 
-      <label style={labelStyle} htmlFor="maxAcceptances">
-        Max contractors who may accept
-      </label>
-      <input
-        id="maxAcceptances"
-        type="number"
-        min="1"
-        value={maxAcceptances}
-        onChange={(e) => setMaxAcceptances(e.target.value)}
-        disabled={unlimited}
-        style={{
-          ...inputStyle,
-          opacity: unlimited ? 0.55 : 1,
-        }}
-      />
-      <p style={{ ...hintStyle, margin: "7px 0 20px" }}>
-        Default is 3. Only the first N eligible contractors who accept receive landowner contact
-        details. Ignored when Unlimited is enabled.
-      </p>
+      <div style={{ opacity: unlimited ? 0.45 : 1, pointerEvents: unlimited ? "none" : "auto" }}>
+        <label style={labelStyle} htmlFor="maxAcceptances">
+          Acceptance cap
+        </label>
+        <p style={{ ...hintStyle, margin: "0 0 10px" }}>
+          Only the first {unlimited ? "N" : maxAcceptances || "N"} contractors who accept get the
+          landowner&apos;s contact info. Default is 3.
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 220 }}>
+          <input
+            id="maxAcceptances"
+            type="number"
+            min="1"
+            value={maxAcceptances}
+            onChange={(e) => setMaxAcceptances(e.target.value)}
+            disabled={unlimited}
+            style={inputStyle}
+          />
+          <span style={{ ...hintStyle, flex: "none", whiteSpace: "nowrap" }}>contractors</span>
+        </div>
+      </div>
 
-      <label style={labelStyle} htmlFor="expiryHours">
-        Lead / opportunity expiry (hours)
-      </label>
-      <input
-        id="expiryHours"
-        type="number"
-        min="1"
-        value={hours}
-        onChange={(e) => setHours(e.target.value)}
-        style={inputStyle}
-      />
-      <p style={{ ...hintStyle, margin: "7px 0 22px" }}>
-        An opportunity can no longer be accepted after this many hours, unless the acceptance
-        limit is reached first.
-      </p>
+      <div>
+        <label style={labelStyle} htmlFor="expiryHours">
+          Opportunity expiry
+        </label>
+        <p style={{ ...hintStyle, margin: "0 0 10px" }}>
+          After this many hours, contractors can no longer accept — unless the acceptance cap was
+          hit first.
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 220 }}>
+          <input
+            id="expiryHours"
+            type="number"
+            min="1"
+            value={hours}
+            onChange={(e) => setHours(e.target.value)}
+            style={inputStyle}
+          />
+          <span style={{ ...hintStyle, flex: "none" }}>hours</span>
+        </div>
+      </div>
 
       {message && (
-        <p style={{ margin: "0 0 14px", font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>
-          {message}
-        </p>
+        <p style={{ margin: 0, font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>{message}</p>
       )}
 
       <button

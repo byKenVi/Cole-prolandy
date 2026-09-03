@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p ${PORT:-3000}",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "prisma generate && next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-3000}",
     "typecheck": "tsc --noEmit",
@@ -19,7 +19,16 @@
     "ops:success-fee-reset:execute": "tsx ./scripts/success-fee-operational-reset.ts --execute",
     "staging:migrate": "tsx ./scripts/staging-database.ts migrate",
     "staging:reset": "tsx ./scripts/staging-database.ts reset",
-    "staging:reseed": "tsx ./scripts/staging-database.ts reseed"
+    "staging:reseed": "tsx ./scripts/staging-database.ts reseed",
+    "local:migrate": "tsx ./scripts/local-database.ts migrate",
+    "local:reset": "tsx ./scripts/local-database.ts reset",
+    "local:seed": "tsx ./scripts/local-database.ts seed",
+    "local:reseed": "tsx ./scripts/local-database.ts reseed",
+    "local:clerk-qa": "tsx ./scripts/local-clerk-qa.ts",
+    "local:storage": "tsx ./scripts/local-storage.ts",
+    "local:wix-intake": "tsx ./scripts/local-wix-intake.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "engines": {
     "node": ">=22 <23"
@@ -64,6 +73,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^4.1.10",
+    "@playwright/test": "1.51.0",
     "@esbuild/win32-x64": "0.27.3"
   }
 }
