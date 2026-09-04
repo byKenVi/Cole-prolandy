@@ -36,8 +36,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: "/admin-icons/dashboard.png" },
   { href: "/admin/leads", label: "Leads", icon: "/admin-icons/leads.png" },
   { href: "/admin/contractors", label: "Contractors", icon: "/admin-icons/contractors.png" },
-  { href: "/admin/fees", label: "Success fees", icon: "/admin-icons/success-fees.png" },
   { href: "/admin/confirmations", label: "Confirmations", icon: "/admin-icons/confirmations.png" },
+  { href: "/admin/fees", label: "Success fees", icon: "/admin-icons/success-fees.png" },
   { href: "/admin/settings", label: "Settings", icon: "/admin-icons/settings.png" },
 ];
 

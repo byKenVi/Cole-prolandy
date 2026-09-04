@@ -31,6 +31,19 @@ const TABS: { id: SettingsTabId; label: string }[] = [
 ];
 
 const cardPad: React.CSSProperties = { padding: "24px 26px" };
+/** Shared rule: every Settings tab panel matches the tab bar's full content width. */
+const settingsPanel: React.CSSProperties = {
+  ...cardPad,
+  width: "100%",
+  maxWidth: "none",
+  boxSizing: "border-box",
+};
+const settingsStack: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+  width: "100%",
+};
 const titleStyle: React.CSSProperties = {
   margin: "0 0 4px",
   font: "600 17px/1 'Inter'",
@@ -196,22 +209,13 @@ export function SettingsTabs({
       </div>
 
       {activeTab === "general" && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 16,
-            width: "100%",
-            maxWidth: 1100,
-          }}
-        >
+        <div style={settingsStack}>
           {isOwner && (
-            <Link href="/admin/team" style={{ textDecoration: "none", display: "block", height: "100%" }}>
+            <Link href="/admin/team" style={{ textDecoration: "none", display: "block", width: "100%" }}>
               <Panel
                 className="settings-team-card"
                 style={{
-                  ...cardPad,
-                  height: "100%",
+                  ...settingsPanel,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -219,7 +223,7 @@ export function SettingsTabs({
                   cursor: "pointer",
                 }}
               >
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <p style={titleStyle}>Team access</p>
                   <p style={{ ...descStyle, marginBottom: 0 }}>
                     Invite admins and choose who can open this dashboard.
@@ -242,7 +246,7 @@ export function SettingsTabs({
             </Link>
           )}
 
-          <Panel style={cardPad}>
+          <Panel style={settingsPanel}>
             <p style={titleStyle}>Appearance</p>
             <p style={{ ...descStyle, marginBottom: 18 }}>Light or dark admin theme.</p>
             <AppearancePicker />
@@ -255,20 +259,19 @@ export function SettingsTabs({
               all: "unset",
               cursor: "pointer",
               display: "block",
-              height: "100%",
+              width: "100%",
             }}
           >
             <Panel
               style={{
-                ...cardPad,
-                height: "100%",
+                ...settingsPanel,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 16,
               }}
             >
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <p style={titleStyle}>Directories</p>
                 <p style={{ ...descStyle, marginBottom: 0 }}>
                   Projects, land types, and contractor categories — names used across leads, not
@@ -294,7 +297,7 @@ export function SettingsTabs({
       )}
 
       {activeTab === "distribution" && (
-        <Panel style={{ ...cardPad, width: "100%", maxWidth: 920 }}>
+        <Panel style={settingsPanel}>
           <p style={titleStyle}>Opportunity distribution</p>
           <p style={descStyle}>
             Control how many contractors can accept an opportunity and how long it stays open.
@@ -308,7 +311,7 @@ export function SettingsTabs({
       )}
 
       {activeTab === "fees" && (
-        <Panel style={{ ...cardPad, maxWidth: 920 }}>
+        <Panel style={settingsPanel}>
           <p style={titleStyle}>Success fee tiers</p>
           <p style={descStyle}>
             SMALL / MEDIUM / LARGE bands by final contract value. Defaults: under $10k → 5%,
@@ -319,7 +322,7 @@ export function SettingsTabs({
       )}
 
       {activeTab === "followups" && (
-        <Panel style={{ ...cardPad, width: "100%", maxWidth: 920 }}>
+        <Panel style={settingsPanel}>
           <p style={titleStyle}>Follow-ups</p>
           <p style={descStyle}>
             When to nudge contractors about outcomes and payment after they accept an opportunity.
@@ -333,12 +336,13 @@ export function SettingsTabs({
       )}
 
       {activeTab === "directories" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%" }}>
+        <div style={settingsStack}>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
               gap: 12,
+              width: "100%",
             }}
           >
             {[
@@ -376,6 +380,8 @@ export function SettingsTabs({
                   display: "flex",
                   gap: 14,
                   alignItems: "flex-start",
+                  width: "100%",
+                  boxSizing: "border-box",
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -395,7 +401,7 @@ export function SettingsTabs({
           </div>
 
           {directory === "categories" && (
-            <Panel style={cardPad}>
+            <Panel style={settingsPanel}>
               <p style={titleStyle}>Contractor categories</p>
               <p style={{ ...descStyle, marginBottom: 18 }}>
                 One business category per contractor. Categories do not control project eligibility.
@@ -404,7 +410,7 @@ export function SettingsTabs({
             </Panel>
           )}
           {directory === "land" && (
-            <Panel style={cardPad}>
+            <Panel style={settingsPanel}>
               <p style={titleStyle}>Land types</p>
               <p style={{ ...descStyle, marginBottom: 18 }}>
                 Property classifications for leads. Rename freely; delete only when unused.
@@ -413,7 +419,7 @@ export function SettingsTabs({
             </Panel>
           )}
           {directory === "projects" && (
-            <Panel style={cardPad}>
+            <Panel style={settingsPanel}>
               <p style={titleStyle}>Projects / Services</p>
               <p style={{ ...descStyle, marginBottom: 18 }}>
                 Jobs landowners request. Success fee rates live under Success fee tiers — not here.
