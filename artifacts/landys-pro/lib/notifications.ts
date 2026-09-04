@@ -164,11 +164,46 @@ export async function notifyLandownerConfirmation(params: {
 }) {
   const link = landownerConfirmLink(params.token);
   const name = params.landownerName?.trim() || "there";
+  const yesLink = `${link}?a=paid`;
+  const notYetLink = `${link}?a=notyet`;
+  const subject = `Quick question about your ${params.projectLabel} project`;
+  const text = `Hi ${name},
+
+Have you paid the contractor for your ${params.projectLabel} project?
+
+Yes, I paid the contractor: ${yesLink}
+Not yet: ${notYetLink}`;
+  const html = `<!DOCTYPE html>
+<html><body style="margin:0;padding:24px;background:#FEFBF6;font-family:Georgia,serif;color:#3A352D;">
+  <div style="max-width:520px;margin:0 auto;background:#FFFDF9;border:1px solid #EBE3D4;border-radius:18px;padding:28px 24px;">
+    <p style="margin:0 0 6px;font:600 12px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#C0803C;">Landy's Pro</p>
+    <h1 style="margin:0 0 12px;font:600 24px/1.25 Georgia,serif;color:#4A3E2D;">Have you paid your contractor?</h1>
+    <p style="margin:0 0 22px;font:400 16px/1.5 Arial,sans-serif;color:#6B6459;">
+      Hi ${escapeHtml(name)} — this is only about your <strong>${escapeHtml(params.projectLabel)}</strong> project.
+      Tap one button below.
+    </p>
+    <p style="margin:0 0 12px;">
+      <a href="${yesLink}" style="display:inline-block;background:#C0803C;color:#fff;text-decoration:none;font:600 16px/1.2 Arial,sans-serif;padding:14px 20px;border-radius:12px;">Yes, I paid the contractor</a>
+    </p>
+    <p style="margin:0;">
+      <a href="${notYetLink}" style="display:inline-block;background:#FFF;color:#4A3E2D;text-decoration:none;font:600 16px/1.2 Arial,sans-serif;padding:14px 20px;border-radius:12px;border:1px solid #E6DFD1;">Not yet</a>
+    </p>
+  </div>
+</body></html>`;
   await email.send({
     to: safeEmailRecipient(params.landownerEmail),
-    subject: `Did you hire a contractor for your ${params.projectLabel} project?`,
-    text: `Hi ${name},\n\nDid you hire one of the contractors Landy's connected you with for your ${params.projectLabel} project?\n\n${link}`,
+    subject,
+    text,
+    html,
   });
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function collectFailure(

@@ -5,7 +5,7 @@
  * against the combined category + project-type name rather than an exact slug.
  * Always returns a 3D PNG so icon boxes are never empty.
  */
-const FALLBACK_ICON = "/icons/excavation.png";
+const FALLBACK_ICON = "/icons/fallback.png";
 
 const ICON_RULES: { keywords: string[]; src: string }[] = [
   { keywords: ["excavation", "dirt", "dig", "trench", "utility"], src: "/icons/excavation.png" },

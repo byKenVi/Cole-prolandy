@@ -12,7 +12,7 @@ import { ExitViewAsButton } from "@/components/auth/exit-view-as";
 const NAV: { href: string; label: string; icon: string }[] = [
   { href: "/dashboard", label: "Dashboard", icon: "/nav-icons/nav-home.png" },
   { href: "/opportunities", label: "Opportunities", icon: "/nav-icons/nav-leads.png" },
-  { href: "/jobs", label: "My Jobs", icon: "/icon-job-mono.png" },
+  { href: "/jobs", label: "My Jobs", icon: "/nav-icons/nav-jobs.png" },
   { href: "/fees", label: "Fees & Payments", icon: "/nav-icons/nav-wallet.png" },
   { href: "/profile", label: "Profile", icon: "/nav-icons/nav-profile.png" },
 ];

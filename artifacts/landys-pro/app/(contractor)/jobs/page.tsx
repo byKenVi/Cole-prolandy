@@ -149,15 +149,26 @@ function Shell({
 }) {
   return (
     <div className="contractor-page flex min-h-full flex-col">
-      <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-7">
-        <h1 className="font-fraunces text-[28px] font-semibold tracking-[-0.01em] text-[#4A3E2D] sm:text-[32px]">
-          My Jobs
-        </h1>
-        <p className="mt-1.5 max-w-[44ch] text-[15px] leading-relaxed text-[#8A7E68]">
-          {totalCount === 0
-            ? "Accepted opportunities show up here with the landowner's contact."
-            : `${totalCount} connected ${totalCount === 1 ? "job" : "jobs"} — grouped by what needs attention.`}
-        </p>
+      <header className="relative overflow-hidden border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-7">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(224,169,92,0.12),transparent_55%),linear-gradient(180deg,#FFF9EF_0%,#FEFBF6_75%)]"
+        />
+        <div className="relative flex items-start gap-3">
+          <span className="flex h-12 w-12 flex-none items-center justify-center rounded-[14px] bg-white shadow-[0_2px_10px_rgba(58,53,45,0.08)]">
+            <Image src="/nav-icons/nav-jobs.png" alt="" width={40} height={40} className="h-8 w-8 object-contain" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-fraunces text-[28px] font-semibold tracking-[-0.01em] text-[#4A3E2D] sm:text-[32px]">
+              My Jobs
+            </h1>
+            <p className="mt-1.5 max-w-[44ch] text-[15px] leading-relaxed text-[#8A7E68]">
+              {totalCount === 0
+                ? "Accepted opportunities show up here with the landowner's contact."
+                : `${totalCount} connected ${totalCount === 1 ? "job" : "jobs"} — grouped by what needs attention.`}
+            </p>
+          </div>
+        </div>
       </header>
 
       <div className="flex flex-1 flex-col gap-8 px-4 py-6 sm:px-5 md:px-[34px]">

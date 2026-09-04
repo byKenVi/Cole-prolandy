@@ -20,6 +20,7 @@ export type OpportunityCardData = {
   landTypeName?: string | null;
   feeRatePercent?: number;
   estimatedValueLabel?: string | null;
+  estimatedFeeLabel?: string | null;
   expiresAt?: Date | string | null;
   contact?: {
     name: string;
@@ -102,20 +103,30 @@ export function OpportunityCard({ lead }: { lead: OpportunityCardData }) {
           <span className="truncate">{lead.location}</span>
         </p>
 
-        {(lead.estimatedValueLabel || lead.feeRatePercent != null || lead.landTypeName) && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
+        {(lead.estimatedValueLabel || lead.estimatedFeeLabel || lead.feeRatePercent != null || lead.landTypeName) && (
+          <div className="mt-2.5 flex flex-col gap-1.5 text-[14px]">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {lead.estimatedValueLabel && (
+                <span className="font-semibold text-[#4A3E2D]">
+                  Estimated budget {lead.estimatedValueLabel}
+                </span>
+              )}
+              {lead.landTypeName && (
+                <span className="text-[13px] text-[#8A7E68]">{lead.landTypeName}</span>
+              )}
+            </div>
+            {(lead.estimatedFeeLabel || lead.feeRatePercent != null) && (
+              <p className="text-[13px] font-medium text-[#8A6B2E]">
+                Landy&apos;s fee{" "}
+                {lead.estimatedFeeLabel ?? formatFeeRate(lead.feeRatePercent)}
+                {lead.estimatedFeeLabel && lead.feeRatePercent != null
+                  ? ` · ${formatFeeRate(lead.feeRatePercent)}`
+                  : ""}{" "}
+                <span className="font-normal text-[#8A7E68]">if you win &amp; get paid</span>
+              </p>
+            )}
             {lead.estimatedValueLabel && (
-              <span className="font-semibold text-[#4A3E2D]">
-                Estimated budget {lead.estimatedValueLabel}
-              </span>
-            )}
-            {lead.feeRatePercent != null && (
-              <span className="rounded-full bg-[#F4EAD3] px-2.5 py-1 text-[12px] font-semibold text-[#8A6B2E]">
-                {formatFeeRate(lead.feeRatePercent)} Landy&apos;s fee
-              </span>
-            )}
-            {lead.landTypeName && (
-              <span className="text-[13px] text-[#8A7E68]">{lead.landTypeName}</span>
+              <p className="text-[12px] text-[#A39884]">Landowner-submitted budget — not a final contract value</p>
             )}
           </div>
         )}
@@ -167,12 +178,12 @@ export function OpportunityCard({ lead }: { lead: OpportunityCardData }) {
         {head}
       </Link>
       <div className="flex flex-col gap-3 border-t border-[#F2EBDD] bg-[#FDFAF4] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-        <p className="text-[13px] text-[#8A7E68]">
+        <p className="max-w-[28ch] text-[13px] leading-snug text-[#8A7E68]">
           Contact unlocks after you accept · Work stays off-platform
         </p>
-        <div className="flex flex-none items-stretch gap-2.5">
+        <div className="flex w-full flex-none items-stretch gap-2.5 sm:w-auto">
           <OneClickPass matchId={lead.matchId} />
-          <div className="min-w-[132px] flex-1 sm:flex-none [&_button]:h-12 [&_button]:w-full [&_button]:text-[16px]">
+          <div className="min-w-[148px] flex-1 sm:flex-none [&_button]:h-12 [&_button]:w-full [&_button]:text-[16px]">
             <OneClickAccept matchId={lead.matchId} />
           </div>
         </div>

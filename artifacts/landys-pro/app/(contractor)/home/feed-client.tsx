@@ -27,7 +27,7 @@ export type FeedRow = {
 };
 
 const GRID =
-  "grid-cols-[minmax(200px,2.2fr)_minmax(120px,1.1fr)_minmax(118px,0.9fr)_96px_minmax(128px,0.95fr)_minmax(196px,auto)]";
+  "grid-cols-[minmax(200px,2fr)_minmax(120px,1.05fr)_minmax(130px,0.95fr)_92px_minmax(150px,1.05fr)_minmax(220px,auto)]";
 
 type SortOrder = "newest" | "oldest";
 
@@ -74,12 +74,22 @@ export function ContractorFeed({
 
   return (
     <div className="contractor-page flex min-h-full flex-col">
-      <header className="flex flex-col gap-4 border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:flex-row md:items-end md:justify-between md:px-[34px] md:pt-7">
+      <header className="relative overflow-hidden border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-7">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(224,169,92,0.14),transparent_55%),linear-gradient(180deg,#FFF9EF_0%,#FEFBF6_70%)]"
+        />
+        <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
-          <h1 className="font-fraunces text-[28px] font-semibold tracking-[-0.01em] text-[#4A3E2D] sm:text-[32px]">
-            Opportunities
-          </h1>
-          <p className="mt-1.5 max-w-[42ch] text-[15px] leading-relaxed text-[#8A7E68]">
+          <div className="mb-2 flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-white shadow-[0_2px_10px_rgba(58,53,45,0.08)]">
+              <Image src="/nav-icons/nav-leads.png" alt="" width={40} height={40} className="h-8 w-8 object-contain" aria-hidden />
+            </span>
+            <h1 className="font-fraunces text-[28px] font-semibold tracking-[-0.01em] text-[#4A3E2D] sm:text-[32px]">
+              Opportunities
+            </h1>
+          </div>
+          <p className="mt-1.5 max-w-[46ch] text-[15px] leading-relaxed text-[#8A7E68]">
             {totalOpen > 0
               ? `${totalOpen} open ${totalOpen === 1 ? "job" : "jobs"} matched to your trade. Accept to unlock the landowner's contact.`
               : "No open matches right now — we'll text you when something fits."}
@@ -107,6 +117,7 @@ export function ContractorFeed({
             <ChevronDown className="h-4 w-4" strokeWidth={1.8} aria-hidden />
           </button>
         </div>
+        </div>
       </header>
 
       <div className="flex flex-1 flex-col px-4 py-5 sm:px-5 md:px-[34px] md:py-6">
@@ -130,6 +141,7 @@ export function ContractorFeed({
                     description: r.description,
                     landTypeName: r.landTypeName,
                     feeRatePercent: r.feeRatePercent,
+                    estimatedFeeLabel: r.estimatedFeeLabel,
                     estimatedValueLabel: r.estimatedValueLabel,
                     expiresAt: r.expiresAt,
                   }}
@@ -140,13 +152,23 @@ export function ContractorFeed({
             <div className="contractor-table-desktop rounded-[18px] border border-[#EBE3D4] bg-white shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
               <div className="overflow-x-auto">
                 <div
-                  className={`grid ${GRID} min-w-[980px] items-center gap-3.5 border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-3.5`}
+                  className={`grid ${GRID} min-w-[1040px] items-end gap-4 border-b border-[#EEE6D6] bg-[#FAF4E9] px-6 py-3.5`}
                 >
                   <HeadCell>Job</HeadCell>
                   <HeadCell>Location</HeadCell>
-                  <HeadCell>Estimated budget</HeadCell>
+                  <div>
+                    <HeadCell>Estimated budget</HeadCell>
+                    <p className="mt-1 text-[11px] font-normal normal-case tracking-normal text-[#A39884]">
+                      From landowner intake — not final
+                    </p>
+                  </div>
                   <HeadCell>Expiration</HeadCell>
-                  <HeadCell>Landy&apos;s success fee</HeadCell>
+                  <div>
+                    <HeadCell>Landy&apos;s success fee</HeadCell>
+                    <p className="mt-1 text-[11px] font-normal normal-case tracking-normal text-[#A39884]">
+                      If you win &amp; get paid
+                    </p>
+                  </div>
                   <HeadCell className="text-right">Actions</HeadCell>
                 </div>
                 {shown.map((r) => (
@@ -193,7 +215,7 @@ function FeedTableRow({ row }: { row: FeedRow }) {
 
   return (
     <div
-      className={`group grid ${GRID} min-w-[980px] items-center gap-3.5 border-b border-[#F2EBDD] px-6 last:border-b-0 hover:bg-[#FBF6EC] transition-colors`}
+      className={`group grid ${GRID} min-w-[1040px] items-center gap-4 border-b border-[#F2EBDD] px-6 last:border-b-0 hover:bg-[#FBF6EC] transition-colors`}
     >
       <Link href={href} className="flex min-w-0 items-center gap-3.5 py-4">
         <span className="flex h-12 w-12 flex-none items-center justify-center rounded-[14px] bg-[#F5EEDF]">
@@ -220,18 +242,20 @@ function FeedTableRow({ row }: { row: FeedRow }) {
         <ExpiryCountdown expiresAt={row.expiresAt} variant="inline" />
       </Link>
 
-      <Link href={href} className="py-4 pr-2">
+      <Link href={href} className="border-l border-[#F0E8D8] py-4 pl-4">
         <p className="text-[15px] font-semibold tabular-nums text-[#4A3E2D]">
           {row.estimatedFeeLabel ?? formatFeeRate(row.feeRatePercent)}
         </p>
         {row.estimatedFeeLabel && row.feeRatePercent != null && (
-          <p className="mt-0.5 text-[11px] text-[#8A7E68]">{formatFeeRate(row.feeRatePercent)}</p>
+          <p className="mt-0.5 text-[11px] text-[#8A7E68]">{formatFeeRate(row.feeRatePercent)} if you win</p>
         )}
       </Link>
 
-      <div className="flex items-center justify-end gap-2 py-4 pl-2">
+      <div className="relative z-10 flex items-center justify-end gap-2.5 border-l border-[#F0E8D8] py-4 pl-4">
         <OneClickPass matchId={row.matchId} />
-        <OneClickAccept matchId={row.matchId} />
+        <div className="min-w-[120px] [&_button]:w-full">
+          <OneClickAccept matchId={row.matchId} />
+        </div>
       </div>
     </div>
   );
@@ -242,12 +266,12 @@ function EmptyFeed() {
     <div className="flex flex-1 flex-col items-center justify-center rounded-[20px] border border-[#EBE3D4] bg-white px-8 py-16 text-center shadow-[0_2px_8px_rgba(58,53,45,0.05)]">
       <span className="mb-5 flex h-20 w-20 items-center justify-center rounded-[22px] bg-[#F5EEDF]">
         <Image
-          src="/empty-leads-3d.png"
+          src="/ui-icons/gift.png"
           alt=""
           aria-hidden
           width={112}
           height={112}
-          className="h-12 w-12 select-none object-contain opacity-60"
+          className="h-12 w-12 select-none object-contain"
         />
       </span>
       <p className="mb-2 font-fraunces text-[24px] font-medium text-[#4A3E2D]">

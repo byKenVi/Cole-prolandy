@@ -196,13 +196,22 @@ export function SettingsTabs({
       </div>
 
       {activeTab === "general" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, width: "100%", maxWidth: 920 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 16,
+            width: "100%",
+            maxWidth: 1100,
+          }}
+        >
           {isOwner && (
-            <Link href="/admin/team" style={{ textDecoration: "none" }}>
+            <Link href="/admin/team" style={{ textDecoration: "none", display: "block", height: "100%" }}>
               <Panel
                 className="settings-team-card"
                 style={{
                   ...cardPad,
+                  height: "100%",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -246,11 +255,13 @@ export function SettingsTabs({
               all: "unset",
               cursor: "pointer",
               display: "block",
+              height: "100%",
             }}
           >
             <Panel
               style={{
                 ...cardPad,
+                height: "100%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -331,9 +342,24 @@ export function SettingsTabs({
             }}
           >
             {[
-              { id: "projects", title: "Projects / Services", body: "Jobs landowners request." },
-              { id: "land", title: "Land types", body: "Property classifications." },
-              { id: "categories", title: "Contractor categories", body: "One business category per contractor." },
+              {
+                id: "projects",
+                title: "Projects / Services",
+                body: "Jobs landowners request.",
+                icon: "/admin-icons/dir-projects.png",
+              },
+              {
+                id: "land",
+                title: "Land types",
+                body: "Property classifications.",
+                icon: "/admin-icons/dir-land.png",
+              },
+              {
+                id: "categories",
+                title: "Contractor categories",
+                body: "One business category per contractor.",
+                icon: "/admin-icons/dir-categories.png",
+              },
             ].map((card) => (
               <button
                 key={card.id}
@@ -347,10 +373,23 @@ export function SettingsTabs({
                   background: directory === card.id ? "var(--goldSoft)" : "var(--card)",
                   cursor: "pointer",
                   boxShadow: "var(--shadow)",
+                  display: "flex",
+                  gap: 14,
+                  alignItems: "flex-start",
                 }}
               >
-                <p style={{ ...titleStyle, marginBottom: 6 }}>{card.title}</p>
-                <p style={{ ...descStyle, marginBottom: 0 }}>{card.body}</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={card.icon}
+                  alt=""
+                  width={40}
+                  height={40}
+                  style={{ width: 40, height: 40, objectFit: "contain", flex: "none" }}
+                />
+                <span style={{ minWidth: 0 }}>
+                  <p style={{ ...titleStyle, marginBottom: 6 }}>{card.title}</p>
+                  <p style={{ ...descStyle, marginBottom: 0 }}>{card.body}</p>
+                </span>
               </button>
             ))}
           </div>

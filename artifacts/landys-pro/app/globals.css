@@ -1217,8 +1217,13 @@ body:has(.admin-theme[data-theme="dark"]) {
 .contractor-card {
   border-radius: 18px;
   border: 1px solid #ebe3d4;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(58, 53, 45, 0.05);
+  background: linear-gradient(180deg, #ffffff 0%, #fffdf9 100%);
+  box-shadow: 0 4px 16px rgba(58, 53, 45, 0.06);
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.contractor-card:hover {
+  border-color: #e0d4bd;
+  box-shadow: 0 8px 22px rgba(58, 53, 45, 0.09);
 }
 
 .contractor-status-chip {

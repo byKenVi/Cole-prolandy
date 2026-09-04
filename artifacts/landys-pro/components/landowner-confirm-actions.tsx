@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { landownerConfirmAction } from "@/app/actions/follow-up";
 
@@ -18,6 +18,7 @@ export function LandownerConfirmActions({
   contractors: ContractorOption[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -27,11 +28,12 @@ export function LandownerConfirmActions({
   );
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
-  function submit(hired: boolean, hiredLeadMatchId?: string | null) {
+  function submit(paid: boolean, hiredLeadMatchId?: string | null) {
     setError(null);
-    setActiveAction(hired ? "yes" : "no");
+    setActiveAction(paid ? "yes" : "no");
     startTransition(async () => {
-      const res = await landownerConfirmAction(token, hired, hiredLeadMatchId ?? null);
+      // Backend still stores hired=true/false as the landowner signal.
+      const res = await landownerConfirmAction(token, paid, hiredLeadMatchId ?? null);
       if (res.ok) {
         setDone(true);
         router.refresh();
@@ -40,10 +42,30 @@ export function LandownerConfirmActions({
     });
   }
 
+  useEffect(() => {
+    const answer = searchParams.get("a");
+    if (!answer || done || pending) return;
+    if (answer === "notyet") {
+      submit(false);
+      return;
+    }
+    if (answer === "paid") {
+      if (contractors.length === 1) {
+        submit(true, contractors[0]!.leadMatchId);
+      } else if (contractors.length > 1) {
+        setStep("pick");
+      } else {
+        setError("No contractors are linked to this project yet.");
+      }
+    }
+    // Intentionally only on first mount / answer param.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (done) {
     return (
-      <p className="rounded-sm bg-[#E8F3EC] p-4 text-center text-sm font-medium text-[#2F6B4A]">
-        Thank you — your response has been recorded.
+      <p className="rounded-[14px] bg-[#E8F3EC] p-4 text-center text-[15px] font-medium text-[#2F6B4A]">
+        Thank you — we recorded your answer.
       </p>
     );
   }
@@ -54,7 +76,7 @@ export function LandownerConfirmActions({
         {error && (
           <p className="rounded-sm bg-danger-soft p-3 text-sm font-medium text-danger">{error}</p>
         )}
-        <p className="text-[15px] text-[#6B6459]">Which contractor did you hire?</p>
+        <p className="text-[15px] text-[#6B6459]">Which contractor did you pay?</p>
         <div className="flex flex-col gap-2">
           {contractors.map((c) => (
             <label
@@ -80,7 +102,7 @@ export function LandownerConfirmActions({
           disabled={pending || !selectedMatchId}
           onClick={() => submit(true, selectedMatchId)}
         >
-          Confirm
+          Yes, I paid this contractor
         </Button>
         <Button
           variant="outline"
@@ -102,7 +124,9 @@ export function LandownerConfirmActions({
       {error && (
         <p className="rounded-sm bg-danger-soft p-3 text-sm font-medium text-danger">{error}</p>
       )}
-      <p className="text-center text-[15px] text-[#6B6459]">Did you hire a contractor for this project?</p>
+      <p className="text-center text-[16px] leading-relaxed text-[#6B6459]">
+        Have you paid the contractor for this project?
+      </p>
       <Button
         variant="accent"
         size="cta"
@@ -119,7 +143,7 @@ export function LandownerConfirmActions({
           }
         }}
       >
-        Yes
+        Yes, I paid the contractor
       </Button>
       <Button
         variant="outline"
@@ -128,7 +152,7 @@ export function LandownerConfirmActions({
         disabled={pending}
         onClick={() => submit(false)}
       >
-        No
+        Not yet
       </Button>
     </div>
   );

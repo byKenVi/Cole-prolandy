@@ -125,14 +125,26 @@ export default async function ContractorDashboard() {
 
   return (
     <div className="contractor-page px-4 py-6 sm:px-5 md:px-[34px] md:py-8">
-      <header className="mb-7">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#C0803C]">
-          Welcome back
-        </p>
-        <h1 className="mt-1 font-fraunces text-[28px] font-semibold tracking-[-0.02em] text-[#4A3E2D] sm:text-[34px]">
-          {firstName}
-        </h1>
-        <p className="mt-2 max-w-[46ch] text-[16px] leading-relaxed text-[#6B6459]">{summary}</p>
+      <header className="relative mb-8 overflow-hidden rounded-[22px] border border-[#EDE4D3] bg-white px-5 py-6 shadow-[0_8px_24px_rgba(58,53,45,0.06)] sm:px-7 sm:py-7">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(224,169,92,0.18),transparent_50%),linear-gradient(135deg,#FFFDF8,#F7F0E3)]"
+        />
+        <div className="relative flex items-start gap-4">
+          <span className="hidden h-14 w-14 flex-none items-center justify-center rounded-[16px] bg-white shadow-sm sm:flex">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/nav-icons/nav-home.png" alt="" width={40} height={40} className="h-9 w-9 object-contain" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#C0803C]">
+              Welcome back
+            </p>
+            <h1 className="mt-1 font-fraunces text-[28px] font-semibold tracking-[-0.02em] text-[#4A3E2D] sm:text-[34px]">
+              {firstName}
+            </h1>
+            <p className="mt-2 max-w-[46ch] text-[16px] leading-relaxed text-[#6B6459]">{summary}</p>
+          </div>
+        </div>
       </header>
 
       {dueFees.length > 0 && (
@@ -222,10 +234,10 @@ export default async function ContractorDashboard() {
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
             <h2 className="font-fraunces text-[22px] font-semibold text-[#4A3E2D]">
-              My active leads
+              My jobs
             </h2>
             <p className="mt-0.5 text-[14px] text-[#8A7E68]">
-              Accepted jobs and anything waiting on payment
+              Accepted · waiting to be paid · fee due
             </p>
           </div>
           <Link

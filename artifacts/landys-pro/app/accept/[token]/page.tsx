@@ -110,7 +110,7 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
             <div className="mb-3 flex items-start gap-3">
               <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#F5EEDF]">
                 <Image
-                  src={iconSrc ?? "/icons/excavation.png"}
+                  src={iconSrc ?? "/icons/fallback.png"}
                   alt=""
                   aria-hidden
                   width={40}

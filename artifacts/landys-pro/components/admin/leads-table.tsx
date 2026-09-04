@@ -278,7 +278,7 @@ export function LeadsTable({
                   justifyContent: "center",
                 }}
               >
-                <Image src={row.iconSrc || "/icons/excavation.png"} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
+                <Image src={row.iconSrc || "/icons/fallback.png"} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
               </span>
               <div style={{ minWidth: 0 }}>
                 <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>

@@ -184,8 +184,8 @@ function contractorClaimSummary(matches: ConfirmationRow["lead"]["matches"]): {
 
 function landownerConfirmationText(row: ConfirmationRow, hiredName: string | null): string {
   if (!row.respondedAt) return "Waiting for response";
-  if (row.hired) return hiredName ?? "Hired (contractor unknown)";
-  return "Did not hire anyone";
+  if (row.hired) return hiredName ? `Paid ${hiredName}` : "Paid a contractor";
+  return "Not yet paid";
 }
 
 function ConfirmEmptyIcon() {
@@ -226,7 +226,7 @@ export default async function AdminConfirmationsPage({
       <PageHeader
         kicker="Trust check"
         title="Confirmations"
-        subtitle="Did the landowner hire who the contractor claimed? This page catches mismatches before a success fee sticks."
+        subtitle="Landowners confirm whether they paid a contractor. Review mismatches before a success fee sticks."
       />
 
       <Panel
@@ -237,7 +237,7 @@ export default async function AdminConfirmationsPage({
         }}
       >
         <p style={{ margin: 0, font: "500 14px/1.5 'Inter'", color: "var(--ink2)" }}>
-          Contractors report outcomes. Landowners confirm who they hired.{" "}
+          Contractors report outcomes. Landowners confirm payment.{" "}
           <span style={{ color: "var(--ink)", fontWeight: 600 }}>When those disagree, you review here.</span>
         </p>
       </Panel>

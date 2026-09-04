@@ -1,5 +1,6 @@
-import { MapPin, Hammer } from "lucide-react";
+import { MapPin } from "lucide-react";
 import Image from "next/image";
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { getAcceptedMatchesForLandowner } from "@/lib/domain/landowner-confirm";
 import { LandownerConfirmActions } from "@/components/landowner-confirm-actions";
@@ -70,7 +71,7 @@ export default async function LandownerFollowUpPage({
         <Wordmark />
         {confirmation && !confirmation.respondedAt && lead && (
           <p className="mt-2 text-[15px] text-[#6B6459]">
-            Help us confirm how your project went.
+            One quick question about your project.
           </p>
         )}
       </header>
@@ -87,15 +88,18 @@ export default async function LandownerFollowUpPage({
         <div className="mx-auto w-full max-w-lg px-4 pb-16 pt-4">
           <div className="rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-5 shadow-[0_12px_32px_rgba(58,53,45,0.10)]">
             <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#C0803C]">
-              Project confirmation
+              Payment check-in
             </p>
             <div className="mb-4 mt-3 flex items-start gap-3">
               <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#F5EEDF]">
-                {iconSrc ? (
-                  <Image src={iconSrc} alt="" aria-hidden width={40} height={40} className="h-7 w-7 object-contain" />
-                ) : (
-                  <Hammer className="h-6 w-6 text-[#9A6E2E]" aria-hidden />
-                )}
+                <Image
+                  src={iconSrc ?? "/icons/fallback.png"}
+                  alt=""
+                  aria-hidden
+                  width={40}
+                  height={40}
+                  className="h-7 w-7 object-contain"
+                />
               </span>
               <div className="min-w-0">
                 <h1 className="font-fraunces text-[20px] font-medium leading-tight tracking-[-0.01em] text-[#3A352D]">
@@ -108,7 +112,9 @@ export default async function LandownerFollowUpPage({
               </div>
             </div>
 
-            <LandownerConfirmActions token={token} contractors={contractors} />
+            <Suspense fallback={<p className="text-center text-[14px] text-[#8A7E68]">Loading…</p>}>
+              <LandownerConfirmActions token={token} contractors={contractors} />
+            </Suspense>
           </div>
         </div>
       )}

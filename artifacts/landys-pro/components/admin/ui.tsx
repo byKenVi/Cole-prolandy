@@ -253,7 +253,7 @@ export function IconTile({
   imgSize?: number;
   radius?: number;
 }) {
-  const resolved = src || "/icons/excavation.png";
+  const resolved = src || "/icons/fallback.png";
   return (
     <span
       style={{
