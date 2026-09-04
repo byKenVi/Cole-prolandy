@@ -54,6 +54,7 @@ STRIPE_MOCK = "true"
 RESEND_MOCK = "true"
 TWILIO_MOCK = "false"
 LANDYS_ENV = "production"
+ADMIN_EMAILS = "cole@mudrockcapital.com"
 
 [userenv.shared]
 WIX_ESTIMATE_INTEGRATION_ENABLED = "true"
