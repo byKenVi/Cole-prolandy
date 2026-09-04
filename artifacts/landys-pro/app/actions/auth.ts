@@ -9,12 +9,12 @@ import { getSession, authMode } from "@/lib/auth";
  * the Replit proxy routing /api/* to the api-server artifact instead of Next.js.
  */
 export async function getPostAuthRedirect(): Promise<string> {
-  if (authMode() !== "clerk") return "/home";
+  if (authMode() !== "clerk") return "/dashboard";
 
   const session = await getSession();
   if (!session.userId) return "/sign-in";
   if (session.role === "admin") return "/admin";
   if (session.deactivated) return "/deactivated";
   if (session.needsOnboarding) return "/profile";
-  return "/home";
+  return "/dashboard";
 }

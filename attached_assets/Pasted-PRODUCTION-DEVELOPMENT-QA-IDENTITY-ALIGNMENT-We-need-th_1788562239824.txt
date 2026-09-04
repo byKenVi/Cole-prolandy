@@ -1,0 +1,195 @@
+PRODUCTION + DEVELOPMENT QA IDENTITY ALIGNMENT
+
+We need the SAME QA identities and roles in Development and Production so there is no ambiguity during testing.
+
+Do NOT change the global authentication architecture unless a genuine code defect is proven.
+
+Use explicit Clerk user ID linkage as the source of truth.
+
+==================================================
+EXPECTED IDENTITIES — BOTH ENVIRONMENTS
+==================================================
+
+QA ADMIN
+Email:
+kevin.linhounhinto@techma.ca
+
+Role:
+OWNER / full Admin
+
+Expected:
+sign in
+→ /admin
+
+QA CONTRACTOR
+Email:
+lihounhintoe@gmail.com
+
+Role:
+Contractor ONLY
+
+Expected:
+sign in
+→ /dashboard
+→ Opportunities
+→ My Jobs
+→ Fees
+→ Profile
+
+Must NOT resolve to /admin.
+
+CLIENT OWNER
+Email:
+cole@mudrockcapital.com
+
+Role:
+OWNER / Admin
+
+Do NOT sign in as Cole.
+Preserve his Production bootstrap mapping.
+
+==================================================
+1. FIX DEVELOPMENT FIRST
+==================================================
+
+Development currently has a bug:
+
+lihounhintoe@gmail.com
+should be Contractor,
+but currently redirects to Admin.
+
+Diagnose the Development DATA/LINKAGE.
+
+Check:
+
+- Clerk Development user ID for kevin.linhounhinto@techma.ca
+- Clerk Development user ID for lihounhintoe@gmail.com
+- Admin records
+- Contractor records
+- explicit auth-user ID mappings
+- whether the Gmail account exists accidentally in Admin
+- whether the same Clerk ID is linked to both roles
+- whether seed/linking logic attached the wrong identity
+
+Expected Development mapping:
+
+kevin.linhounhinto@techma.ca
+→ Admin only
+
+lihounhintoe@gmail.com
+→ Contractor only
+
+Fix the Development mapping/data if incorrect.
+
+Do NOT hard-code emails in routing logic.
+
+Do NOT add special-case redirects.
+
+If the same email exists accidentally as an Admin record, remove/fix that incorrect QA linkage safely.
+
+Verify:
+
+Admin QA
+→ /admin PASS
+
+Contractor QA
+→ /dashboard PASS
+→ /admin blocked PASS
+
+==================================================
+2. CREATE / LINK THE SAME IDENTITIES IN PRODUCTION
+==================================================
+
+Use Replit-managed Clerk PRODUCTION.
+
+Create/link:
+
+ADMIN QA
+kevin.linhounhinto@techma.ca
+→ Production Admin / Owner
+
+CONTRACTOR QA
+lihounhintoe@gmail.com
+→ one controlled Production Contractor QA record
+
+COLE
+cole@mudrockcapital.com
+→ Production Owner/Admin
+
+IMPORTANT:
+
+Each Clerk Production user must have its own explicit role linkage.
+
+Never link one Clerk user ID to both Admin and Contractor.
+
+Explicit Clerk user ID mapping takes precedence over email fallback.
+
+==================================================
+3. PRODUCTION CONTRACTOR QA RECORD
+==================================================
+
+For lihounhintoe@gmail.com:
+
+Create or use ONE clearly identified QA Contractor record.
+
+It may be used for controlled Production testing.
+
+Requirements:
+- Contractor role only
+- no Admin access
+- safe QA phone/email mapping if needed
+- do not notify real contractors
+- do not create fake revenue permanently
+
+After QA, operational test Leads/Matches/Fees can be cleaned while the QA Contractor account itself may remain for TECHMA testing.
+
+==================================================
+4. VERIFY
+==================================================
+
+DEVELOPMENT
+
+kevin.linhounhinto@techma.ca
+→ /admin
+
+lihounhintoe@gmail.com
+→ /dashboard
+→ /admin forbidden
+
+PRODUCTION
+
+kevin.linhounhinto@techma.ca
+→ /admin
+
+lihounhintoe@gmail.com
+→ /dashboard
+→ /admin forbidden
+
+Cole mapping remains:
+cole@mudrockcapital.com
+→ Owner/Admin
+
+Do not perform broad browser QA.
+
+Do not touch Stripe, Twilio, Resend, Wix, database schema, Storage, or product logic.
+
+Return only:
+
+DEVELOPMENT
+- Admin QA linkage:
+- Admin login:
+- Contractor QA linkage:
+- Contractor login:
+- Contractor blocked from /admin:
+- root cause of previous Gmail → Admin redirect:
+
+PRODUCTION
+- Admin QA linkage:
+- Admin login:
+- Contractor QA linkage:
+- Contractor login:
+- Contractor blocked from /admin:
+- Cole Owner mapping preserved:
+
+CODE CHANGE REQUIRED:
+YES / NO

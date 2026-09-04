@@ -59,7 +59,7 @@ export default function PostAuthPage() {
     // Auth confirmed on the client — call a server action for the destination.
     getPostAuthRedirect()
       .then((destination) => router.replace(destination))
-      .catch(() => router.replace("/home"));
+      .catch(() => router.replace("/dashboard"));
   }, [isLoaded, isSignedIn, router]);
 
   return (
