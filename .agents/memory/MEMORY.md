@@ -14,3 +14,4 @@
 - [pnpm pin on Replit](pnpm-pin-replit.md) — keep packageManager aligned with Replit’s installed pnpm; mismatches can recurse during self-install and prevent workflows from starting.
 - [Stripe webhook environment isolation](stripe-webhook-environment-isolation.md) — Preview test credentials may share an account with the published test webhook; detect overlapping endpoints and fail closed.
 - [Twilio QA recipient diagnosis](twilio-qa-recipient-diagnosis.md) — verify the Development override against the known-good QA destination before blaming working Twilio credentials.
+- [Production publish data migrations](production-publish-data-migrations.md) — schema sync can create tables without running Prisma data migrations; reference rows then need an approved Production initializer.
