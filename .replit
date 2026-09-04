@@ -50,9 +50,10 @@ channel = "stable-25_05"
 # registered on the Stripe connector account (we_1TyZA1DZftuEtu8223cR6xoe).
 CLERK_PROXY_URL = "https://cole-prolandy-project.replit.app/api/__clerk"
 NEXT_PUBLIC_APP_URL = "https://cole-prolandy-project.replit.app"
-STRIPE_MOCK = "false"
-RESEND_MOCK = "false"
+STRIPE_MOCK = "true"
+RESEND_MOCK = "true"
 TWILIO_MOCK = "false"
+LANDYS_ENV = "production"
 
 [userenv.shared]
 WIX_ESTIMATE_INTEGRATION_ENABLED = "true"

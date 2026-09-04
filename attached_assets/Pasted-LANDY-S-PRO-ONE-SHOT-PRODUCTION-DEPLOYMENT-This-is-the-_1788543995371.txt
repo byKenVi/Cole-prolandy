@@ -1,0 +1,509 @@
+LANDY'S PRO — ONE-SHOT PRODUCTION DEPLOYMENT
+
+This is the FINAL production deployment pass.
+
+Development is already GREEN and validated.
+
+Current release candidate:
+63df5f9
+
+Development already has:
+- native Replit PostgreSQL
+- managed Clerk Development
+- isolated Replit Stripe sandbox
+- Twilio real SMS + magic links verified
+- Replit App Storage
+- UI/business flow validated
+- current success-fee model validated
+
+IMPORTANT:
+I have already removed the old Supabase DATABASE_URL and DIRECT_URL overrides.
+
+We now want a CLEAN, SELF-CONTAINED REPLIT PRODUCTION ENVIRONMENT.
+
+Do this in ONE production pass.
+
+Do NOT perform broad exploratory audits.
+Do NOT repeatedly run browser automation.
+Do NOT redesign or refactor the application.
+Do NOT modify approved business logic.
+
+Use the existing validated code and infrastructure.
+
+==================================================
+TARGET FINAL ARCHITECTURE
+==================================================
+
+REPLIT DEVELOPMENT
+Leave unchanged.
+
+REPLIT PRODUCTION
+- Replit native Production PostgreSQL
+- Replit-managed Clerk Production environment
+- Replit App Storage
+- Production-safe Twilio/Resend configuration
+- Stripe isolated from TECHMA/personal Stripe
+- client-owned live Stripe later when provided
+- NO runtime dependency on personal Supabase
+
+OLD SUPABASE
+- leave untouched as rollback/reference
+- do not delete anything
+- application Production must no longer depend on it
+
+==================================================
+STEP 1 — VERIFY RELEASE
+==================================================
+
+Confirm:
+
+main = origin/main
+HEAD = 63df5f9
+
+Working tree must be clean.
+
+Do not modify code unless an actual deployment blocker is discovered.
+
+==================================================
+STEP 2 — PROVISION NATIVE REPLIT PRODUCTION DB
+==================================================
+
+Because DATABASE_URL and DIRECT_URL Supabase overrides were removed:
+
+Provision/attach the native REPLIT PRODUCTION PostgreSQL database.
+
+CRITICAL:
+
+Do NOT:
+- reconnect Supabase
+- copy Development database data
+- copy old Production Supabase data wholesale
+- seed Development fixtures
+
+Confirm the Production runtime receives the native Replit DATABASE_URL.
+
+DIRECT_URL is no longer required by the current PostgreSQL-compatible Prisma configuration.
+
+Before migrating, report internally/verify:
+
+Database provider: Replit native PostgreSQL
+Environment: Production
+NOT Supabase
+NOT Development database
+
+==================================================
+STEP 3 — APPLY PRODUCTION SCHEMA
+==================================================
+
+Apply the existing Prisma migration history to the EMPTY Production database.
+
+All existing migrations should be applied in order.
+
+Do not use destructive reset commands.
+
+Do not use Development reseed.
+
+Production must receive SCHEMA only at this stage.
+
+Verify migration state afterward.
+
+==================================================
+STEP 4 — INITIALIZE ONLY PRODUCTION REFERENCE DATA
+==================================================
+
+Populate ONLY data genuinely required for the application to operate:
+
+- canonical/current live-v3 taxonomy
+- project/service directory
+- land types
+- contractor categories
+- current canonical mappings
+- success-fee tiers:
+  < $10,000 = 5%
+  $10,000–$24,999 = 4%
+  $25,000+ = 3%
+- acceptance cap = 3
+- unlimited acceptances = false
+- follow-up timing defaults
+- other genuinely required AppSettings/reference configuration
+
+Do NOT create:
+
+- QA/test leads
+- QA matches
+- QA success fees
+- fake confirmations
+- QA follow-up tokens
+- wallet transactions
+- wallet balances
+- legacy pricing tiers
+- fake revenue
+- fake contractors
+
+Expected operational counts immediately after reference initialization:
+
+Leads = 0
+LeadMatches = 0
+SuccessFees = 0
+LandownerConfirmations = 0
+FollowUpTokens = 0
+WalletTransactions = 0
+Fake revenue = $0
+
+==================================================
+STEP 5 — CONTRACTORS FROM REAL SOURCE
+==================================================
+
+Use the EXISTING validated Wix/Landys contractor synchronization path to populate the real contractor directory.
+
+Do not manually copy the old dirty Supabase database.
+
+Sync only real current contractor business data.
+
+Preserve:
+- contractor status
+- current categories
+- work types
+- matching information
+- Wix/external identity when actually available
+
+Do NOT fabricate Wix IDs.
+
+Do NOT send notifications to contractors merely because they were synchronized.
+
+If the current Wix sync cannot complete because an external Wix identifier is still genuinely unavailable, do not block deployment unnecessarily:
+- sync what the existing supported integration can safely sync
+- report only the missing external-ID limitation
+
+==================================================
+STEP 6 — APP STORAGE
+==================================================
+
+Production must use Replit App Storage for new uploads.
+
+Do NOT restore Supabase Storage as a runtime provider.
+
+Known legacy audit:
+
+- 3 contractor logos were classified as real/current
+- 9 failed attachment records were classified as QA/test/obsolete
+
+Actions:
+
+- DO NOT copy the 9 failed/test attachments
+- for the 3 real contractor logos:
+  1. preferably re-source them from the canonical Wix contractor data if available
+  2. otherwise migrate the actual files to Replit App Storage if safely accessible
+  3. do not block the entire deployment over cosmetic logos if they cannot be recovered immediately
+
+No newly created Production record may write to Supabase Storage.
+
+==================================================
+STEP 7 — REPLIT-MANAGED CLERK PRODUCTION
+==================================================
+
+Configure/use the Replit-managed Clerk PRODUCTION environment.
+
+Development Clerk users must remain isolated from Production.
+
+Preserve the application's existing authorization model:
+
+Clerk identity
+→ Admin or Contractor DB record
+
+Do NOT redesign auth.
+
+Do NOT use email-only role guessing when explicit Clerk identity linkage exists.
+
+Create/link the required Production Owner/Admin account for client access.
+
+IMPORTANT:
+If Cole's exact Production admin email cannot be determined unambiguously from the existing client/admin configuration, STOP ONLY THIS SUBSTEP and tell me the exact email address you need.
+
+Do NOT invent Cole's email.
+
+Everything else in the deployment can continue.
+
+Once supplied/known:
+- create/invite Cole
+- link him to an Admin/Owner record
+- verify login lands in /admin
+
+Do not expose Clerk terminology in the UI.
+
+==================================================
+STEP 8 — TWILIO PRODUCTION CONFIGURATION
+==================================================
+
+The Development Twilio + magic-link flow has already been physically verified.
+
+Do NOT rewrite it.
+
+Configure Production using the intended Twilio credentials/sender.
+
+Before sending anything, verify:
+
+- Production public base URL
+- SMS magic links use the published Production domain
+- no Development/Preview domain remains in Production-generated links
+
+CRITICAL NOTIFICATION SAFETY:
+
+Do NOT send bulk messages to synced real contractors.
+
+For Production smoke testing, use ONLY the explicitly approved QA destination.
+
+Perform only ONE controlled SMS smoke test after publish:
+
+SMS
+→ physical QA phone
+→ secure magic link
+→ published Production URL
+
+Do not trigger bulk follow-up jobs.
+
+==================================================
+STEP 9 — RESEND / EMAIL
+==================================================
+
+Preserve the current email architecture.
+
+We need:
+- contractor follow-up email
+- landowner confirmation email
+- simple secure magic links
+
+Landowner confirmation UX should remain simple:
+
+YES / I paid the contractor
+NOT YET
+
+Do NOT invent a new email workflow.
+
+If client-owned Resend credentials are available:
+configure them for Production.
+
+If client-owned Resend credentials are NOT available:
+do not block deployment.
+
+Instead:
+- keep real Production sending fail-closed or safely configured
+- clearly list Resend access as a client handoff item
+
+Do NOT silently send client Production emails from an unintended TECHMA account.
+
+==================================================
+STEP 10 — STRIPE PRODUCTION
+==================================================
+
+IMPORTANT ARCHITECTURE RULE:
+
+Replit Production must NOT depend on my personal/TECHMA Stripe account.
+
+Development already uses an isolated Replit sandbox.
+
+Production eventually needs the CLIENT'S Stripe account.
+
+If client-owned live Stripe is NOT connected yet:
+
+DO NOT:
+- connect my personal Stripe
+- create live charges
+- reuse Cursor local Stripe credentials
+- reuse Development webhook credentials
+
+Keep Production payments clearly fail-closed / non-live until the client Stripe account is connected.
+
+The rest of the application must remain usable.
+
+Preserve current payment implementation:
+
+Contractor
+→ Success Fee DUE
+→ Pay Landy's
+→ saved PaymentMethod
+→ Stripe
+→ webhook
+→ PAID
+
+Offline payment remains available:
+
+Admin
+→ Record Offline Payment
+→ Check / Other
+→ PAID
+
+Once client Stripe is provided later:
+- connect that account
+- configure a dedicated Production webhook
+- no code redesign should be required
+
+==================================================
+STEP 11 — PUBLISH
+==================================================
+
+Publish the current approved release.
+
+CRITICAL:
+
+DO NOT choose any option equivalent to:
+"Copy Development database data to Production"
+
+Production gets:
+- schema
+- approved reference data
+- real contractor sync
+
+NOT Development fixtures.
+
+Published application must use:
+
+- native Replit Production DB
+- managed Clerk Production
+- Replit App Storage
+- Production configuration
+
+==================================================
+STEP 12 — MINIMAL PRODUCTION SMOKE TEST
+==================================================
+
+DO NOT run exhaustive browser QA.
+
+Perform only:
+
+ADMIN
+- production Admin login
+- Dashboard
+- Leads
+- Contractors
+- Confirmations
+- Success Fees
+- Settings
+
+CONTRACTOR
+Only if a controlled Production contractor QA account exists:
+- Dashboard
+- Opportunities
+- My Jobs
+- Fees
+- Profile
+
+FLOW
+Create at most ONE controlled Production QA opportunity if required:
+
+- opportunity exists
+- contractor acceptance
+- contact reveal
+- magic link
+- status transition
+
+DO NOT create multiple fixtures.
+
+TWILIO
+One controlled real SMS only.
+
+STRIPE
+Do NOT create a live charge unless client-owned live Stripe is explicitly connected.
+
+==================================================
+STEP 13 — CLEAN THE PRODUCTION QA RECORD
+==================================================
+
+After smoke testing:
+
+Remove the controlled QA operational data you created.
+
+Do NOT remove:
+- real contractors
+- Admin accounts
+- reference data
+- canonical taxonomy
+- settings
+
+Final expected operational state before handoff:
+
+QA Leads = 0
+QA Matches = 0
+QA SuccessFees = 0
+QA Confirmations = 0
+QA FollowUpTokens = 0
+WalletTransactions = 0
+Fake revenue = $0
+
+Real contractor directory remains.
+
+==================================================
+STEP 14 — COST / EXECUTION RULES
+==================================================
+
+This is important.
+
+Do not waste Replit Agent runtime.
+
+Avoid:
+- broad repo audits
+- repeated full test suites
+- repeated browser loops
+- long speculative investigations
+- architecture refactors
+- documentation work
+- screenshots unless required
+
+Development already passed extensive QA.
+
+For Production:
+- perform only required migration/init actions
+- targeted validation
+- one final smoke test
+
+If something is blocked by a missing external credential, report the missing credential immediately instead of spending significant runtime trying to work around it.
+
+==================================================
+FINAL REPORT
+==================================================
+
+Return a concise report only:
+
+## Release
+Commit deployed:
+
+## Production Database
+- Replit native DB:
+- migrations:
+- Supabase DB dependency:
+- clean operational counts:
+
+## Contractors
+- synced:
+- Wix identity status:
+- logo migration:
+
+## Authentication
+- Clerk Production:
+- Cole Admin:
+- Admin login:
+
+## Notifications
+- Twilio:
+- Production magic-link domain:
+- SMS smoke:
+- Resend:
+
+## Payments
+- Stripe Production:
+- live payments enabled: YES/NO
+- offline/check payment available:
+
+## Storage
+- Replit App Storage:
+- Supabase runtime dependency:
+
+## Production
+- Published URL:
+- smoke test:
+- final QA data cleaned:
+
+## Client actions still required
+Only actual missing client-owned credentials/access.
+
+Do not start additional improvement work after this report.
