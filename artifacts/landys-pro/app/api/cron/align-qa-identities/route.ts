@@ -36,12 +36,9 @@ async function ensureQaClerkUser(email: string): Promise<string> {
   }
   if (existing.data[0]) return existing.data[0].id;
 
-  const password = process.env.DEVELOPMENT_QA_PASSWORD;
-  if (!password) throw new Error("Identity alignment refused: QA password is unavailable.");
   const created = await client.users.createUser({
     emailAddress: [email],
-    password,
-    skipPasswordChecks: true,
+    skipPasswordRequirement: true,
   });
   return created.id;
 }
@@ -67,6 +64,34 @@ export async function POST(req: NextRequest) {
     const ownerClerkId = ownerUsers.data[0]?.id ?? null;
 
     await prisma.$transaction(async (tx) => {
+      const category = await tx.contractorCategory.upsert({
+        where: { code: "general-contractor" },
+        update: {},
+        create: {
+          id: "qa_category_general_contractor",
+          code: "general-contractor",
+          name: "General Contractor",
+        },
+      });
+      const workType = await tx.workType.upsert({
+        where: { code: "new-build" },
+        update: {},
+        create: {
+          id: "qa_work_type_new_build",
+          code: "new-build",
+          name: "New Build",
+        },
+      });
+      const landType = await tx.landType.upsert({
+        where: { code: "residential" },
+        update: {},
+        create: {
+          id: "qa_land_type_residential",
+          code: "residential",
+          name: "Residential",
+        },
+      });
+
       await tx.adminUser.updateMany({
         where: { email: { equals: CONTRACTOR_EMAIL, mode: "insensitive" } },
         data: { clerkUserId: null, disabledAt: new Date() },
@@ -100,6 +125,7 @@ export async function POST(req: NextRequest) {
           name: "TECHMA QA Contractor",
           phone: "+15555550123",
           clerkUserId: contractorClerkId,
+          contractorCategoryId: category.id,
           deactivatedAt: null,
         },
         create: {
@@ -108,11 +134,97 @@ export async function POST(req: NextRequest) {
           email: CONTRACTOR_EMAIL,
           phone: "+15555550123",
           clerkUserId: contractorClerkId,
+          contractorCategoryId: category.id,
+        },
+      });
+
+      await tx.contractorCategoryMembership.upsert({
+        where: {
+          contractorId_categoryId: {
+            contractorId: "qa_contractor_lihounhintoe",
+            categoryId: category.id,
+          },
+        },
+        update: { isPrimary: true },
+        create: {
+          id: "qa_contractor_general_category",
+          contractorId: "qa_contractor_lihounhintoe",
+          categoryId: category.id,
+          isPrimary: true,
+        },
+      });
+      await tx.contractorWorkType.upsert({
+        where: {
+          contractorId_workTypeId: {
+            contractorId: "qa_contractor_lihounhintoe",
+            workTypeId: workType.id,
+          },
+        },
+        update: {},
+        create: {
+          id: "qa_contractor_new_build_work",
+          contractorId: "qa_contractor_lihounhintoe",
+          workTypeId: workType.id,
+        },
+      });
+
+      await tx.lead.upsert({
+        where: {
+          source_externalRequestId: {
+            source: "production_qa",
+            externalRequestId: "qa-open-opportunity",
+          },
+        },
+        update: {
+          status: "DISTRIBUTED",
+          reviewStatus: "ROUTED",
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+        create: {
+          id: "qa_lead_open_opportunity",
+          landownerName: "Production QA Landowner",
+          landownerEmail: "production-qa-landowner@example.test",
+          landownerPhone: "+15555550999",
+          propertyLocation: "Production QA Property",
+          propertyZip: "78701",
+          description: "CONTROLLED PRODUCTION QA — Open matching opportunity",
+          budgetBand: "BETWEEN_15K_50K",
+          budgetCents: 25_000_00,
+          landTypeId: landType.id,
+          contractorCategoryId: category.id,
+          workTypeId: workType.id,
+          status: "DISTRIBUTED",
+          reviewStatus: "ROUTED",
+          tierReviewRequired: false,
+          budgetReviewRequired: false,
+          pricingReviewRequired: false,
+          source: "production_qa",
+          externalRequestId: "qa-open-opportunity",
+          maxPurchases: 3,
+          routedAt: new Date(),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+      await tx.leadMatch.upsert({
+        where: {
+          leadId_contractorId: {
+            leadId: "qa_lead_open_opportunity",
+            contractorId: "qa_contractor_lihounhintoe",
+          },
+        },
+        update: { status: "PENDING", jobOutcome: "OPEN" },
+        create: {
+          id: "qa_match_open_opportunity",
+          acceptToken: "qa_accept_open_opportunity",
+          leadId: "qa_lead_open_opportunity",
+          contractorId: "qa_contractor_lihounhintoe",
+          status: "PENDING",
+          jobOutcome: "OPEN",
         },
       });
     });
 
-    const [admin, contractor, owner, conflicts] = await Promise.all([
+    const [admin, contractor, owner, conflicts, opportunity] = await Promise.all([
       prisma.adminUser.findUnique({
         where: { email: ADMIN_EMAIL },
         select: { role: true, clerkUserId: true, disabledAt: true },
@@ -126,6 +238,13 @@ export async function POST(req: NextRequest) {
         select: { role: true, clerkUserId: true, disabledAt: true },
       }),
       prisma.adminUser.count({ where: { clerkUserId: contractorClerkId } }),
+      prisma.leadMatch.count({
+        where: {
+          contractorId: "qa_contractor_lihounhintoe",
+          status: "PENDING",
+          lead: { source: "production_qa" },
+        },
+      }),
     ]);
     if (conflicts !== 0) {
       throw new Error("Identity alignment failed: contractor Clerk user still has Admin linkage.");
@@ -142,6 +261,7 @@ export async function POST(req: NextRequest) {
         linked: contractor?.clerkUserId === contractorClerkId,
         enabled: contractor?.deactivatedAt === null,
         adminLinks: conflicts,
+        openQaOpportunities: opportunity,
       },
       cole: {
         owner: owner?.role === "OWNER",

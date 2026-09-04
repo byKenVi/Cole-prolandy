@@ -1,0 +1,215 @@
+PRODUCTION AUTH + QA IDENTITY FIX ONLY
+
+Production is deployed, but the QA identities are not actually usable.
+
+Current problems:
+
+1. Contractor QA:
+   lihounhintoe@gmail.com
+
+   can sign in / reach auth, but is not linked to a usable Production Contractor record and has no contractor data.
+
+2. Admin QA:
+   kevin.linhounhinto@techma.ca
+
+   does not appear to have been actually created/provisioned as a Production Admin user.
+
+Do NOT change auth architecture.
+Do NOT change database schema.
+Do NOT touch Stripe, Resend, Twilio, Wix integration code, Storage, or UI.
+
+Fix the actual Production DATA + CLERK LINKAGE.
+
+==================================================
+EXPECTED PRODUCTION IDENTITIES
+==================================================
+
+ADMIN QA
+
+Email:
+kevin.linhounhinto@techma.ca
+
+Expected:
+- real Replit-managed Clerk PRODUCTION user exists
+- real Admin database record exists
+- role = OWNER / full Admin
+- Admin record explicitly stores/links the Clerk Production user ID
+- sign in -> /admin
+
+CONTRACTOR QA
+
+Email:
+lihounhintoe@gmail.com
+
+Expected:
+- real Replit-managed Clerk PRODUCTION user exists
+- real Contractor database record exists
+- Contractor record explicitly stores/links the Clerk Production user ID
+- Contractor role ONLY
+- sign in -> /dashboard
+- /admin forbidden
+
+CLIENT OWNER
+
+cole@mudrockcapital.com
+
+Expected:
+- Production Owner/Admin mapping preserved
+- do NOT sign in as Cole
+- do not overwrite or remove Cole
+
+==================================================
+1. INSPECT ACTUAL PRODUCTION STATE
+==================================================
+
+Using the Production database and Clerk Production environment, inspect:
+
+- Clerk user for kevin.linhounhinto@techma.ca
+- Clerk user for lihounhintoe@gmail.com
+- Clerk user for cole@mudrockcapital.com
+
+and corresponding:
+
+- Admin records
+- Contractor records
+- explicit Clerk user ID mappings
+
+Do NOT assume that an environment variable created an actual Clerk user.
+
+Report internally what is missing, then fix it.
+
+==================================================
+2. CREATE / PROVISION MISSING CLERK USERS
+==================================================
+
+If either QA identity does not exist in Clerk Production:
+
+Create/provision it through the managed Clerk Production instance.
+
+Do not invent passwords.
+
+Use the normal Clerk Production sign-in / email-code flow.
+
+No Development Clerk IDs may be reused in Production.
+
+==================================================
+3. CREATE / LINK ADMIN QA
+==================================================
+
+For:
+
+kevin.linhounhinto@techma.ca
+
+Ensure:
+
+Clerk Production user
+-> Admin DB record
+-> OWNER/full Admin
+
+Use explicit Clerk user ID linkage.
+
+Do not rely only on email lookup.
+
+Verify authorization resolves to Admin.
+
+==================================================
+4. CREATE / LINK CONTRACTOR QA
+==================================================
+
+For:
+
+lihounhintoe@gmail.com
+
+Create ONE clearly identified QA Contractor record if none exists.
+
+Link:
+
+Clerk Production user
+-> Contractor DB record
+
+Contractor ONLY.
+
+Do not create an Admin record for this email.
+
+If an incorrect Admin linkage currently exists for this Gmail identity, remove/fix that incorrect QA linkage.
+
+==================================================
+5. GIVE CONTRACTOR QA USABLE TEST DATA
+==================================================
+
+The Contractor QA portal must not be empty for testing.
+
+Create ONLY controlled Production QA data tied to this QA contractor.
+
+Keep this minimal:
+
+- 1 open matching Opportunity
+- 1 Accepted/Waiting job if needed
+- 1 Success Fee DUE or Awaiting example only if required for QA
+
+Use clearly recognizable QA/test names.
+
+Do NOT create fake revenue as Paid.
+
+Do NOT notify any real contractor.
+
+If sending SMS/email is needed later, use only the approved QA destinations.
+
+This data is temporary and will be deleted after Production smoke testing.
+
+==================================================
+6. VERIFY ACTUAL LOGIN / AUTHORIZATION
+==================================================
+
+Verify in Production:
+
+ADMIN QA
+
+kevin.linhounhinto@techma.ca
+-> /admin
+-> Admin Dashboard accessible
+
+CONTRACTOR QA
+
+lihounhintoe@gmail.com
+-> /dashboard
+-> Opportunities visible
+-> My Jobs accessible
+-> Fees accessible
+-> /admin returns forbidden/redirects away
+
+COLE
+
+cole@mudrockcapital.com
+-> Owner/Admin mapping remains intact
+
+Do NOT perform broad application QA.
+
+==================================================
+7. RETURN ONLY THIS
+==================================================
+
+ADMIN QA
+- Clerk Production user exists:
+- Admin DB record exists:
+- explicit Clerk ID linkage:
+- login -> /admin:
+
+CONTRACTOR QA
+- Clerk Production user exists:
+- Contractor DB record exists:
+- explicit Clerk ID linkage:
+- login -> /dashboard:
+- /admin blocked:
+- controlled QA opportunity visible:
+
+COLE
+- Owner mapping preserved:
+
+ROOT CAUSE
+- what was missing / incorrectly linked:
+
+CODE CHANGE REQUIRED
+YES / NO
+
+Do not change anything else.
