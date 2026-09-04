@@ -1,0 +1,80 @@
+We want to remove Supabase from the FINAL Landy's Pro production architecture and use Replit's native managed PostgreSQL database instead.
+
+Do NOT modify production yet.
+Do NOT migrate or delete data yet.
+
+Perform a focused compatibility assessment only.
+
+1. Inspect the current Landy's Pro code and determine whether Supabase is used for anything other than PostgreSQL connectivity through Prisma.
+
+Specifically search active code for:
+- SUPABASE_URL
+- SUPABASE_KEY / ANON_KEY / SERVICE_ROLE
+- @supabase/*
+- Supabase Auth
+- Supabase Storage
+- Supabase Realtime
+- direct Supabase API calls
+
+Tell me whether Supabase is:
+A. database-only and safely replaceable by generic PostgreSQL
+or
+B. used for additional active services, listing exactly which ones.
+
+2. Inspect Prisma configuration.
+
+The final Replit architecture should preferably depend on Replit-provided DATABASE_URL only.
+
+Determine:
+- why DIRECT_URL currently exists
+- whether it is required by Prisma/runtime or only because Supabase uses a pooled DATABASE_URL
+- what minimal change, if any, is required for Prisma migrations + runtime to work correctly with Replit Database.
+
+Do not make speculative changes.
+
+3. Verify that the current Prisma migration history can initialize a completely empty Replit PostgreSQL database from scratch.
+
+We currently have 24 migrations including the success-fee pivot.
+
+Do not run them yet.
+
+4. Verify the intended final architecture is supported:
+
+LOCAL CURSOR
+→ existing external Supabase becomes disposable DEV database
+
+REPLIT PREVIEW
+→ Replit development database
+
+REPLIT DEPLOYMENT
+→ separate clean Replit production database
+
+Production must NOT depend on the user's personal Supabase account.
+
+5. Determine how we should detach the existing external Supabase DATABASE_URL from this Replit app and provision/use Replit Database without accidentally touching the existing Supabase database.
+
+6. Return only:
+
+## Supabase dependency
+DATABASE ONLY / ADDITIONAL DEPENDENCIES
++ details if needed
+
+## Prisma compatibility
+READY / CHANGE REQUIRED
++ exact minimal change
+
+## Empty DB migrations
+READY / BLOCKED
+
+## Replit native DB
+SUPPORTED / BLOCKED
+
+## Safe switch procedure
+Exact ordered steps, but DO NOT execute them yet.
+
+## Verdict
+Either:
+SAFE TO MOVE PRODUCTION FROM SUPABASE TO REPLIT DATABASE
+
+or:
+NOT SAFE YET — [reason]

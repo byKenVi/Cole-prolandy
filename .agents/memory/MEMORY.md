@@ -11,3 +11,6 @@
 - [Next.js dev/build share .next/](nextjs-dev-build-shared-dir.md) — never run `next build` while the app's `next dev` workflow is live in the same dir; both corrupt.
 - [Shared dev/prod database risk](shared-dev-prod-database-risk.md) — dev, vitest, testing subagent, and prod all read one DB; never sweep a real admin list in a test plan.
 - [Destructive-action burst guard](destructive-guard.md) — deactivate/delete/refund gated by a DB-backed per-actor+action burst counter; how it's shaped and how to test new ones.
+- [pnpm pin on Replit](pnpm-pin-replit.md) — keep packageManager aligned with Replit’s installed pnpm; mismatches can recurse during self-install and prevent workflows from starting.
+- [Stripe webhook environment isolation](stripe-webhook-environment-isolation.md) — Preview test credentials may share an account with the published test webhook; detect overlapping endpoints and fail closed.
+- [Twilio QA recipient diagnosis](twilio-qa-recipient-diagnosis.md) — verify the Development override against the known-good QA destination before blaming working Twilio credentials.

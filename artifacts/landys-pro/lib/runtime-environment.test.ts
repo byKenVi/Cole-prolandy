@@ -30,6 +30,7 @@ describe("runtime configuration", () => {
       DIRECT_URL:
         "postgresql://postgres.devproject:p@aws-0-us-east-2.pooler.supabase.com:5432/postgres",
       LOCAL_SUPABASE_PROJECT_REF: "devproject",
+      SUPABASE_URL: "https://devproject.supabase.co",
       LOCAL_NOTIFICATION_EMAIL: "qa@localhost.test",
       LOCAL_NOTIFICATION_PHONE: "+15005550006",
     };

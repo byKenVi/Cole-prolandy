@@ -1,0 +1,162 @@
+STOP. We are solving the wrong problem.
+
+My personal Stripe account must NOT be a dependency of the Replit version of Landy's Pro.
+
+Do NOT ask me to disable, delete, or modify webhooks in my personal Stripe account.
+
+The local Cursor environment may continue using my personal Stripe TEST credentials independently, but Replit must not.
+
+CURRENT PROBLEM
+
+The Replit Development Stripe connector appears to be bound to the same Stripe test environment/account that contains:
+
+we_1TyZA1DZftuEtu8223cR6xoe
+https://cole-prolandy-project.replit.app/api/stripe/webhook
+
+That is exactly what we do NOT want.
+
+The correct solution is ACCOUNT / SANDBOX ISOLATION, not disabling that webhook.
+
+==================================================
+TARGET ARCHITECTURE
+==================================================
+
+LOCAL CURSOR
+- may continue using the existing personal Stripe TEST account
+- completely independent from Replit
+
+REPLIT DEVELOPMENT
+- Replit native Stripe integration
+- isolated Stripe sandbox/test environment
+- Development Preview webhook only
+- test cards only
+- NO access to or dependency on my personal Stripe account
+
+REPLIT PRODUCTION
+- later connected to the CLIENT'S Stripe account
+- dedicated Production webhook
+- no personal TECHMA Stripe credentials
+
+==================================================
+ACTION NOW
+==================================================
+
+1. Inspect the current Replit Stripe connector binding.
+
+2. Identify, without exposing secrets:
+   - Stripe account/environment currently connected
+   - whether that is why you can see webhook
+     we_1TyZA1DZftuEtu8223cR6xoe
+
+3. Disconnect/unlink the CURRENT Development Stripe connector from that personal Stripe account/environment.
+
+IMPORTANT:
+- Do NOT delete the Stripe account.
+- Do NOT modify or disable its webhooks.
+- Do NOT modify any existing Stripe objects in that account.
+- Simply remove the Replit Development dependency on it.
+
+4. Configure Replit Development using a genuinely isolated Stripe TEST/SANDBOX environment through Replit's native Stripe integration.
+
+If Replit can provision/manage an isolated sandbox through the integration, use that.
+
+If the integration requires selecting/creating a separate Stripe sandbox/account, do that through the supported Replit integration flow.
+
+Do NOT fall back to my local STRIPE_SECRET_KEY.
+
+5. Once isolated, create a Development-only webhook pointing to the current Replit Development/Preview application:
+
+/api/stripe/webhook
+
+Subscribe only to the events our current success-fee implementation actually requires.
+
+6. Verify that this isolated Stripe environment does NOT contain or see:
+
+we_1TyZA1DZftuEtu8223cR6xoe
+https://cole-prolandy-project.replit.app/api/stripe/webhook
+
+That old endpoint may continue to exist in the old personal Stripe account. It is irrelevant once Development is properly isolated.
+
+==================================================
+THEN TEST PAYMENTS
+==================================================
+
+We MUST be able to demonstrate payments to the client today.
+
+Using the isolated Replit Development Stripe environment:
+
+1. Create/use a DUE success fee.
+2. Pay Landy's with a Stripe test card.
+3. Verify PaymentIntent succeeds.
+4. Verify Development webhook receives it.
+5. Verify Development SuccessFee becomes PAID.
+6. Verify zero WalletTransaction records.
+7. Test saved-card behavior:
+   - first successful payment saves PaymentMethod
+   - second DUE fee offers saved card
+   - confirmation modal
+   - successful test charge
+8. Verify webhook idempotency.
+
+There must be ZERO traffic to the personal Stripe account.
+
+==================================================
+IMPORTANT PRODUCT RULE
+==================================================
+
+Do NOT rewrite our payment implementation.
+
+Preserve:
+
+Contractor
+→ owes Landy's success fee
+→ pays Landy's through Stripe
+→ Stripe Customer / PaymentMethod
+→ saved card
+→ webhook
+→ SuccessFee PAID
+
+Landowner → Contractor payments remain OFF PLATFORM.
+
+==================================================
+IF REPLIT CANNOT PROVIDE AN ISOLATED SANDBOX
+==================================================
+
+Do not spend another hour experimenting.
+
+STOP and tell me immediately:
+
+1. exactly what the Replit Stripe integration requires,
+2. whether it necessarily needs an external Stripe account,
+3. whether it supports a separate Stripe Sandbox,
+4. the fastest supported way to create/connect one.
+
+Do NOT reconnect to my personal Stripe account.
+
+==================================================
+RETURN
+==================================================
+
+## Stripe isolation
+Personal Stripe disconnected from Replit DEV: YES/NO
+
+Replit DEV Stripe environment:
+- isolated: YES/NO
+- test/sandbox: YES/NO
+
+Old webhook visible from DEV:
+YES/NO
+
+## Payment QA
+- first payment:
+- webhook:
+- SuccessFee → PAID:
+- saved card:
+- repeat payment:
+- idempotency:
+- WalletTransactions:
+
+## Review readiness
+Stripe payment demonstration: READY/BLOCKED
+
+If BLOCKED, give only the exact manual action I need to perform.

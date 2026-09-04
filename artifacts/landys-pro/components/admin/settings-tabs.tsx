@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { OpportunityDistributionForm } from "@/components/admin/opportunity-distribution-form";
 import { FollowUpSettingsForm } from "@/components/admin/follow-up-settings-form";
 import {
@@ -95,11 +95,10 @@ export function SettingsTabs({
   landTypes: LandTypeRow[];
   contractorCategories: ContractorCategoryRow[];
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const activeTab = useMemo<SettingsTabId>(() => {
+  const routeTab = useMemo<SettingsTabId>(() => {
     const raw = searchParams.get("tab");
     if (
       raw === "distribution" ||
@@ -112,9 +111,18 @@ export function SettingsTabs({
     }
     return "general";
   }, [searchParams]);
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(routeTab);
+  const [directory, setDirectory] = useState<string | null>(searchParams.get("dir"));
+
+  useEffect(() => {
+    setActiveTab(routeTab);
+    setDirectory(searchParams.get("dir"));
+  }, [routeTab, searchParams]);
 
   const setTab = useCallback(
     (tab: SettingsTabId, dir?: string) => {
+      setActiveTab(tab);
+      setDirectory(tab === "directories" ? (dir ?? null) : null);
       const params = new URLSearchParams(searchParams.toString());
       if (tab === "general") {
         params.delete("tab");
@@ -129,12 +137,10 @@ export function SettingsTabs({
         params.delete("dir");
       }
       const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
     },
-    [pathname, router, searchParams],
+    [pathname, searchParams],
   );
-
-  const directory = searchParams.get("dir");
 
   return (
     <div className="admin-fade-up">

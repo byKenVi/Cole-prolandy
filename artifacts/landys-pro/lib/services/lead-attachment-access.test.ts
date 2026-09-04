@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/supabase-storage", () => ({
-  getStorageAdmin: vi.fn(() => null),
+vi.mock("@/lib/replit-object-storage", () => ({
+  getAppObjectDownloadUrl: vi.fn(async () => "https://storage.example/signed"),
 }));
 
 vi.mock("@/lib/prisma", () => ({

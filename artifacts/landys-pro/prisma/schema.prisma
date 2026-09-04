@@ -1,4 +1,4 @@
-// Landy's Pro — Prisma schema (PostgreSQL / Supabase)
+// Landy's Pro — Prisma schema (PostgreSQL)
 // Money is ALWAYS integer cents. No floats anywhere in storage.
 
 generator client {
@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL") // pooled, runtime
-  directUrl = env("DIRECT_URL") // direct, migrations
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ─────────────────────────────────────────────────────────────

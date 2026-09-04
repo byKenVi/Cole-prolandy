@@ -1,0 +1,51 @@
+We already had a WORKING Twilio account before this Replit migration.
+
+Real magic-link SMS were successfully received on our QA phone number before.
+
+Do NOT create a new Twilio account and do NOT redesign the SMS integration.
+
+FIRST compare the Twilio account currently used by Replit Development with the existing working Twilio account configuration from the previous project environment.
+
+Without exposing secrets, report:
+
+- current TWILIO_ACCOUNT_SID used by Replit Development
+- current sender configuration:
+  - Messaging Service SID OR
+  - Twilio From number
+- whether these match the previously working Twilio configuration
+
+If the current Replit Account SID is different from the previously working account, STOP and switch Development back to the EXISTING working Twilio account.
+
+Use the existing secure Twilio credentials as Replit Development secrets:
+- TWILIO_ACCOUNT_SID
+- TWILIO_AUTH_TOKEN
+- TWILIO_MESSAGING_SERVICE_SID and/or TWILIO_FROM_NUMBER, depending on the existing implementation
+
+Do not print the Auth Token.
+
+The approved QA destination is the same phone number that previously received Landy's magic-link SMS.
+
+Once the existing working account is connected:
+
+P0 TEST ONLY
+
+1. Send one REAL contractor follow-up SMS to the approved QA number.
+2. Verify Twilio accepts it.
+3. Verify the physical phone receives it.
+4. Verify the SMS contains the secure Landy's magic link.
+5. Verify the link uses the current Replit Development Preview origin.
+6. Open the link and complete the outcome flow.
+7. Send the payment follow-up SMS.
+8. Verify the magic link and "I've been paid" -> DUE transition.
+
+If it still fails while using the SAME historical Twilio account that previously worked, STOP immediately and return:
+
+- Account SID
+- exact Twilio error code
+- exact Twilio error message
+- masked From number
+- masked To number
+- Messaging Service SID if used
+- Trial / upgraded account status
+
+Do not work on Stripe, UI, Production, Storage, or anything else until real Twilio SMS + magic links PASS.

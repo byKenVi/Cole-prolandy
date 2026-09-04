@@ -1,0 +1,73 @@
+We are NOT migrating production yet.
+
+We urgently need an isolated development database that Cursor can use while the Next.js application runs locally.
+
+Use Replit's native DEVELOPMENT database for this.
+
+Do not modify:
+- current production deployment
+- current production Supabase DATABASE_URL
+- Supabase Storage
+- production data
+- production secrets
+
+TASK
+
+1. Provision/enable the native Replit DEVELOPMENT PostgreSQL database for this Replit app if it is not already enabled.
+
+2. Confirm that this is the DEVELOPMENT database used by Preview, not the published production database.
+
+3. Determine whether its PostgreSQL DATABASE_URL is reachable from an external development machine running Cursor/Next.js locally.
+
+We want:
+
+localhost Next.js app
+→ remote Replit DEVELOPMENT PostgreSQL
+
+Do not expose the connection string in your report.
+
+Just determine whether this architecture is supported with the generated development DATABASE_URL.
+
+4. If externally reachable, prepare the development DB:
+
+- empty/current disposable data only
+- apply all current Prisma migrations
+- use current Prisma schema
+- seed ONLY the current success-fee test fixtures
+- canonical live-v3 taxonomy
+- current 3/4/5% model
+
+No:
+- production records
+- wallet history
+- pay-per-lead fixtures
+- Tier 1/2/3 legacy test data
+
+5. Ensure this database can safely be reset/reseeded repeatedly.
+
+6. Do NOT make the Prisma `directUrl` migration yet.
+
+For local Cursor, we can provide DATABASE_URL and DIRECT_URL appropriately if needed.
+
+Do not introduce infrastructure refactors while we are trying to restore a fast development workflow.
+
+7. Return only:
+
+## Replit Development DB
+- provisioned: yes/no
+- isolated from production: yes/no
+- externally reachable by local Cursor: yes/no
+- migrations: status
+- clean success-fee seed: status
+
+## Local Cursor connection
+Tell me exactly which ENV VARIABLE NAMES Cursor needs.
+Do not print their values.
+
+## Daily reset
+Exact command to reset/reseed this DEVELOPMENT database.
+
+## Blocker
+Only a genuine blocker.
+
+Do not modify or redeploy production.

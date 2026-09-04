@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markFeePaidManually } from "@/app/actions/fees";
 
@@ -16,8 +16,12 @@ export function MarkFeePaidButton({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState<"check" | "offline">("check");
-  const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [paidAt, setPaidAt] = useState("");
   const [note, setNote] = useState("");
+
+  useEffect(() => {
+    setPaidAt(new Date().toISOString().slice(0, 10));
+  }, []);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,6 +85,7 @@ export function MarkFeePaidButton({
             <input
               type="date"
               required
+              disabled={!paidAt}
               value={paidAt}
               onChange={(e) => setPaidAt(e.target.value)}
               style={{

@@ -23,9 +23,9 @@ import { getStripeWebhookSecret } from "@/lib/integrations/stripe-client";
  *
  * In mock mode this endpoint is a no-op.
  *
- * Secret source: STRIPE_WEBHOOK_SECRET Replit Secret, which must match the signing
- * secret of the webhook endpoint registered on the Stripe connector account
- * (we_1TyZA1DZftuEtu8223cR6xoe → https://cole-prolandy-project.replit.app/api/stripe/webhook).
+ * Development uses the Replit Stripe sandbox's managed Preview webhook secret.
+ * Production retains its connector/environment fallback and is not modified by
+ * Development setup.
  */
 export const runtime = "nodejs";
 
@@ -54,9 +54,9 @@ export async function POST(req: NextRequest) {
     let secretHint = "(unavailable)";
     try {
       const s = await getStripeWebhookSecret();
-      const source = process.env.REPLIT_CONNECTORS_HOSTNAME
-        ? "connector→env-fallback STRIPE_WEBHOOK_SECRET"
-        : "env STRIPE_WEBHOOK_SECRET";
+       const source = process.env.REPLIT_CONNECTORS_HOSTNAME
+         ? "Replit connector/managed webhook"
+         : "env STRIPE_WEBHOOK_SECRET";
       const digest = createHash("sha256").update(s).digest("hex").slice(0, 8);
       secretHint = `sha256:${digest} len=${s.length} source=${source}`;
     } catch {

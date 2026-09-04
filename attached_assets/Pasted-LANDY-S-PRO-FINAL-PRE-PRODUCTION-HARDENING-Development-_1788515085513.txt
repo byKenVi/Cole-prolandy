@@ -1,0 +1,191 @@
+LANDY'S PRO — FINAL PRE-PRODUCTION HARDENING
+
+Development is now broadly validated.
+
+Do NOT migrate Production yet.
+
+Do NOT touch the existing Production Supabase database.
+
+Before Production migration, resolve the remaining environment-boundary and runtime issues.
+
+PRIORITY 1 — STRIPE DEV/PROD ISOLATION
+
+A Development Stripe TEST event reached the currently published Production webhook.
+
+This must not happen again.
+
+Create a Development-specific Stripe webhook endpoint/configuration for Preview/Development.
+
+Requirements:
+
+- Development Stripe TEST events must only reach Development.
+- Production webhook must only receive Production-configured events.
+- Preserve the current success-fee webhook business logic.
+- Preserve idempotency.
+- Preserve saved-card behavior.
+- Preserve zero WalletTransaction creation.
+- Do not introduce a second payment domain/model.
+
+Verify with one controlled Stripe TEST payment:
+
+Development fee
+→ Development webhook
+→ Development database
+→ PAID
+
+Then prove:
+
+- zero request to Production webhook
+- zero Production DB mutation
+
+Do not generate additional real Stripe events until the boundary is fixed.
+
+PRIORITY 2 — HYDRATION / NAVIGATION
+
+Investigate the actual React hydration warnings and the delayed admin navigation/settings tab behavior.
+
+Do not redesign the pages.
+
+Fix only the underlying technical cause.
+
+Check especially:
+
+- Admin navigation
+- Settings tabs
+- server/client rendering mismatches
+- browser-only values rendered during SSR
+- timestamps / random values / localStorage-dependent rendering
+- unnecessary full reload behavior
+
+Verify normal navigation through:
+
+/admin
+/admin/leads
+/admin/contractors
+/admin/fees
+/admin/confirmations
+/admin/settings
+
+No repeated hydration warning should remain for the normal happy path.
+
+PRIORITY 3 — TYPESCRIPT CHECK
+
+Determine why the full TypeScript check does not finish within five minutes.
+
+Do NOT spend hours blindly waiting.
+
+Identify whether the cause is:
+
+- Playwright/generated types
+- excessive project inclusion
+- a stuck process
+- memory/resource pressure
+- configuration issue
+- actual TypeScript errors
+
+If it is a tooling/performance issue, fix the configuration minimally.
+
+Do not weaken meaningful type safety just to make the command green.
+
+Return:
+- root cause
+- resulting command
+- PASS/FAIL
+- runtime
+
+PRIORITY 4 — LEGACY SUPABASE STORAGE AUDIT
+
+Current remaining legacy objects:
+
+- 3 Supabase contractor logos
+- 9 Supabase attachment records
+
+We want ZERO Supabase runtime dependency in final Production.
+
+Do not migrate all of them blindly.
+
+Audit those records and classify them:
+
+A. clearly real/current business data
+B. clearly QA/test/obsolete
+C. uncertain
+
+For contractor logos:
+If they belong to real active contractors and are still needed, copy the actual logo files into Replit App Storage and update their references.
+
+For attachments:
+Do not copy QA/test attachments.
+
+If any attachment is clearly real and still relevant, migrate it to Replit App Storage preserving authorized/private access.
+
+If uncertain, report it instead of guessing.
+
+After migration/audit, no active Production-facing record should require Supabase Storage.
+
+PRIORITY 5 — DEVELOPMENT FINAL SMOKE
+
+After fixes, verify again:
+
+ADMIN
+- Dashboard
+- Leads
+- Contractors
+- Success Fees
+- Confirmations
+- Settings
+
+CONTRACTOR
+- Dashboard
+- Opportunities
+- My Jobs
+- Fees
+- Profile
+
+FLOW
+- controlled opportunity
+- Accept
+- contact reveal
+- Won
+- Waiting to be paid
+- contractor confirms paid
+- fee DUE
+- Stripe TEST payment
+- PAID
+- offline/check payment
+- landowner confirmation/mismatch
+
+Notifications can remain restricted to QA destinations.
+
+STOP AFTER DEVELOPMENT IS GREEN.
+
+Do NOT migrate Production yet.
+
+FINAL RESPONSE:
+
+## Stripe isolation
+- Development webhook:
+- Production isolation:
+- Test result:
+
+## Runtime
+- hydration:
+- navigation:
+- TypeScript:
+
+## Storage
+- 3 contractor logos classification:
+- 9 attachments classification:
+- migrated:
+- remaining Supabase dependency:
+
+## Development
+- Admin QA:
+- Contractor QA:
+- end-to-end:
+- tests:
+- build:
+
+## Production readiness
+READY / BLOCKED
+
+If BLOCKED, list only actual blockers.

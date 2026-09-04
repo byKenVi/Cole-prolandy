@@ -119,7 +119,7 @@ export function AdminGlobalSearch() {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={open && hits[active] ? `${listId}-${hits[active].id}` : undefined}
-          style={{ font: "400 14px/1 'Inter'", width: "100%" }}
+          style={{ width: "100%" }}
         />
         <span
           className="admin-search-kbd"

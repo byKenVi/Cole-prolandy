@@ -2,7 +2,7 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "packageManager": "pnpm@10.28.2",
+  "packageManager": "pnpm@10.26.1",
   "scripts": {
     "preinstall": "node ./scripts/ensure-pnpm.cjs",
     "dev": "node --env-file=.env --env-file=artifacts/landys-pro/.env.local ./scripts/local-runner.mjs dev",

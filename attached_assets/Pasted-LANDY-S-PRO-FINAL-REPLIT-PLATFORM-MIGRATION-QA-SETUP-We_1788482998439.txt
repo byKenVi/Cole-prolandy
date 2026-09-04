@@ -1,0 +1,556 @@
+LANDY'S PRO — FINAL REPLIT PLATFORM MIGRATION + QA SETUP
+
+We are preparing Landy's Pro for client review tomorrow morning and eventual handoff to the client's Replit account.
+
+Approved application commit:
+
+56c75aa
+"Fix pre-review P0 UX: success-fee lifecycle clarity, 3D icons, and fee payments."
+
+Our objective is now to REMOVE the project's long-term dependency on the TECHMA user's personal Supabase and external Clerk setup, and make the Replit project self-contained.
+
+Act as the deployment lead.
+
+Do the work autonomously where safe.
+
+DO NOT modify product/business logic unless required for compatibility with Replit-managed infrastructure.
+
+DO NOT copy dirty Supabase operational data into the new Replit database.
+
+==================================================
+TARGET ARCHITECTURE
+==================================================
+
+REPLIT DEVELOPMENT / PREVIEW
+
+- Replit native Development PostgreSQL database
+- Replit-managed Clerk Auth DEVELOPMENT environment
+- Stripe TEST mode
+- Replit App Storage
+- Twilio/Resend QA configuration
+- disposable test data allowed
+
+REPLIT PRODUCTION
+
+- separate Replit native Production PostgreSQL database
+- Replit-managed Clerk Auth PRODUCTION environment
+- Stripe production account can be connected later by client
+- Replit App Storage
+- NO Supabase dependency
+- NO test operational data
+
+Production must start clean.
+
+==================================================
+1. CHECKOUT
+==================================================
+
+Verify:
+
+- main contains commit 56c75aa
+- current checkout includes it
+- working tree state
+- current Prisma migrations
+- current build
+
+Do not discard any later legitimate fix automatically.
+
+==================================================
+2. REPLIT DEVELOPMENT DATABASE
+==================================================
+
+The current Replit DATABASE_URL is manually overridden with the old Supabase connection.
+
+We want Replit to use its NATIVE DEVELOPMENT DATABASE instead.
+
+Provision/enable the native Replit Development PostgreSQL database.
+
+IMPORTANT:
+
+Do not delete or modify the old Supabase database.
+
+Remove/disable the external Supabase DATABASE_URL / DIRECT_URL overrides from the REPLIT DEVELOPMENT runtime only when the native Replit database is ready.
+
+The native Replit DATABASE_URL must become the runtime database connection.
+
+The app currently has:
+
+directUrl = env("DIRECT_URL")
+
+in Prisma because Supabase used a pooler.
+
+Replit native PostgreSQL does not need this.
+
+Make the smallest clean compatibility change:
+
+- remove Prisma's dependency on DIRECT_URL
+- update scripts that unnecessarily require DIRECT_URL
+- runtime/migrations use DATABASE_URL
+
+Do not modify local Cursor/Supabase DEV configuration unnecessarily; this change must remain compatible with ordinary PostgreSQL.
+
+==================================================
+3. INITIALIZE REPLIT DEVELOPMENT DB
+==================================================
+
+Use the existing complete migration history.
+
+Apply all migrations to the EMPTY Replit Development database.
+
+Verify schema alignment with prisma/schema.prisma.
+
+Then create DEVELOPMENT QA fixtures only.
+
+Seed:
+
+- current canonical live-v3 taxonomy
+- success fee tiers:
+  < $10,000 = 5%
+  $10,000–$24,999 = 4%
+  $25,000+ = 3%
+- acceptance cap = 3
+- Unlimited = false
+- follow-up timing defaults
+- QA admin
+- QA contractor
+- several QA opportunities/jobs
+- Awaiting / Due / Paid fee examples
+- landowner confirmation / mismatch examples
+
+No:
+- WalletTransactions
+- wallet balances
+- PriceTier / pay-per-lead test data
+- old production leads
+
+This is DEVELOPMENT only.
+
+==================================================
+4. REPLIT-MANAGED CLERK AUTH
+==================================================
+
+Switch this Replit App to Replit-managed Clerk Auth.
+
+Do NOT switch to Replit Auth.
+
+We want branded Clerk Auth.
+
+Replit-managed Clerk provides separate Development and Production environments.
+
+Preserve our existing application authorization/domain model:
+
+Clerk identity
+→ Admin or Contractor record in our database
+
+Do not redesign roles.
+
+Use the Replit-managed Clerk credentials automatically provided to the Repl rather than personal external Clerk credentials.
+
+Create/prepare DEVELOPMENT QA access for:
+
+- one OWNER/Admin
+- one Contractor tied to a realistic seeded contractor
+
+Verify actual sign-in in Preview.
+
+IMPORTANT:
+Development Clerk users and Production Clerk users are separate.
+
+Do not assume the DEV QA account will exist in Production.
+
+For Production we will create/invite the required accounts separately.
+
+Do not expose Clerk terminology in end-user Admin UI.
+
+==================================================
+5. STRIPE
+==================================================
+
+Use the Replit Stripe integration in TEST MODE for Development if compatible with the existing success-fee implementation.
+
+Do not rewrite the success-fee payment domain.
+
+We need to preserve:
+
+Fee DUE
+→ Pay Landy's
+→ saved PaymentMethod where chosen
+→ future one-click confirmation
+→ Stripe webhook
+→ PAID
+
+Verify:
+
+- test payment
+- webhook
+- saved-card reuse
+- idempotency
+- zero WalletTransaction creation
+
+Landowner → Contractor payment remains completely outside Landy's.
+
+Only Contractor → Landy's success fee uses Stripe.
+
+Do NOT configure real/live client charging without explicit approval.
+
+If Replit's Stripe connector and our direct Stripe SDK need a small adapter, implement the smallest clean adapter.
+
+==================================================
+6. REPLIT APP STORAGE — REMOVE SUPABASE STORAGE
+==================================================
+
+We also need to eliminate the active Supabase Storage dependency.
+
+Current Supabase Storage usage:
+
+A. contractor logos
+B. private lead attachments
+
+Move these flows to Replit App Storage.
+
+Do NOT use the Repl filesystem for persistent uploads.
+
+Preserve product behavior:
+
+CONTRACTOR LOGOS
+- upload
+- replace
+- delete
+- serve/display
+
+LEAD ATTACHMENTS
+- upload
+- private access
+- authorized download
+- temporary/safe access behavior equivalent to current signed URLs
+
+Make storage provider metadata storage-neutral.
+
+Do not leave `"supabase"` hardcoded for newly uploaded files.
+
+Because this product has not formally launched, do NOT spend hours migrating obsolete test attachments.
+
+First inspect existing storage references.
+
+If real contractor logos need preserving:
+- migrate those real logo objects, OR
+- re-source them from the canonical contractor/Wix data if the existing sync provides them.
+
+Do not migrate obviously fake/test attachment files.
+
+Use separate environment isolation for Development vs Production storage, via separate buckets or safe environment-specific namespaces.
+
+Development test uploads must not pollute production storage.
+
+Once the Replit storage path is verified, the application must no longer require:
+
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+
+in Replit production.
+
+==================================================
+7. TEST REAL NOTIFICATIONS
+==================================================
+
+We need to test the real low-friction contractor workflow.
+
+Twilio is a priority because many contractors are older/non-technical.
+
+Configure Development/Preview to send ONLY to explicitly provided QA destinations.
+
+Do not message the full contractor database.
+
+Use a real QA contractor phone number and QA email.
+
+Test:
+
+OPPORTUNITY
+→ SMS/email notification
+
+OUTCOME FOLLOW-UP
+→ "Did you get the job?"
+→ secure magic link
+→ Yes / No
+
+If Yes:
+→ final contract value
+
+PAYMENT FOLLOW-UP
+→ "Have you been paid?"
+→ Yes / Not yet
+
+Yes:
+→ fee becomes DUE
+
+LANDOWNER
+→ confirmation email/message
+→ hired contractor selection
+
+If current Resend credentials are not client-owned yet:
+- use existing safe QA credentials for this review only
+- keep the integration easily replaceable
+- clearly mark client Resend configuration as a handoff item
+- do not block Twilio QA on missing client Resend access
+
+Do not create a new notification architecture.
+
+==================================================
+8. REPLIT DEVELOPMENT FUNCTIONAL QA
+==================================================
+
+Using Preview + Replit Development DB + real QA accounts:
+
+Verify the actual end-to-end flow.
+
+LANDOWNER / INTAKE
+1. controlled Wix-style estimate request
+2. Lead created
+3. matching works
+
+CONTRACTOR
+4. receives SMS/email
+5. opens opportunity
+6. Accept
+7. contact unlock
+8. first 3 acceptance cap
+9. fourth blocked
+10. Unlimited mode test
+11. outcome follow-up
+12. Won
+13. final contract value
+14. Waiting to be paid
+15. payment follow-up
+16. contractor confirms paid
+17. fee becomes DUE
+18. Pay Landy's in Stripe TEST
+19. saved-card repeat experience
+20. PAID
+
+LANDOWNER CONFIRMATION
+21. confirmation link
+22. selected contractor
+23. mismatch test
+
+ADMIN
+24. Dashboard
+25. Leads
+26. Contractors
+27. Success Fees
+28. Record Offline Payment / check
+29. Confirmations
+30. Settings / fee tiers / acceptance limit
+
+Also verify the P0 UI changes from commit 56c75aa.
+
+==================================================
+9. PRODUCTION DATABASE — CLEAN START
+==================================================
+
+Once Development QA is green, prepare Production.
+
+CRITICAL:
+
+DO NOT copy the Development database DATA into Production.
+
+DO NOT import the old Supabase operational dataset.
+
+Create/use the separate native Replit Production database.
+
+Apply schema/migrations only.
+
+Initialize ONLY production reference/configuration data:
+
+- canonical live-v3 taxonomy
+- SuccessFeeTier defaults
+- AppSettings defaults
+- other genuinely required lookup/reference data
+
+Expected operational production state BEFORE real Wix sync:
+
+Leads = 0
+LeadMatches = 0
+SuccessFees = 0
+LandownerConfirmations = 0
+FollowUpTokens = 0
+WalletTransactions = 0
+Fake revenue = $0
+Fake pipeline = $0
+
+==================================================
+10. REAL CONTRACTORS IN CLEAN PRODUCTION
+==================================================
+
+Do not copy the dirty Supabase database wholesale.
+
+Use the current Wix/Landys.co contractor synchronization path to repopulate the production contractor directory from the canonical source.
+
+Preserve only the CURRENT live-v3 taxonomy/mappings.
+
+Verify after sync:
+
+- contractor count
+- active/inactive status if supplied by canonical source
+- categories
+- work types
+- external Wix identities
+- any real profile details required by matching
+
+Do not import obsolete local/test contractor accounts.
+
+If there is production-only contractor metadata not recoverable from Wix, report exactly what it is BEFORE copying it.
+
+==================================================
+11. PRODUCTION CLERK
+==================================================
+
+Use the Production environment of Replit-managed Clerk Auth.
+
+Create/invite only the required real Production users.
+
+At minimum for QA/review:
+
+- Owner/Admin
+- one controlled Contractor QA account
+
+Do not seed fake Clerk users into Production DB indiscriminately.
+
+Verify login against the PUBLISHED domain.
+
+==================================================
+12. PRODUCTION STRIPE
+==================================================
+
+For tomorrow's review:
+
+DO NOT create real charges unless client live Stripe credentials/account are explicitly connected.
+
+If client Stripe is not ready:
+- keep the review flow in safe test/non-live configuration
+- clearly report the remaining production Stripe handoff action
+
+Do not couple production database setup to receipt of live Stripe credentials.
+
+==================================================
+13. PRODUCTION NOTIFICATION SAFETY
+==================================================
+
+Before enabling general notification traffic:
+
+- verify Twilio sender
+- verify Resend sender
+- verify public base URL
+- verify all magic links point to the published domain
+
+During QA, allowlist the QA Contractor/Landowner destinations.
+
+Do not send test notifications to the real full contractor list.
+
+==================================================
+14. PRODUCTION PUBLISH
+==================================================
+
+Publish only after Development QA passes.
+
+Use the same approved commit.
+
+IMPORTANT:
+When Replit offers any option equivalent to:
+
+"seed/copy development data into production"
+
+KEEP IT OFF.
+
+Production gets:
+SCHEMA + approved reference data + real contractor sync.
+
+Not QA fixtures.
+
+==================================================
+15. FINAL PRODUCTION SMOKE TEST
+==================================================
+
+After publish, perform a minimal controlled QA with the real published domain:
+
+- Admin login
+- Contractor QA login
+- Dashboard
+- one controlled opportunity
+- Accept/contact reveal
+- SMS link opens published app
+- fee lifecycle
+- Stripe mode confirmed safe
+- offline payment action
+- landowner confirmation
+- Settings
+
+Delete/clean any QA operational records afterward if this is the client-delivery environment.
+
+Final production must return to:
+
+0 QA leads
+0 QA matches
+0 QA success fees
+0 QA confirmations
+0 QA follow-up tokens
+
+Real contractor directory remains.
+
+==================================================
+16. DO NOT DELETE OLD SUPABASE YET
+==================================================
+
+After successful switch:
+
+- remove Supabase DB/Storage credentials from Replit runtime
+- confirm app no longer connects to Supabase
+
+BUT:
+
+Do NOT delete the old Supabase project yet.
+
+Keep it untouched as temporary rollback/reference until after the client review and reconciliation.
+
+Deletion is a separate explicit approval.
+
+==================================================
+FINAL REPORT
+==================================================
+
+Return:
+
+## Replit Development
+- DB native: READY/BLOCKED
+- Clerk managed DEV: READY/BLOCKED
+- Stripe TEST: READY/BLOCKED
+- App Storage: READY/BLOCKED
+- Twilio: READY/BLOCKED
+- Resend: READY/BLOCKED
+
+## Development QA
+- full flow status
+- issues found/fixed
+
+## Production
+- native production DB
+- clean counts
+- contractor sync result
+- managed Clerk PROD
+- storage
+- published commit
+
+## Production QA
+- Admin account
+- Contractor QA account
+- Twilio/SMS result
+- email result
+- Stripe mode
+- end-to-end result
+
+## External handoff still needed
+Only actual client-owned credentials/actions, such as live Stripe or Resend if still pending.
+
+## Supabase
+Confirm whether Replit now has ZERO runtime dependency on personal Supabase.
+
+Do not delete the old Supabase project.

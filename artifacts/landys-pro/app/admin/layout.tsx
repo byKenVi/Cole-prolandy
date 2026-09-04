@@ -5,7 +5,6 @@ import { UserMenu } from "@/components/auth/user-menu";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { getAdminTheme, getAdminSidebarCollapsed } from "@/lib/admin-theme.server";
 import { formatMoney } from "@/lib/money";
-import { currentUser } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +14,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect(authMode() === "clerk" ? "/home" : "/");
   }
   const clerk = authMode() === "clerk";
-  const clerkUser = clerk ? await currentUser() : null;
-  const adminName =
-    clerkUser?.fullName ||
-    [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") ||
-    session.email ||
-    "Administrator";
+  // getSession() already resolves the Clerk user and linked AdminUser. Avoid a
+  // second Clerk Backend API request on every admin route transition.
+  const adminName = session.email?.split("@")[0] || "Administrator";
 
   // Success fees collected — primary revenue metric for the success-fee model.
   const [theme, collapsed, successFeesAgg, paidFeesCount] = await Promise.all([

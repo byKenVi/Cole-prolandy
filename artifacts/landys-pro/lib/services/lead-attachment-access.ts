@@ -1,7 +1,6 @@
 import { LeadMatchStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getStorageAdmin } from "@/lib/supabase-storage";
-import { LEAD_ATTACHMENTS_BUCKET } from "@/lib/services/lead-attachments";
+import { getAppObjectDownloadUrl } from "@/lib/replit-object-storage";
 
 export async function getContractorLeadAttachmentDownload(params: {
   contractorId: string;
@@ -25,19 +24,19 @@ export async function getContractorLeadAttachmentDownload(params: {
     return { ok: false as const, code: "NOT_FOUND" as const };
   }
 
-  const storage = getStorageAdmin();
-  if (!storage) return { ok: false as const, code: "UNAVAILABLE" as const };
-
-  const { data, error } = await storage.storage
-    .from(LEAD_ATTACHMENTS_BUCKET)
-    .createSignedUrl(attachment.storageKey, 300);
-  if (error || !data?.signedUrl) {
+  if (attachment.storageProvider !== "app-storage") {
+    return { ok: false as const, code: "UNAVAILABLE" as const };
+  }
+  let signedUrl: string;
+  try {
+    signedUrl = await getAppObjectDownloadUrl(attachment.storageKey, 300);
+  } catch {
     return { ok: false as const, code: "UNAVAILABLE" as const };
   }
 
   return {
     ok: true as const,
-    signedUrl: data.signedUrl,
+    signedUrl,
     filename: attachment.originalFilename,
     contentType: attachment.contentType,
   };

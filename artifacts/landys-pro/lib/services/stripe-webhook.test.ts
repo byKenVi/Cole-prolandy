@@ -313,6 +313,7 @@ describe("constructStripeEvent — signature verification", () => {
   const stripe = new Stripe("sk_test_dummy");
 
   beforeEach(() => {
+    process.env.LANDYS_ENV = "local";
     process.env.STRIPE_MOCK = "false";
     process.env.STRIPE_SECRET_KEY = "sk_test_dummy";
     process.env.STRIPE_WEBHOOK_SECRET = secret;

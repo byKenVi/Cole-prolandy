@@ -1,4 +1,4 @@
-/** Shared names for the isolated Supabase Storage buckets. */
+/** Provider-neutral logical namespaces for persistent app objects. */
 export const CONTRACTOR_LOGOS_BUCKET = "contractor-logos";
 export const LEAD_ATTACHMENTS_BUCKET = "lead-attachments-private";
 export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;

@@ -4,20 +4,40 @@
  * Credentials are fetched fresh on every call from Replit's connector API —
  * never cached, because the connector can rotate keys at any time.
  *
- * STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET env vars are no longer required;
- * all credentials come through the connector.
+ * Replit supplies an isolated test-mode sandbox to Development and switches the
+ * same connector to the linked account only in a published deployment. Local
+ * Cursor and standalone staging environments continue to use explicit keys.
  */
 import Stripe from "stripe";
+import { landysEnvironment } from "@/lib/runtime-environment";
 
-async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecret?: string }> {
-  // Never let staging inherit the production Stripe connector. A staging Repl
-  // must provide explicit Stripe test-mode credentials.
-  if (process.env.LANDYS_ENV === "staging") {
+function assertSafeStripeKey(secretKey: string): void {
+  if (
+    landysEnvironment() !== "production" &&
+    !secretKey.startsWith("sk_test_") &&
+    !secretKey.startsWith("rk_test_")
+  ) {
+    throw new Error("Non-production environments require a Stripe test-mode credential.");
+  }
+}
+
+async function getStripeCredentials(): Promise<{
+  secretKey: string;
+  webhookSecret?: string;
+  publishableKey?: string;
+}> {
+  const environment = landysEnvironment();
+  if (environment === "local" || environment === "staging") {
     const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey?.startsWith("sk_test_")) {
-      throw new Error("Staging requires STRIPE_SECRET_KEY to be a Stripe test-mode key.");
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!secretKey) {
+      throw new Error(`${environment} requires STRIPE_SECRET_KEY.`);
     }
-    return { secretKey, webhookSecret: process.env.STRIPE_WEBHOOK_SECRET };
+    assertSafeStripeKey(secretKey);
+    if (!webhookSecret?.startsWith("whsec_")) {
+      throw new Error(`${environment} requires STRIPE_WEBHOOK_SECRET.`);
+    }
+    return { secretKey, webhookSecret };
   }
 
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
@@ -28,9 +48,11 @@ async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecre
       : null;
 
   if (!hostname || !xReplitToken) {
-    // Connector infrastructure not available — fall back to env var.
+  // Build tools may not have connector identity. Runtime Development and
+  // Production processes do; fail closed rather than crossing environments.
     const envKey = process.env.STRIPE_SECRET_KEY;
-    if (envKey) {
+    if (environment === "production" && envKey) {
+      assertSafeStripeKey(envKey);
       return { secretKey: envKey, webhookSecret: process.env.STRIPE_WEBHOOK_SECRET };
     }
     throw new Error(
@@ -62,11 +84,17 @@ async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecre
         "Complete the Stripe connection in the Integrations tab.",
     );
   }
+  assertSafeStripeKey(secretKey);
 
-  // Webhook secret: connector field is "webhook_secret", fall back to env var.
-  const webhookSecret = settings?.webhook_secret ?? process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecret =
+    settings?.webhook_secret ??
+    (environment === "production" ? process.env.STRIPE_WEBHOOK_SECRET : undefined);
 
-  return { secretKey, webhookSecret };
+  return {
+    secretKey,
+    webhookSecret,
+    publishableKey: settings?.publishable ?? settings?.publishable_key,
+  };
 }
 
 /**
@@ -75,14 +103,31 @@ async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecre
  */
 export async function getUncachableStripeClient(): Promise<Stripe> {
   const { secretKey } = await getStripeCredentials();
+  if (landysEnvironment() === "development") {
+    const { ensureDevelopmentStripeManagedWebhook } = await import(
+      "@/lib/integrations/stripe-managed-webhook"
+    );
+    await ensureDevelopmentStripeManagedWebhook(secretKey);
+  }
   return new Stripe(secretKey);
+}
+
+/** Server-startup access for Development managed webhook registration. */
+export async function getStripeSecretKey(): Promise<string> {
+  return (await getStripeCredentials()).secretKey;
 }
 
 /**
  * Returns the Stripe webhook signing secret for verifying incoming events.
  */
 export async function getStripeWebhookSecret(): Promise<string> {
-  const { webhookSecret } = await getStripeCredentials();
+  const { secretKey, webhookSecret } = await getStripeCredentials();
+  if (!webhookSecret && landysEnvironment() === "development") {
+    const { ensureDevelopmentStripeManagedWebhook } = await import(
+      "@/lib/integrations/stripe-managed-webhook"
+    );
+    return (await ensureDevelopmentStripeManagedWebhook(secretKey)).webhookSecret;
+  }
   if (!webhookSecret) {
     throw new Error(
       "Stripe webhook secret not available from connector or STRIPE_WEBHOOK_SECRET env var.",

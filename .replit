@@ -56,3 +56,10 @@ TWILIO_MOCK = "false"
 
 [userenv.shared]
 WIX_ESTIMATE_INTEGRATION_ENABLED = "true"
+
+[userenv.development]
+DEVELOPMENT_ADMIN_EMAIL = "kevin.linhounhinto@techma.ca"
+DEVELOPMENT_CONTRACTOR_EMAILS = "lihouhintoe@gmail.com,qa-contractor-2@landys.test,qa-contractor-3@landys.test,qa-contractor-4@landys.test"
+DEVELOPMENT_NOTIFICATION_EMAIL = "kevin.linhounhinto@techma.ca"
+DEVELOPMENT_NOTIFICATION_PHONE = "+2290198816067"
+LANDYS_ENV = "development"

@@ -42,7 +42,7 @@ export async function ingestLeadAttachments(params: {
         await prisma.leadAttachment.update({
           where: { id: existing.id },
           data: {
-            storageProvider: "supabase",
+            storageProvider: "app-storage",
             storageKey: stored.storageKey,
             originalFilename: stored.filename,
             contentType: stored.contentType,
@@ -56,7 +56,7 @@ export async function ingestLeadAttachments(params: {
         await prisma.leadAttachment.create({
           data: {
             leadId: params.leadId,
-            storageProvider: "supabase",
+            storageProvider: "app-storage",
             storageKey: stored.storageKey,
             originalFilename: stored.filename,
             contentType: stored.contentType,
@@ -79,7 +79,7 @@ export async function ingestLeadAttachments(params: {
         await prisma.leadAttachment.create({
           data: {
             leadId: params.leadId,
-            storageProvider: "supabase",
+            storageProvider: "app-storage",
             storageKey: `failed/${params.leadId}/${Date.now()}`,
             originalFilename: attachment.fileName,
             contentType: attachment.mimeType ?? "application/octet-stream",

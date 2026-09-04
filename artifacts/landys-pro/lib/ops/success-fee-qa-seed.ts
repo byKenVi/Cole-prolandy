@@ -45,8 +45,8 @@ function daysAgo(days: number, base = new Date()): Date {
 }
 
 export type QaSeedOptions = {
-  /** AppSetting environmentName marker value ("local" | "staging"). */
-  environmentName: "local" | "staging";
+  /** AppSetting environmentName marker value for an isolated QA database. */
+  environmentName: "local" | "development" | "staging";
   adminEmail: string;
   adminName?: string;
   contractorEmails: string[];
@@ -89,7 +89,10 @@ async function ensureTaxonomy(tx: Tx) {
   }
 }
 
-async function ensureSettings(tx: Tx, environmentName: "local" | "staging") {
+async function ensureSettings(
+  tx: Tx,
+  environmentName: "local" | "development" | "staging",
+) {
   for (const [key, value] of [
     ["environmentName", environmentName],
     ["acceptanceUnlimited", "false"],

@@ -369,6 +369,10 @@ body:has(.admin-theme[data-theme="dark"]) {
   outline: none;
   background: none;
   color: var(--ink);
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1;
 }
 .admin-theme .a-input::placeholder {
   color: var(--ink3);

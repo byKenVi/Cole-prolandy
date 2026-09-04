@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
-import { getStorageAdmin } from "@/lib/supabase-storage";
+import { putAppObject } from "@/lib/replit-object-storage";
 import type { WixEstimateAttachment } from "@/lib/integrations/wix/estimate-contract";
 import { assertSafeDownloadUrl } from "@/lib/integrations/attachments/url-safety";
 import {
-  LEAD_ATTACHMENTS_BUCKET,
   MAX_ATTACHMENT_BYTES,
 } from "@/lib/storage-buckets";
 
@@ -76,15 +75,8 @@ export async function downloadAndStoreAttachment(attachment: WixEstimateAttachme
     attachment.mimeType ||
     "application/octet-stream";
 
-  const storage = getStorageAdmin();
-  if (!storage) throw new Error("Private storage is not configured.");
-
   const storageKey = `leads/${createHash("sha256").update(url.toString()).digest("hex")}/${filename}`;
-  const { error } = await storage.storage.from(LEAD_ATTACHMENTS_BUCKET).upload(storageKey, bytes, {
-    contentType,
-    upsert: true,
-  });
-  if (error) throw new Error(error.message);
+  await putAppObject({ key: storageKey, bytes, contentType });
 
   return { storageKey, filename, contentType, bytes };
 }

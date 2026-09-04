@@ -7,7 +7,7 @@
  *   pnpm staging:reseed   # reset + canonical current-model fixtures
  *
  * These commands NEVER use DATABASE_URL implicitly. They require the dedicated
- * STAGING_DATABASE_URL / STAGING_DIRECT_URL secrets and a staging database
+ * STAGING_DATABASE_URL secret and a staging database
  * marker before destructive work.
  */
 import { spawnSync } from "node:child_process";
@@ -26,12 +26,10 @@ function configureStagingEnvironment() {
     throw new Error("Refusing: STAGING_PUBLIC_URL must be HTTPS and contain 'staging' in its hostname.");
   }
   const runtimeUrl = process.env.STAGING_DATABASE_URL?.trim();
-  const directUrl = process.env.STAGING_DIRECT_URL?.trim();
-  if (!runtimeUrl || !directUrl) {
-    throw new Error("Refusing: STAGING_DATABASE_URL and STAGING_DIRECT_URL are required.");
+  if (!runtimeUrl) {
+    throw new Error("Refusing: STAGING_DATABASE_URL is required.");
   }
   process.env.DATABASE_URL = runtimeUrl;
-  process.env.DIRECT_URL = directUrl;
 }
 
 async function client(): Promise<PrismaClient> {

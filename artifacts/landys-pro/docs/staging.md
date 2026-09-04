@@ -9,11 +9,10 @@ second Repl/deployment. Do not repurpose the existing production deployment.
 
 1. Create a new Repl named clearly with `staging` (for example,
    `landys-pro-staging`) from the same Git repository.
-2. Provision a separate empty Supabase/Postgres database. Do not clone production
+2. Provision a separate empty PostgreSQL database. Do not clone production
    operational data.
 3. In the staging Repl, configure these staging-only secrets:
-   - `STAGING_DATABASE_URL` — pooled staging connection
-   - `STAGING_DIRECT_URL` — direct staging connection
+   - `STAGING_DATABASE_URL` — staging PostgreSQL connection
    - `STAGING_ADMIN_EMAIL`
    - `STAGING_CONTRACTOR_EMAILS` — at least three comma-separated Clerk test users
    - Clerk test/development keys (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
@@ -31,15 +30,15 @@ second Repl/deployment. Do not repurpose the existing production deployment.
    - `RESEND_MOCK=false` (or `true` to log only)
    - `TWILIO_MOCK=false` only when the override phone is verified; otherwise `true`
    - `WIX_ESTIMATE_INTEGRATION_ENABLED=true`
-5. The staging app runtime still needs `DATABASE_URL` and `DIRECT_URL` set to
-   the same staging database values. Never copy production values.
+5. The staging app runtime still needs `DATABASE_URL` set to the same staging
+   database value. Never copy production values.
 6. Run `pnpm --filter @workspace/landys-pro staging:migrate`. It runs
    `prisma migrate deploy` only when the target is empty or already carries the
    staging marker.
 7. Run `pnpm --filter @workspace/landys-pro staging:reseed`.
 
 The reset/reseed command refuses to run unless `LANDYS_ENV=staging`, the public
-hostname contains `staging`, dedicated staging DB secrets exist, and the target
+hostname contains `staging`, the dedicated staging DB secret exists, and the target
 database carries `AppSetting(environmentName=staging)`.
 
 ## Integrations
