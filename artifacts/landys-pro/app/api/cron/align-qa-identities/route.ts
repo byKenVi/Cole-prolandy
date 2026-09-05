@@ -43,7 +43,7 @@ async function ensureQaClerkUser(email: string): Promise<string> {
   return created.id;
 }
 
-export async function POST(req: NextRequest) {
+async function handle(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ ok: false }, { status: 401 });
 
   try {
@@ -278,3 +278,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const GET = handle;
+export const POST = handle;
