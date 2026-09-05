@@ -44,6 +44,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/cron/expire-leads",
   "/api/cron/follow-ups",
   "/api/cron/align-qa-identities",
+  "/api/cron/initialize-settings",
   "/api/cron/wix-contractor-sync",
 ]);
 
