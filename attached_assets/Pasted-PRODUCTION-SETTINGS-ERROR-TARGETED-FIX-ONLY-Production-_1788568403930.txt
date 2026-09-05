@@ -1,0 +1,90 @@
+PRODUCTION SETTINGS ERROR — TARGETED FIX ONLY
+
+Production is otherwise working.
+
+The only known blocker is:
+
+GET /admin/settings
+
+which renders:
+
+"Application error: a server-side exception has occurred"
+
+Digest:
+2053494794
+
+Do NOT perform broad QA.
+Do NOT change architecture.
+Do NOT touch Stripe, Twilio, Resend, Clerk, Wix, Storage, auth, or unrelated pages.
+
+FIRST inspect the PRODUCTION server logs for this exact request/digest and identify the real exception.
+
+Then determine whether the root cause is:
+
+- missing Production reference/configuration data
+- missing AppSetting/default row
+- missing SuccessFeeTier data
+- missing directory/taxonomy data
+- an unsafe assumption in Settings code about an empty Production database
+- or another concrete runtime error
+
+IMPORTANT:
+
+Production uses the native Replit Production PostgreSQL database.
+
+Do NOT:
+- reconnect Supabase
+- copy Development data
+- seed QA fixtures
+- reset Production DB
+- run destructive migrations
+
+If the issue is missing required reference/configuration data:
+
+initialize/upsert ONLY the missing canonical Production defaults required by Settings.
+
+If the issue is code assuming data always exists:
+
+make the smallest safe fix so a clean Production database is supported.
+
+Do not hide database errors with fake fallback values unless they are genuine product defaults.
+
+After fixing:
+
+1. verify /admin/settings loads in Production
+2. verify all tabs load:
+   - General
+   - Opportunity distribution
+   - Success fee tiers
+   - Follow-ups
+   - Directories
+3. verify current expected defaults are present:
+   - acceptance cap = 3
+   - Unlimited = off
+   - success fee tiers = 5% / 4% / 3%
+   - follow-up timing defaults
+4. do not modify any other page
+
+If a code change is required:
+- typecheck
+- build
+- commit
+- publish once
+
+Return only:
+
+ROOT CAUSE:
+FIX:
+PRODUCTION DATA ADDED/CHANGED:
+SETTINGS:
+- General:
+- Opportunity distribution:
+- Success fee tiers:
+- Follow-ups:
+- Directories:
+
+CODE CHANGE:
+YES/NO
+
+COMMIT:
+if applicable
