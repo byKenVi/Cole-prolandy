@@ -74,12 +74,8 @@ export function ContractorFeed({
 
   return (
     <div className="contractor-page flex min-h-full flex-col">
-      <header className="relative overflow-hidden border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-7">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(224,169,92,0.14),transparent_55%),linear-gradient(180deg,#FFF9EF_0%,#FEFBF6_70%)]"
-        />
-        <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-7">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
           <div className="mb-2 flex items-center gap-3">
             <span className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-white shadow-[0_2px_10px_rgba(58,53,45,0.08)]">
@@ -176,7 +172,7 @@ export function ContractorFeed({
                 ))}
               </div>
               <div className="bg-[#FAF4E9] px-6 py-3.5 text-[13px] text-[#8A7E68]">
-                Showing {shown.length} on this page · {totalOpen} open total · No upfront lead cost
+                Showing {shown.length} on this page, {totalOpen} open in total. No upfront lead cost.
               </div>
             </div>
 
@@ -199,7 +195,7 @@ export function ContractorFeed({
 
 function HeadCell({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
   return (
-    <span className={`text-[11px] font-semibold uppercase tracking-[0.07em] text-[#8A7E68] ${className}`}>
+    <span className={`text-[13px] font-medium text-[#6B6459] ${className}`}>
       {children}
     </span>
   );

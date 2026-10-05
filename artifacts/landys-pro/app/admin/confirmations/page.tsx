@@ -20,10 +20,9 @@ type ConfirmationTab = "pending" | "confirmed" | "mismatches";
 const thStyle: React.CSSProperties = {
   padding: "12px 18px",
   textAlign: "left",
-  font: "600 10px/1 var(--mono)",
-  letterSpacing: ".06em",
-  textTransform: "uppercase",
-  color: "var(--ink3)",
+  font: "500 13px/1.3 Rubik, sans-serif",
+  letterSpacing: "0",
+  color: "var(--ink2)",
 };
 
 const tdStyle: React.CSSProperties = {
@@ -34,10 +33,9 @@ const tdStyle: React.CSSProperties = {
 
 const fieldLabel: React.CSSProperties = {
   display: "block",
-  font: "600 10px/1 var(--mono)",
-  letterSpacing: ".05em",
-  textTransform: "uppercase",
-  color: "var(--ink3)",
+  font: "500 13px/1.3 Rubik, sans-serif",
+  letterSpacing: "0",
+  color: "var(--ink2)",
   marginBottom: 4,
 };
 
@@ -233,7 +231,7 @@ export default async function AdminConfirmationsPage({
         style={{
           padding: "14px 18px",
           marginBottom: 18,
-          background: "linear-gradient(135deg, var(--card) 0%, var(--card2) 100%)",
+          background: "var(--card)",
         }}
       >
         <p style={{ margin: 0, font: "500 14px/1.5 'Inter'", color: "var(--ink2)" }}>

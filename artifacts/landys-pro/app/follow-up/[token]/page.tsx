@@ -12,9 +12,7 @@ function Wordmark() {
   return (
     <div className="inline-flex items-baseline gap-2.5">
       <span className="font-vibes text-[32px] leading-none text-[#5C5142]">Landys</span>
-      <span className="rounded-full border border-[#C0803C] px-[7px] py-[3px] text-[10px] font-bold uppercase leading-none tracking-[0.2em] text-[#C0803C]">
-        Pro
-      </span>
+      <span className="brand-pro">Pro</span>
     </div>
   );
 }
@@ -100,9 +98,7 @@ export default async function FollowUpPage({ params }: { params: Promise<{ token
       ) : (
         <div className="mx-auto w-full max-w-lg px-4 pb-16 pt-4">
           <div className="rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-5 shadow-[0_12px_32px_rgba(58,53,45,0.10)]">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#C0803C]">
-              {title}
-            </p>
+            <p className="text-[14px] font-medium text-[#8A6B2E]">{title}</p>
             <div className="mb-4 mt-3 flex items-start gap-3">
               <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#F5EEDF]">
                 {iconSrc ? (

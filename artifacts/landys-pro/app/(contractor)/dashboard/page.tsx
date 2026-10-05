@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, ChevronRight } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { formatMoney } from "@/lib/money";
@@ -125,26 +125,11 @@ export default async function ContractorDashboard() {
 
   return (
     <div className="contractor-page px-4 py-6 sm:px-5 md:px-[34px] md:py-8">
-      <header className="relative mb-8 overflow-hidden rounded-[22px] border border-[#EDE4D3] bg-white px-5 py-6 shadow-[0_8px_24px_rgba(58,53,45,0.06)] sm:px-7 sm:py-7">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(224,169,92,0.18),transparent_50%),linear-gradient(135deg,#FFFDF8,#F7F0E3)]"
-        />
-        <div className="relative flex items-start gap-4">
-          <span className="hidden h-14 w-14 flex-none items-center justify-center rounded-[16px] bg-white shadow-sm sm:flex">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/nav-icons/nav-home.png" alt="" width={40} height={40} className="h-9 w-9 object-contain" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#C0803C]">
-              Welcome back
-            </p>
-            <h1 className="mt-1 font-fraunces text-[28px] font-semibold tracking-[-0.02em] text-[#4A3E2D] sm:text-[34px]">
-              {firstName}
-            </h1>
-            <p className="mt-2 max-w-[46ch] text-[16px] leading-relaxed text-[#6B6459]">{summary}</p>
-          </div>
-        </div>
+      <header className="mb-8 border-b border-[#EDE4D3] pb-6">
+        <h1 className="font-fraunces text-[28px] font-semibold text-[#4A3E2D] sm:text-[34px]">
+          {firstName}
+        </h1>
+        <p className="mt-2 max-w-[46ch] text-[16px] leading-relaxed text-[#6B6459]">{summary}</p>
       </header>
 
       {dueFees.length > 0 && (
@@ -169,8 +154,8 @@ export default async function ContractorDashboard() {
                     {leadScopeLabel(fee.leadMatch.lead)}
                   </p>
                   <p className="mt-0.5 text-[13px] text-[#8A7E68]">
-                    Landy&apos;s fee {formatMoney(fee.feeAmountCents)} · {fee.rateBasisPoints / 100}% of{" "}
-                    {formatMoney(fee.finalValueCents)}
+                    Landy&apos;s fee {formatMoney(fee.feeAmountCents)} ({fee.rateBasisPoints / 100}% of{" "}
+                    {formatMoney(fee.finalValueCents)})
                   </p>
                 </div>
                 <FeePayButton
@@ -200,15 +185,14 @@ export default async function ContractorDashboard() {
               New opportunities
             </h2>
             <p className="mt-0.5 text-[14px] text-[#8A7E68]">
-              Accept to unlock contact · Pass if it&apos;s not a fit
+              Accept to unlock contact. Pass if it&apos;s not a fit.
             </p>
           </div>
           <Link
             href="/opportunities"
-            className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#C0803C] hover:underline"
+            className="text-[13px] font-semibold text-[#C0803C] hover:underline"
           >
             View all
-            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </div>
 
@@ -237,15 +221,14 @@ export default async function ContractorDashboard() {
               My jobs
             </h2>
             <p className="mt-0.5 text-[14px] text-[#8A7E68]">
-              Accepted · waiting to be paid · fee due
+              Accepted, waiting to be paid, or fee due.
             </p>
           </div>
           <Link
             href="/jobs"
-            className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#C0803C] hover:underline"
+            className="text-[13px] font-semibold text-[#C0803C] hover:underline"
           >
             My Jobs
-            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </div>
 

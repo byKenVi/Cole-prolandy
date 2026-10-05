@@ -28,10 +28,9 @@ type SortDir = "desc" | "asc";
 
 const GRID = "52px minmax(200px,2.2fr) minmax(150px,1.4fr) 88px 88px 110px 100px 108px";
 const HEAD_CELL: React.CSSProperties = {
-  font: "600 10px/1 var(--mono)",
-  letterSpacing: ".08em",
-  textTransform: "uppercase",
-  color: "var(--ink3)",
+  font: "500 13px/1.3 Rubik, sans-serif",
+  letterSpacing: "0",
+  color: "var(--ink2)",
 };
 
 export function LeadsTable({

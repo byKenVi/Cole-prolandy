@@ -57,9 +57,7 @@ export default async function ContractorLayout({ children }: { children: React.R
         <header className="contractor-mobile-header">
           <Link href="/dashboard" className="flex min-w-0 flex-none items-baseline gap-2 pl-0.5">
             <span className="font-vibes text-[26px] leading-none text-[#5C5142]">Landys</span>
-            <span className="rounded-full border border-[#C0803C] px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-[0.2em] text-[#C0803C]">
-              Pro
-            </span>
+            <span className="brand-pro">Pro</span>
           </Link>
 
           <div className="ml-auto flex flex-none items-center gap-1">

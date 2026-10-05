@@ -235,11 +235,10 @@ function Sidebar({
         <div className="admin-wallet-body" style={{ minWidth: 0, flex: 1 }}>
           <p
             style={{
-              margin: "0 0 3px",
-              font: "600 10px/1 var(--mono)",
-              letterSpacing: ".1em",
-              textTransform: "uppercase",
-              color: "#9BB09F",
+              margin: "0 0 4px",
+              font: "500 13px/1.3 Rubik, sans-serif",
+              letterSpacing: "0",
+              color: "#C5D4C8",
             }}
           >
             Success fees collected
@@ -308,9 +307,8 @@ function Sidebar({
             <span
               style={{
                 flex: "none",
-                font: "700 8px/1 'Inter'",
-                letterSpacing: ".08em",
-                textTransform: "uppercase",
+                font: "600 11px/1.2 Rubik, sans-serif",
+                letterSpacing: "0",
                 color: "#E3AB5E",
                 border: "1px solid rgba(227,171,94,.55)",
                 borderRadius: 999,

@@ -90,10 +90,9 @@ export function RevenueHero({
             <p
               style={{
                 margin: 0,
-                font: "600 11px/1 var(--mono)",
-                letterSpacing: ".1em",
-                textTransform: "uppercase",
-                color: "rgba(241,231,214,.62)",
+                font: "500 14px/1.3 Rubik, sans-serif",
+                letterSpacing: "0",
+                color: "rgba(241,231,214,.78)",
               }}
             >
               Success fees collected · {rangeLabel}
@@ -190,8 +189,8 @@ export function RevenueHero({
             height: 92,
             flex: "none",
             borderRadius: 999,
-            background: "radial-gradient(circle at 35% 30%,#F0C27E,#C0803C 70%)",
-            boxShadow: "0 10px 22px rgba(0,0,0,.3)",
+            background: "#e0a95c",
+            boxShadow: "none",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

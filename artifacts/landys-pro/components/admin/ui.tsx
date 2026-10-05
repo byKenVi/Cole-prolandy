@@ -36,16 +36,15 @@ export function Panel({
   );
 }
 
-/** Small gold monospace kicker shown above a screen title. */
+/** Short line above a screen title. Sentence case, same face as the UI. */
 export function Kicker({ children }: { children: React.ReactNode }) {
   return (
     <p
       style={{
-        margin: "0 0 8px",
-        font: "600 12px/1 var(--mono)",
-        letterSpacing: ".12em",
-        textTransform: "uppercase",
-        color: "var(--gold)",
+        margin: "0 0 6px",
+        font: "500 14px/1.35 Rubik, sans-serif",
+        letterSpacing: "0",
+        color: "var(--goldStrong)",
       }}
     >
       {children}
@@ -126,7 +125,7 @@ export function GoldButtonLink({
         borderRadius: 12,
         font: "600 15px/1 'Inter'",
         cursor: "pointer",
-        boxShadow: "0 8px 18px rgba(192,128,60,.28)",
+        boxShadow: "none",
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
@@ -186,7 +185,7 @@ export function Chip({
   );
 }
 
-/** Plain KPI card (white surface, uppercase label, big number, sub line). */
+/** Plain KPI card (white surface, sentence-case label, big number, sub line). */
 export function StatCard({
   label,
   value,
@@ -212,10 +211,9 @@ export function StatCard({
       <p
         style={{
           margin: "0 0 8px",
-          font: "600 11px/1 var(--mono)",
-          letterSpacing: ".05em",
-          textTransform: "uppercase",
-          color: "var(--ink3)",
+          font: "500 13px/1.3 Rubik, sans-serif",
+          letterSpacing: "0",
+          color: "var(--ink2)",
         }}
       >
         {label}

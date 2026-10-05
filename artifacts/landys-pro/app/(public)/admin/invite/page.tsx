@@ -205,20 +205,7 @@ function InviteCard({
           >
             Landys
           </span>
-          <span
-            style={{
-              border: "1px solid #C0803C",
-              borderRadius: 999,
-              padding: "2px 7px",
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              color: "#C0803C",
-            }}
-          >
-            PRO
-          </span>
+          <span className="brand-pro">Pro</span>
         </div>
 
         {/* Icon + title */}

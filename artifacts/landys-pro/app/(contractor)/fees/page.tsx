@@ -90,12 +90,8 @@ export default async function FeesPage({
 
   return (
     <div className="contractor-page flex min-h-full flex-col">
-      <header className="relative overflow-hidden border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-7">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(224,169,92,0.12),transparent_55%),linear-gradient(180deg,#FFF9EF_0%,#FEFBF6_75%)]"
-        />
-        <div className="relative flex items-start gap-3">
+      <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-7">
+        <div className="flex items-start gap-3">
           <span className="flex h-12 w-12 flex-none items-center justify-center rounded-[14px] bg-white shadow-[0_2px_10px_rgba(58,53,45,0.08)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/nav-icons/nav-wallet.png" alt="" width={40} height={40} className="h-8 w-8 object-contain" />
@@ -259,7 +255,7 @@ function FeeCard({
 
         <div className="relative z-10 flex flex-col items-stretch gap-3 sm:min-w-[200px] sm:items-end">
           <div className="pointer-events-none text-left sm:text-right">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8A7E68]">
+            <p className="text-[13px] font-medium text-[#6B6459]">
               Landy&apos;s fee
             </p>
             <p className="font-fraunces text-[28px] font-semibold tabular-nums text-[#4A3E2D]">

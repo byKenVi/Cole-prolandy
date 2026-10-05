@@ -179,7 +179,7 @@ export function OpportunityCard({ lead }: { lead: OpportunityCardData }) {
       </Link>
       <div className="flex flex-col gap-3 border-t border-[#F2EBDD] bg-[#FDFAF4] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <p className="max-w-[28ch] text-[13px] leading-snug text-[#8A7E68]">
-          Contact unlocks after you accept · Work stays off-platform
+          Contact unlocks after you accept. Work stays off the platform.
         </p>
         <div className="flex w-full flex-none items-stretch gap-2.5 sm:w-auto">
           <OneClickPass matchId={lead.matchId} />

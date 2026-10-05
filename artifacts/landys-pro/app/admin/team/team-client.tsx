@@ -91,10 +91,8 @@ const cardStyle: React.CSSProperties = {
 
 const thStyle: React.CSSProperties = {
   padding: "10px 16px",
-  fontSize: 11,
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: "0.07em",
+  font: "500 13px/1.3 Rubik, sans-serif",
+  letterSpacing: "0",
   color: "var(--ink2)",
   textAlign: "left",
   background: "color-mix(in srgb, var(--surface) 80%, transparent)",

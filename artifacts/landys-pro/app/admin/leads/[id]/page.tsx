@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-text-muted">{label}</dt>
+      <dt className="text-sm font-medium text-text-muted">{label}</dt>
       <dd className="mt-0.5 text-base text-text">{value}</dd>
     </div>
   );
@@ -157,10 +157,9 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <p
             style={{
               margin: "0 0 8px",
-              font: "600 11px/1 var(--mono)",
-              letterSpacing: ".08em",
-              textTransform: "uppercase",
-              color: "var(--ink3)",
+              font: "500 14px/1.35 Rubik, sans-serif",
+              letterSpacing: "0",
+              color: "var(--ink2)",
             }}
           >
             Client
@@ -213,7 +212,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
 
       <Card className="flex flex-col gap-5 p-6">
         <div>
-          <p className="text-xs uppercase tracking-wide text-text-muted">Est. project value</p>
+          <p className="text-sm font-medium text-text-muted">Estimated project value</p>
           <p className="mt-1 text-3xl font-semibold leading-tight tabular-nums text-text">
             {lead.budgetCents != null
               ? formatMoney(lead.budgetCents)

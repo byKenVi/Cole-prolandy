@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export function WalletCard({ cents, className }: { cents: number; className?: string }) {
   return (
     <div className={cn("rounded-lg bg-text p-6 shadow-md", className)}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-white/55">Wallet balance</p>
+      <p className="text-sm font-medium text-white/70">Wallet balance</p>
       <p className="mt-2 font-display text-4xl font-bold leading-none tabular-nums text-white">
         {formatMoney(cents)}
       </p>

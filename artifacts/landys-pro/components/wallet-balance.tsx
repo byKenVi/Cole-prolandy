@@ -25,7 +25,7 @@ export function WalletBalance({
   return (
     <div>
       {label && (
-        <p className="mb-1 text-sm font-medium uppercase tracking-wide text-text-muted">{label}</p>
+        <p className="mb-1 text-sm font-medium text-text-muted">{label}</p>
       )}
       <p
         className={cn(

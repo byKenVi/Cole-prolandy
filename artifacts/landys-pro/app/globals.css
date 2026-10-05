@@ -316,13 +316,10 @@ body:has(.admin-theme[data-theme="dark"]) {
 
 /* Admin helper classes (hover/press states that inline styles can't express). */
 .admin-theme .a-lift {
-  transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
+  transition: border-color 0.15s ease;
 }
 .admin-theme .a-lift:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadowMd);
+  border-color: #d9ccb4;
 }
 .admin-theme .a-row {
   transition: background 0.15s ease;
@@ -406,7 +403,7 @@ body:has(.admin-theme[data-theme="dark"]) {
   }
 }
 .admin-fade-up {
-  animation: admin-fade-up 0.3s ease;
+  animation: none;
 }
 
 /*
@@ -1217,13 +1214,27 @@ body:has(.admin-theme[data-theme="dark"]) {
 .contractor-card {
   border-radius: 18px;
   border: 1px solid #ebe3d4;
-  background: linear-gradient(180deg, #ffffff 0%, #fffdf9 100%);
-  box-shadow: 0 4px 16px rgba(58, 53, 45, 0.06);
-  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  background: #ffffff;
 }
 .contractor-card:hover {
-  border-color: #e0d4bd;
-  box-shadow: 0 8px 22px rgba(58, 53, 45, 0.09);
+  border-color: #d9ccb4;
+}
+
+/* Wordmark pill. Sentence case, no tracked capitals. */
+.brand-pro {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #c0803c;
+  padding: 1px 7px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: #a56a2b;
+}
+.contractor-sidebar .brand-pro {
+  color: #e0a95c;
 }
 
 .contractor-status-chip {

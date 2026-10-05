@@ -293,9 +293,8 @@ export default async function AdminDashboard({
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker={`Operations · ${dateStr}`}
         title={greeting()}
-        subtitle="What needs attention — open requests, fees, confirmations, and won jobs."
+        subtitle={`${dateStr}. Open requests, fees, confirmations, and won jobs.`}
         titleSize={36}
         action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
       />
@@ -328,10 +327,9 @@ export default async function AdminDashboard({
             <p
               style={{
                 margin: "0 0 8px",
-                font: "600 10px/1 var(--mono)",
-                letterSpacing: ".07em",
-                textTransform: "uppercase",
-                color: "var(--ink3)",
+                font: "500 13px/1.3 Rubik, sans-serif",
+                letterSpacing: "0",
+                color: "var(--ink2)",
               }}
             >
               {m.label}

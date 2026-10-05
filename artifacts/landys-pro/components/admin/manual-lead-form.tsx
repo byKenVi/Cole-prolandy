@@ -46,10 +46,9 @@ const EMPTY = {
 const LABEL: React.CSSProperties = {
   display: "block",
   marginBottom: 8,
-  font: "600 12px/1 var(--mono)",
-  letterSpacing: ".06em",
-  textTransform: "uppercase",
-  color: "var(--ink3)",
+  font: "500 14px/1.3 Rubik, sans-serif",
+  letterSpacing: "0",
+  color: "var(--ink2)",
 };
 
 const FIELD: React.CSSProperties = {
@@ -348,7 +347,7 @@ function Section({ kicker, title, subtitle, children }: { kicker: string; title:
   return (
     <section className="flex flex-col gap-[18px]">
       <div>
-        <p style={{ margin: "0 0 8px", font: "600 11px/1 var(--mono)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--gold)" }}>{kicker}</p>
+        <p style={{ margin: "0 0 6px", font: "500 14px/1.35 Rubik, sans-serif", color: "var(--goldStrong)" }}>{kicker}</p>
         <h2 style={{ margin: 0, font: "600 22px/1.2 var(--display)", color: "var(--ink)" }}>{title}</h2>
         <p style={{ margin: "8px 0 0", font: "400 14px/1.45 'Inter'", color: "var(--ink2)" }}>{subtitle}</p>
       </div>

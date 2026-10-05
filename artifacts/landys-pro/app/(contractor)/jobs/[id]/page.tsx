@@ -118,9 +118,7 @@ export default async function JobDetail({
 
             {lead.description && (
               <div className="mb-6 rounded-[16px] border border-[#EBE3D4] bg-[#FFFDF9] p-4">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.05em] text-[#8A7E68]">
-                  Project details
-                </p>
+                <p className="text-[13px] font-medium text-[#6B6459]">Project details</p>
                 <p className="mt-2 whitespace-pre-wrap text-[15px] leading-6 text-[#3A352D]">
                   {lead.description}
                 </p>
@@ -166,7 +164,7 @@ export default async function JobDetail({
         <div className="order-1 min-w-0 rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-5 shadow-[0_12px_32px_rgba(58,53,45,0.10)] sm:p-6 lg:order-2 lg:sticky lg:top-6">
           {won && successFee ? (
             <>
-              <p className="text-[13px] font-medium uppercase tracking-[0.05em] text-[#6B6459]">Success fee</p>
+              <p className="text-[13px] font-medium text-[#6B6459]">Success fee</p>
               <p className="mb-1 mt-0.5 text-[42px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[#4A3E2D]">
                 {formatMoney(successFee.feeAmountCents)}
               </p>

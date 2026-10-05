@@ -138,7 +138,7 @@ export default async function ContractorDetail({
       </div>
 
       <Card className="flex flex-col gap-3 p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Profile</h2>
+        <h2 className="text-sm font-medium text-text-muted">Profile</h2>
         {contractor.aboutSection && (
           <p className="text-sm text-text-muted">{contractor.aboutSection}</p>
         )}

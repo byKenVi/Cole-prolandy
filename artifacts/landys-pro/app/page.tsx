@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, MapPin, CheckCircle2 } from "lucide-react";
+import { MapPin, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand-logo";
 import { authMode } from "@/lib/auth";
@@ -42,7 +42,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-bg">
       <div className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-10">
-        <header className="flex items-center justify-between duration-700 animate-in fade-in slide-in-from-top-2">
+        <header className="flex items-center justify-between">
           <BrandLogo className="h-8" priority />
           <nav className="flex items-center gap-3">
             <Link
@@ -58,7 +58,7 @@ export default function LandingPage() {
         </header>
 
         <section className="grid items-center gap-10 py-12 md:grid-cols-2 md:py-16">
-          <div className="flex flex-col gap-4 fill-mode-both duration-700 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex flex-col gap-4">
             <p className="font-script text-4xl leading-none text-accent">More quality jobs</p>
             <h1 className="font-sans text-5xl font-black leading-[0.95] tracking-tight text-[#4A3E2D] sm:text-6xl">
               Less hassle.
@@ -82,10 +82,9 @@ export default function LandingPage() {
               </Button>
               <Link
                 href={accessHref}
-                className="group inline-flex items-center gap-1 text-sm font-semibold text-text transition-colors hover:text-accent"
+                className="inline-flex items-center text-sm font-semibold text-text transition-colors hover:text-accent"
               >
                 Set up by the Landy&apos;s team? Get access
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </div>
             <p className="mt-2 flex items-center gap-1.5 text-sm text-text-muted">
@@ -93,19 +92,19 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="relative fill-mode-both delay-150 duration-700 animate-in fade-in slide-in-from-bottom-6">
+          <div className="relative">
             <Image
               src="/hero-3d-mono.png"
               alt="Landys 3D tractor on a plot of land"
               width={1024}
               height={768}
               priority
-              className="mx-auto h-auto w-full max-w-lg animate-float drop-shadow-2xl"
+              className="mx-auto h-auto w-full max-w-lg"
             />
-            <div className="absolute -bottom-2 left-2 w-60 rounded-md border border-border bg-surface p-3 shadow-lg animate-float-slow sm:left-6">
+            <div className="absolute -bottom-2 left-2 w-60 rounded-md border border-border bg-surface p-3 shadow-sm sm:left-6">
               <div className="flex items-center justify-between">
                 <BrandLogo className="h-4" />
-                <span className="rounded-full border border-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+                <span className="rounded-full border border-accent px-2 py-0.5 text-[12px] font-medium text-accent">
                   Example
                 </span>
               </div>
@@ -123,7 +122,6 @@ export default function LandingPage() {
           className="rounded-lg bg-surface px-6 py-12 shadow-md sm:px-10"
         >
           <div className="text-center">
-            <p className="font-script text-3xl text-accent">simple</p>
             <h2 className="font-sans text-4xl font-black tracking-tight text-text">
               How it works for pros
             </h2>
@@ -137,17 +135,16 @@ export default function LandingPage() {
             {STEPS.map(({ img, title, body }, i) => (
               <div
                 key={title}
-                className="group flex flex-col items-center gap-3 text-center fill-mode-both duration-700 animate-in fade-in slide-in-from-bottom-4"
-                style={{ animationDelay: `${i * 120}ms` }}
+                className="flex flex-col items-center gap-3 text-center"
               >
                 <Image
                   src={img}
                   alt=""
                   width={512}
                   height={512}
-                  className="h-24 w-24 drop-shadow-xl transition-transform duration-300 group-hover:-translate-y-2 group-hover:scale-105"
+                  className="h-24 w-24"
                 />
-                <p className="font-script text-2xl text-accent">Step {i + 1}</p>
+                <p className="text-sm font-semibold text-accent">Step {i + 1}</p>
                 <p className="text-lg font-black tracking-tight text-text">{title}</p>
                 <p className="max-w-xs text-sm leading-relaxed text-text-muted">{body}</p>
               </div>
@@ -155,7 +152,7 @@ export default function LandingPage() {
           </div>
 
           <p className="mt-12 text-center text-sm font-medium text-text-muted">
-            No lead fees · No subscription · Success fee only after you get paid
+            No lead fees. No subscription. Success fee only after you get paid.
           </p>
         </section>
 

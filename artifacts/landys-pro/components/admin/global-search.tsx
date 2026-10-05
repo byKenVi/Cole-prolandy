@@ -182,10 +182,9 @@ export function AdminGlobalSearch() {
                     style={{
                       display: "inline-block",
                       marginBottom: 3,
-                      font: "600 9px/1 var(--mono)",
-                      letterSpacing: ".08em",
-                      textTransform: "uppercase",
-                      color: "var(--ink3)",
+                      font: "500 12px/1.3 Rubik, sans-serif",
+                      letterSpacing: "0",
+                      color: "var(--ink2)",
                     }}
                   >
                     {hit.kind}

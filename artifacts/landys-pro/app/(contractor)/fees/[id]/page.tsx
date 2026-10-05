@@ -57,9 +57,7 @@ export default async function ContractorFeeDetail({
       </Link>
 
       <div className="max-w-2xl rounded-[22px] border border-[#EBE3D4] bg-white p-6 shadow-[0_12px_32px_rgba(58,53,45,0.08)] sm:p-8">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#C0803C]">
-          Landy&apos;s success fee
-        </p>
+        <p className="text-[14px] font-medium text-[#8A6B2E]">Landy&apos;s success fee</p>
         <h1 className="mt-2 font-fraunces text-[28px] font-semibold text-[#4A3E2D]">
           {leadScopeLabel(fee.leadMatch.lead)}
         </h1>
@@ -67,27 +65,23 @@ export default async function ContractorFeeDetail({
 
         <dl className="mt-6 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8A7E68]">
-              Final contract value
-            </dt>
+            <dt className="text-[13px] font-medium text-[#6B6459]">Final contract value</dt>
             <dd className="mt-1 text-[18px] font-semibold text-[#4A3E2D]">
               {formatMoney(fee.finalValueCents)}
             </dd>
           </div>
           <div>
-            <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8A7E68]">Rate</dt>
+            <dt className="text-[13px] font-medium text-[#6B6459]">Rate</dt>
             <dd className="mt-1 text-[18px] font-semibold text-[#4A3E2D]">{rateLabel}</dd>
           </div>
           <div>
-            <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8A7E68]">
-              Landy&apos;s fee
-            </dt>
+            <dt className="text-[13px] font-medium text-[#6B6459]">Landy&apos;s fee</dt>
             <dd className="mt-1 font-fraunces text-[32px] font-semibold text-[#4A3E2D]">
               {formatMoney(fee.feeAmountCents)}
             </dd>
           </div>
           <div>
-            <dt className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[#8A7E68]">Status</dt>
+            <dt className="text-[13px] font-medium text-[#6B6459]">Status</dt>
             <dd className="mt-1 text-[16px] font-semibold text-[#4A3E2D]">{statusLabel}</dd>
           </div>
         </dl>

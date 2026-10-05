@@ -39,9 +39,7 @@ export function ContractorSidebar({
         <Link href="/dashboard" className="font-vibes text-[34px] leading-none text-[#F1E7D6]">
           Landys
         </Link>
-        <span className="rounded-full border border-[#C0803C] px-[6px] py-[3px] text-[9px] font-bold uppercase leading-none tracking-[0.2em] text-[#E0A95C]">
-          Pro
-        </span>
+        <span className="brand-pro">Pro</span>
       </div>
 
       <nav className="mt-[34px] flex flex-col gap-[3px]">

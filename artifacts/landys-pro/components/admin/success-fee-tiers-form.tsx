@@ -173,10 +173,9 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                     <label
                       style={{
                         display: "block",
-                        font: "600 11px/1 var(--mono)",
-                        letterSpacing: ".04em",
-                        textTransform: "uppercase",
-                        color: "var(--ink3)",
+                        font: "500 13px/1.3 Rubik, sans-serif",
+                        letterSpacing: "0",
+                        color: "var(--ink2)",
                         marginBottom: 7,
                       }}
                     >
@@ -214,10 +213,9 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                     <label
                       style={{
                         display: "block",
-                        font: "600 11px/1 var(--mono)",
-                        letterSpacing: ".04em",
-                        textTransform: "uppercase",
-                        color: "var(--ink3)",
+                        font: "500 13px/1.3 Rubik, sans-serif",
+                        letterSpacing: "0",
+                        color: "var(--ink2)",
                         marginBottom: 7,
                       }}
                     >
@@ -241,10 +239,9 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                   <label
                     style={{
                       display: "block",
-                      font: "600 11px/1 var(--mono)",
-                      letterSpacing: ".04em",
-                      textTransform: "uppercase",
-                      color: "var(--ink3)",
+                      font: "500 13px/1.3 Rubik, sans-serif",
+                      letterSpacing: "0",
+                      color: "var(--ink2)",
                       marginBottom: 7,
                     }}
                   >
