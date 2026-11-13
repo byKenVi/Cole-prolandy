@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { landownerConfirmAction } from "@/app/actions/follow-up";
 
@@ -13,16 +13,17 @@ type ContractorOption = {
 export function LandownerConfirmActions({
   token,
   contractors,
+  initialStep = "choice",
 }: {
   token: string;
   contractors: ContractorOption[];
+  initialStep?: "choice" | "pick";
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [step, setStep] = useState<"choice" | "pick">("choice");
+  const [step, setStep] = useState<"choice" | "pick">(initialStep);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(
     contractors.length === 1 ? contractors[0]!.leadMatchId : null,
   );
@@ -41,26 +42,6 @@ export function LandownerConfirmActions({
       setActiveAction(null);
     });
   }
-
-  useEffect(() => {
-    const answer = searchParams.get("a");
-    if (!answer || done || pending) return;
-    if (answer === "notyet") {
-      submit(false);
-      return;
-    }
-    if (answer === "paid") {
-      if (contractors.length === 1) {
-        submit(true, contractors[0]!.leadMatchId);
-      } else if (contractors.length > 1) {
-        setStep("pick");
-      } else {
-        setError("No contractors are linked to this project yet.");
-      }
-    }
-    // Intentionally only on first mount / answer param.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   if (done) {
     return (
