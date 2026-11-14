@@ -1,6 +1,8 @@
 # Landy's Pro
 
-A land-service lead-generation platform that sends local job leads straight to contractors' phones — no subscriptions, no chasing.
+A lead platform for landys.co: homeowner estimate requests (from the Wix site) are sent by text and email to nearby contractors, who pay Landy's a success fee only when they win the job and get paid.
+
+**Start here:** `docs/GO-LIVE-CHECKLIST.md` (deployment steps), `docs/AUDIT-PRODUCTION-2026-11-13.md` (audit + status), `docs/LANDYS-CO-INTEGRATION-NOTES.md` (contract with the Wix developers).
 
 ## Run & Operate
 
@@ -14,10 +16,12 @@ A land-service lead-generation platform that sends local job leads straight to c
 
 - **Framework:** Next.js 15 App Router, React 19, strict TypeScript
 - **Auth:** Clerk (`@clerk/nextjs`) — keyless/dev mode when `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is absent
-- **DB:** Supabase PostgreSQL via Prisma ORM (schema at `artifacts/landys-pro/prisma/schema.prisma`)
+- **DB:** Replit PostgreSQL (separate Development and Production databases) via Prisma ORM (schema at `artifacts/landys-pro/prisma/schema.prisma`). Publish copies the schema, not data: reference data is seeded at startup by `lib/ops/bootstrap.ts`.
 - **Payments:** Stripe (mock mode when `STRIPE_MOCK=true`)
-- **Notifications:** Twilio SMS + Resend email (mock when `TWILIO_MOCK=true` / `RESEND_MOCK=true`)
-- **Storage:** Supabase Storage
+- **Notifications:** every SMS/email goes through the `NotificationMessage` outbox (`lib/notify/`): retries, SMS quiet hours (8 am–9 pm local), admin log at /admin/messages. Twilio SMS + Resend email.
+- **Scheduler:** one endpoint `POST /api/cron/run` (Bearer `CRON_SECRET`) called every 10 min by cron-job.org (`lib/services/scheduled-jobs.ts`).
+- **Matching:** category (primary or secondary) + service area (ZIP radius or county, `lib/domain/service-area.ts`, ZIP data in `lib/geo/`).
+- **Storage:** Replit App Storage (contractor logos, lead photos)
 - **Styling:** Tailwind CSS v3 + `tailwindcss-animate`
 - **Package manager (workspace):** pnpm — the Next.js app itself is `artifacts/landys-pro/`
 
@@ -57,7 +61,8 @@ The Next.js source lives at `artifacts/landys-pro/`. When pushing/pulling via Gi
 
 ## Database & testing safety
 
-- **Dev, tests, and production share one database.** `DATABASE_URL`/`DIRECT_URL` are the same for the dev workflow, `vitest`, the Playwright testing subagent, and the deployed app — there is no separate throwaway DB. Anything a script or automated test does to real-looking rows is a real, permanent mutation.
+- Development and Production use separate Replit databases since the Replit migration, but treat every script against a real database as a permanent mutation. Unit tests (`vitest`) use an in-memory fake DB.
+- Schema changes must stay **additive** (nullable or defaulted columns): apply them to the dev DB (`prisma migrate deploy`, or `db push` if the ledger is missing), then Publish.
 - **Never write a test plan (manual script or testing subagent) that iterates/sweeps every row of an admin list** to exercise a destructive action (deactivate, delete, refund, bulk edit). Scope destructive test steps to one clearly pre-created/marked test record.
 - `deactivateContractor`, `deleteContractor`, and `refundLead` (`app/actions/admin.ts`) are gated by a burst guard (`lib/domain/destructive-guard.ts`): it blocks a rapid repeat of the *same* destructive action by the *same* admin (5+ within 2 minutes), without ever blocking normal single-row admin use. This exists because an automated sweep mass-deactivated 66 real contractors on Aug 26-27 2026 before this guard was added — see `.agents/memory/shared-dev-prod-database-risk.md` for the incident writeup.
 - **Staging is a separate Repl/deployment and separate Postgres database**, not this production Repl's dev preview. Follow `artifacts/landys-pro/docs/staging.md`. Staging reset/reseed commands require `LANDYS_ENV=staging`, a clearly named staging URL, dedicated staging DB secrets, and a DB marker.
