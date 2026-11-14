@@ -64,23 +64,26 @@ export async function onRequestError(
 ) {
   const message = error instanceof Error ? error.message : String(error);
   console.error("[server-error]", request.method, request.path, message);
-  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.NODE_ENV !== "production") return;
-  const key = context.routePath ?? request.path;
-  const now = Date.now();
-  if (now - (lastAlertAt.get(key) ?? 0) < 30 * 60_000) return;
-  lastAlertAt.set(key, now);
-  try {
-    const { notifyAdmins } = await import("@/lib/notifications");
-    await notifyAdmins({
-      kind: "server_error",
-      title: `Server error on ${key}`,
-      lines: [
-        `${request.method} ${request.path.split("?")[0]} failed: ${message.slice(0, 300)}`,
-        "Check the Replit deployment logs for details. Further errors on this page are muted for 30 minutes.",
-      ],
-    });
-  } catch (alertError) {
-    console.error("[server-error] admin alert failed", alertError);
+  // Keep the import inside this exact check so webpack drops it from the edge bundle.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    if (process.env.NODE_ENV !== "production") return;
+    const key = context.routePath ?? request.path;
+    const now = Date.now();
+    if (now - (lastAlertAt.get(key) ?? 0) < 30 * 60_000) return;
+    lastAlertAt.set(key, now);
+    try {
+      const { notifyAdmins } = await import("@/lib/notifications");
+      await notifyAdmins({
+        kind: "server_error",
+        title: `Server error on ${key}`,
+        lines: [
+          `${request.method} ${request.path.split("?")[0]} failed: ${message.slice(0, 300)}`,
+          "Check the Replit deployment logs for details. Further errors on this page are muted for 30 minutes.",
+        ],
+      });
+    } catch (alertError) {
+      console.error("[server-error] admin alert failed", alertError);
+    }
   }
 }
 
