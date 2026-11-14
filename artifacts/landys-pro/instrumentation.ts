@@ -49,3 +49,38 @@ export async function register() {
     }
   }
 }
+
+/**
+ * Unhandled server errors (page renders, server actions, route handlers):
+ * log them and email the admins, at most once per route every 30 minutes, so
+ * a broken page in production is noticed without an external monitoring tool.
+ */
+const lastAlertAt = new Map<string, number>();
+
+export async function onRequestError(
+  error: unknown,
+  request: { path: string; method: string },
+  context: { routePath?: string; routeType?: string },
+) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error("[server-error]", request.method, request.path, message);
+  if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.NODE_ENV !== "production") return;
+  const key = context.routePath ?? request.path;
+  const now = Date.now();
+  if (now - (lastAlertAt.get(key) ?? 0) < 30 * 60_000) return;
+  lastAlertAt.set(key, now);
+  try {
+    const { notifyAdmins } = await import("@/lib/notifications");
+    await notifyAdmins({
+      kind: "server_error",
+      title: `Server error on ${key}`,
+      lines: [
+        `${request.method} ${request.path.split("?")[0]} failed: ${message.slice(0, 300)}`,
+        "Check the Replit deployment logs for details. Further errors on this page are muted for 30 minutes.",
+      ],
+    });
+  } catch (alertError) {
+    console.error("[server-error] admin alert failed", alertError);
+  }
+}
+

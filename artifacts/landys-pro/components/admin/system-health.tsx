@@ -11,7 +11,7 @@ type Check = { level: "error" | "warn"; text: string; href?: string; linkLabel?:
  */
 export async function SystemHealth() {
   const now = Date.now();
-  const [cronRow, noArea, held, failed, wixSync] = await Promise.all([
+  const [cronRow, noArea, held, failed, wixSync, testContractors, testLeads] = await Promise.all([
     prisma.appSetting.findUnique({ where: { key: APP_SETTING_KEYS.cronLastRunAt } }),
     prisma.contractor.count({
       where: { deactivatedAt: null, serviceZipCodes: { isEmpty: true }, serviceCounties: { isEmpty: true } },
@@ -19,6 +19,27 @@ export async function SystemHealth() {
     prisma.lead.count({ where: { reviewStatus: "PENDING_REVIEW", createdAt: { gte: new Date(now - 30 * 86400_000) } } }),
     prisma.notificationMessage.count({ where: { status: "FAILED", createdAt: { gte: new Date(now - 7 * 86400_000) } } }),
     prisma.appSetting.findUnique({ where: { key: APP_SETTING_KEYS.wixContractorSyncLastSuccessAt } }),
+    // Test records (old QA route, e2e smoke test) that must never get real leads in production.
+    prisma.contractor.findMany({
+      where: {
+        deactivatedAt: null,
+        OR: [
+          { id: { startsWith: "qa_" } },
+          { name: { contains: "QA", mode: "insensitive" } },
+          { name: { startsWith: "E2E" } },
+          { email: { endsWith: "@landys.test" } },
+          { email: { endsWith: "@example.com" } },
+        ],
+      },
+      select: { name: true },
+      take: 5,
+    }),
+    prisma.lead.count({
+      where: {
+        status: { in: ["NEW", "DISTRIBUTED"] },
+        OR: [{ source: { in: ["production_qa", "e2e_smoke"] } }, { externalRequestId: { startsWith: "e2e-" } }],
+      },
+    }),
   ]);
 
   const checks: Check[] = [];
@@ -32,7 +53,12 @@ export async function SystemHealth() {
         : "The scheduler has never run. Follow-ups, fee reminders, scheduled invitations and lead expiry will not happen until cron-job.org calls /api/cron/run.",
     });
   }
-  if (production && process.env.STRIPE_MOCK !== "false") {
+  if (process.env.ONLINE_PAYMENTS_ENABLED === "false") {
+    checks.push({
+      level: "warn",
+      text: "Online fee payment is turned off (ONLINE_PAYMENTS_ENABLED=false). Contractors are told Landy's will collect fees; record payments on the Success fees page.",
+    });
+  } else if (production && process.env.STRIPE_MOCK !== "false") {
     checks.push({ level: "error", text: 'Payments are in test mode (STRIPE_MOCK is not "false"). Contractors cannot pay fees.' });
   }
   if (production && process.env.RESEND_MOCK === "true") {
@@ -61,6 +87,19 @@ export async function SystemHealth() {
     checks.push({ level: "warn", text: "landys.co contractor sync is not configured (WIX_SITE_ID / WIX_API_AUTHORIZATION)." });
   } else if (!wixSync?.value) {
     checks.push({ level: "warn", text: "Contractors have never been synced from landys.co.", href: "/admin/contractors", linkLabel: "Sync now" });
+  }
+  if (production && (testContractors.length > 0 || testLeads > 0)) {
+    checks.push({
+      level: "warn",
+      text: `Test data is active in production: ${[
+        testContractors.length ? `contractor(s) ${testContractors.map((c) => c.name).join(", ")}` : "",
+        testLeads ? `${testLeads} open test request(s)` : "",
+      ]
+        .filter(Boolean)
+        .join(" and ")}. Deactivate or close them so they never receive or show real jobs.`,
+      href: "/admin/contractors",
+      linkLabel: "Review",
+    });
   }
   if (noArea > 0) {
     checks.push({

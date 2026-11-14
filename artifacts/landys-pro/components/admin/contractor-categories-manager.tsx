@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createContractorCategory,
+  mergeContractorCategoryAction,
   setContractorCategoryArchived,
   updateContractorCategory,
 } from "@/app/actions/admin";
@@ -49,6 +50,7 @@ export function ContractorCategoriesManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [mergeTarget, setMergeTarget] = useState<Record<string, string>>({});
 
   function run(action: () => Promise<{ ok: boolean; message?: string }>, after?: () => void) {
     setError(null);
@@ -133,6 +135,43 @@ export function ContractorCategoriesManager({
                 >
                   {category.archived ? "Activate" : "Archive"}
                 </button>
+                {!category.archived && (
+                  <span className="flex items-center gap-2">
+                    <select
+                      aria-label={`Merge ${category.name} into`}
+                      value={mergeTarget[category.id] ?? ""}
+                      onChange={(event) => setMergeTarget((m) => ({ ...m, [category.id]: event.target.value }))}
+                      style={{ ...inputStyle, height: 44 }}
+                    >
+                      <option value="">Merge into...</option>
+                      {categories
+                        .filter((c) => c.id !== category.id && !c.archived)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={pending || !mergeTarget[category.id]}
+                      onClick={() => {
+                        const target = categories.find((c) => c.id === mergeTarget[category.id]);
+                        if (
+                          target &&
+                          window.confirm(
+                            `Merge "${category.name}" into "${target.name}"? Its contractors and requests move to "${target.name}", and future requests labelled "${category.name}" go there too.`,
+                          )
+                        ) {
+                          run(() => mergeContractorCategoryAction(category.id, target.id));
+                        }
+                      }}
+                      style={buttonStyle}
+                    >
+                      Merge
+                    </button>
+                  </span>
+                )}
               </>
             )}
           </div>

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { formatMoney } from "@/lib/money";
 import { loadSuccessFeeTiers } from "@/lib/domain/success-fee";
 import { matchViewInclude, toMatchView, type MatchView } from "@/lib/contractor-views";
+import { onlinePaymentsAvailable } from "@/lib/integrations/payments";
 import { PublicFrame } from "@/components/pro/shell";
 import { OutcomeActions, PaidActions, PayFeeButton } from "@/components/pro/job-actions";
 import { Facts, Notice, PageHead, Perforation } from "@/components/pro/ui";
@@ -126,7 +127,13 @@ export default async function FollowUpPage({
             ]}
           />
           <div style={{ marginTop: 20 }}>
-            <PayFeeButton target={{ kind: "token", token }} amountLabel={formatMoney(view.fee.amountCents)} />
+            {onlinePaymentsAvailable() ? (
+              <PayFeeButton target={{ kind: "token", token }} amountLabel={formatMoney(view.fee.amountCents)} />
+            ) : (
+              <Notice title="Online payment opens soon">
+                Landy&apos;s will contact you to collect this fee. You do not need to do anything now.
+              </Notice>
+            )}
           </div>
           <p className="pro-small" style={{ margin: "14px 0 0" }}>
             Wrong amount? Reply to our email before paying and we will fix it.

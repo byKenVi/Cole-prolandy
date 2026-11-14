@@ -64,7 +64,14 @@ export default async function AcceptPage({ params }: { params: Promise<{ token: 
         <JobActionArea view={view} target={{ kind: "token", token }} tiers={tiers} allowPayment={false} />
       </OpportunityView>
 
-      <div style={{ marginTop: 28, textAlign: "center" }}>
+      <p className="pro-small" style={{ margin: "22px 0 0", textAlign: "center" }}>
+        You get these job requests because you are listed as a pro on landys.co. Reply STOP to any text to stop texts.{" "}
+        <Link href="/privacy" className="pro-link" style={{ display: "inline", minHeight: 0, fontSize: 16 }}>
+          Privacy
+        </Link>
+      </p>
+
+      <div style={{ marginTop: 20, textAlign: "center" }}>
         {signedInAsThisPro ? (
           <Link href="/dashboard" className="pro-link">
             Go to my account

@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/format";
 import { leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 import { LeadReviewForm } from "@/components/admin/lead-review-form";
 import { HeldLeadPanel, type ContractorOption } from "@/components/admin/held-lead-panel";
+import { MatchOpsPanel } from "@/components/admin/match-ops-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -137,8 +138,10 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           contractor: {
             select: { id: true, name: true, email: true, phone: true },
           },
+          successFee: { select: { status: true } },
         },
       },
+      landownerConfirmation: { select: { respondedAt: true } },
     },
   });
   if (!lead) notFound();
@@ -233,6 +236,20 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
 
       {lead.reviewStatus !== "ROUTED" && (
         <HeldLeadPanel leadId={lead.id} reason={lead.reviewBlocker} contractors={heldOptions} />
+      )}
+
+      {lead.reviewStatus === "ROUTED" && (
+        <MatchOpsPanel
+          leadId={lead.id}
+          canSendHireCheck={Boolean(lead.landownerConfirmation && !lead.landownerConfirmation.respondedAt)}
+          matches={lead.matches.map((m) => ({
+            id: m.id,
+            contractorName: m.contractor.name,
+            status: m.status,
+            jobOutcome: m.jobOutcome,
+            feeStatus: m.successFee?.status ?? null,
+          }))}
+        />
       )}
 
       {lead.reviewStatus !== "ROUTED" && (lead.budgetReviewRequired || lead.tierReviewRequired) && (

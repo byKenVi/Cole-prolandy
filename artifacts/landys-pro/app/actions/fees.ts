@@ -6,9 +6,11 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
   createSuccessFeeCheckout,
+  onlinePaymentsAvailable,
   payments,
   paymentsAreMocked,
 } from "@/lib/integrations/payments";
+import { notifyAdmins } from "@/lib/notifications";
 import { markSuccessFeePaid } from "@/lib/domain/success-fee";
 import { requireContractorId, requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
@@ -18,7 +20,16 @@ import { FollowUpAction } from "@prisma/client";
 import { peekFollowUpToken } from "@/lib/domain/follow-up";
 
 const PAYMENT_UNAVAILABLE =
-  "Online payment is not available right now. Please try again later or call Landy's.";
+  "Online payment is not available right now. Landy's has been notified and will contact you to collect the fee.";
+
+async function alertPaymentProblem(leadMatchId: string, detail: string) {
+  await notifyAdmins({
+    kind: "payment_unavailable",
+    title: "A contractor could not pay a success fee online",
+    lines: [detail, "Contact the contractor and record the payment by hand, or fix the Stripe connection."],
+    link: { label: "Open the fee", path: `/admin/fees/${leadMatchId}` },
+  });
+}
 
 export type FeeActionResult =
   | { ok: true; checkoutUrl?: string; paid?: boolean }
@@ -40,6 +51,10 @@ export async function startSuccessFeePayment(leadMatchId: string): Promise<FeeAc
     return { ok: false, message: "This success fee is not ready to pay yet." };
   }
 
+  if (!onlinePaymentsAvailable()) {
+    await alertPaymentProblem(leadMatchId, "Online payments are turned off (ONLINE_PAYMENTS_ENABLED=false).");
+    return { ok: false, message: PAYMENT_UNAVAILABLE };
+  }
   const base = appUrl();
   let checkout: Awaited<ReturnType<typeof createSuccessFeeCheckout>>;
   try {
@@ -55,6 +70,7 @@ export async function startSuccessFeePayment(leadMatchId: string): Promise<FeeAc
     });
   } catch (error) {
     console.error("[fees] checkout creation failed", error);
+    await alertPaymentProblem(leadMatchId, `Stripe checkout failed: ${error instanceof Error ? error.message : String(error)}`);
     return { ok: false, message: PAYMENT_UNAVAILABLE };
   }
   const { checkoutUrl, customerId } = checkout;
@@ -219,6 +235,10 @@ export async function startFeePaymentByToken(token: string): Promise<FeeActionRe
     return { ok: false, message: "This success fee is not ready to pay yet." };
   }
 
+  if (!onlinePaymentsAvailable()) {
+    await alertPaymentProblem(match.id, "Online payments are turned off (ONLINE_PAYMENTS_ENABLED=false).");
+    return { ok: false, message: PAYMENT_UNAVAILABLE };
+  }
   const base = appUrl();
   let checkout: Awaited<ReturnType<typeof createSuccessFeeCheckout>>;
   try {
@@ -234,6 +254,7 @@ export async function startFeePaymentByToken(token: string): Promise<FeeActionRe
     });
   } catch (error) {
     console.error("[fees] token checkout creation failed", error);
+    await alertPaymentProblem(match.id, `Stripe checkout failed: ${error instanceof Error ? error.message : String(error)}`);
     return { ok: false, message: PAYMENT_UNAVAILABLE };
   }
   if (checkout.customerId && !match.contractor.stripeCustomerId) {

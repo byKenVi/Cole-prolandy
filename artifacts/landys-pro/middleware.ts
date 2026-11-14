@@ -44,6 +44,8 @@ const isPublicRoute = createRouteMatcher([
   "/api/integrations/wix/estimate-requests",
   "/api/stripe/webhook",
   "/api/cron/run",
+  "/api/health",
+  "/privacy",
 ]);
 
 // Explicitly supply publishableKey so the middleware always uses the same Clerk

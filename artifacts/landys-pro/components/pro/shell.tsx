@@ -37,6 +37,8 @@ export async function ProShell({
 }) {
   const clerk = authMode() === "clerk";
   const counts = await loadNavCounts(contractorId);
+  const { runScheduledJobsIfStale } = await import("@/lib/services/scheduled-jobs");
+  await runScheduledJobsIfStale();
   return (
     <div className="pro pro-shell">
       <ProSidebarNav

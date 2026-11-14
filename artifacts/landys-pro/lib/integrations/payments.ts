@@ -127,6 +127,18 @@ export function paymentsAreMocked(): boolean {
 }
 
 /**
+ * Whether contractors can pay success fees online right now. Off when
+ * ONLINE_PAYMENTS_ENABLED="false" (launch before the client's Stripe account is
+ * connected) or when payments would be mocked in production. While off, the UI
+ * explains that Landy's will collect the fee and admins record payments by hand.
+ */
+export function onlinePaymentsAvailable(): boolean {
+  if (process.env.ONLINE_PAYMENTS_ENABLED === "false") return false;
+  if (isMock() && process.env.NODE_ENV === "production") return false;
+  return true;
+}
+
+/**
  * MOCK provider: logs to console and returns a local URL that simulates a
  * successful top-up completion (see /wallet/topup/complete route).
  */

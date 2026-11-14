@@ -18,6 +18,20 @@ import {
 
 export type TaxonomyRef = { id: string; code: string; name: string; created: boolean };
 
+/** AppSetting holding admin category merges: { "<old code>": "<target code>" }. */
+export const CATEGORY_ALIASES_KEY = "categoryAliases";
+
+export async function loadCategoryAliases(db: DbClient): Promise<Record<string, string>> {
+  const row = await db.appSetting.findUnique({ where: { key: CATEGORY_ALIASES_KEY } });
+  if (!row?.value) return {};
+  try {
+    const parsed = JSON.parse(row.value) as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
 /** "Dirt Work & Excavation" → "dirt-work-excavation". */
 export function slugifyTaxonomy(raw: string): string {
   return raw
@@ -75,6 +89,16 @@ function resolveCodeAndName(kind: Kind, raw: string): { code: string; name: stri
 export async function ensureCategory(db: DbClient, raw: string | null | undefined): Promise<TaxonomyRef | null> {
   const resolved = raw ? resolveCodeAndName("category", raw) : null;
   if (!resolved) return null;
+  // A category merged by an admin keeps routing to its target.
+  const aliases = await loadCategoryAliases(db);
+  const target = aliases[resolved.code];
+  if (target) {
+    const merged = await db.contractorCategory.findUnique({
+      where: { code: target },
+      select: { id: true, code: true, name: true },
+    });
+    if (merged) return { ...merged, created: false };
+  }
   const existing = await db.contractorCategory.findUnique({
     where: { code: resolved.code },
     select: { id: true, code: true, name: true },

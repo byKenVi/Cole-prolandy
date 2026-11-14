@@ -313,3 +313,33 @@ async function maybeSyncWixContractors(now: Date) {
     errors: summary.errors.length,
   } satisfies Prisma.InputJsonObject;
 }
+
+/**
+ * Safety net for the external cron: when the last run is older than
+ * `staleAfterMinutes`, run the jobs right after the current response. Called
+ * from busy places (contractor and admin pages, lead intake) so follow-ups keep
+ * flowing even if cron-job.org is down or misconfigured. The run lock prevents
+ * overlaps; the cost per call is one indexed settings read.
+ */
+export async function runScheduledJobsIfStale(staleAfterMinutes = 15): Promise<void> {
+  try {
+    const row = await prisma.appSetting.findUnique({ where: { key: APP_SETTING_KEYS.cronLastRunAt } });
+    const last = row?.value ? new Date(row.value).getTime() : 0;
+    if (Number.isFinite(last) && Date.now() - last < staleAfterMinutes * 60_000) return;
+    const { after } = await import("next/server");
+    const run = async () => {
+      try {
+        await runScheduledJobs();
+      } catch (error) {
+        console.error("[cron] opportunistic run failed", error);
+      }
+    };
+    try {
+      after(run);
+    } catch {
+      // Outside a request scope: nothing to piggyback on.
+    }
+  } catch (error) {
+    console.error("[cron] staleness check failed", error);
+  }
+}

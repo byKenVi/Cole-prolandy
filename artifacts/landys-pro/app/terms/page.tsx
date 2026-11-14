@@ -75,7 +75,13 @@ export default async function TermsPage() {
         </div>
       </Section>
 
-      <p className="pro-small" style={{ marginTop: 32 }}>Version {SUCCESS_FEE_TERMS_VERSION}. Questions? Reply to any Landy&apos;s Pro email.</p>
+      <p className="pro-small" style={{ marginTop: 32 }}>
+        Version {SUCCESS_FEE_TERMS_VERSION}. Questions? Reply to any Landy&apos;s Pro email. See also{" "}
+        <a href="/privacy" className="pro-link" style={{ display: "inline", minHeight: 0, fontSize: 16 }}>
+          privacy and text messages
+        </a>
+        .
+      </p>
     </PublicFrame>
   );
 }

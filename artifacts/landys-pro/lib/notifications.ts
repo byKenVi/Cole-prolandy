@@ -9,6 +9,7 @@ import { buildLeadSummary, feeRateLabelFor } from "@/lib/lead-summary";
 import { leadDisplayInclude } from "@/lib/resolved-lead";
 import { formatPhoneForDisplay, normalizePhone } from "@/lib/phone";
 import { enqueueAndDispatch, type OutboxMessage } from "@/lib/notify/outbox";
+import { onlinePaymentsAvailable } from "@/lib/integrations/payments";
 import { nextSmsSendTime } from "@/lib/notify/quiet-hours";
 import {
   adminAlertEmail,
@@ -235,6 +236,7 @@ export async function notifyFeeDue(leadMatchId: string, token: string, reminderN
     finalValueCents: match.successFee.finalValueCents,
     ratePercentLabel: `${Number.isInteger(rate) ? rate : rate.toFixed(1)}%`,
     reminderNumber,
+    canPayOnline: onlinePaymentsAvailable(),
   });
   await enqueueAndDispatch(
     await contractorMessages({

@@ -1406,3 +1406,69 @@ export async function assignLeadAction(leadId: string, contractorIds: string[]):
   }
 }
 
+/**
+ * Merge one contractor category into another: contractors, memberships and
+ * leads move to the target, the source is archived, and future requests or
+ * landys.co syncs using the old label route to the target automatically.
+ */
+export async function mergeContractorCategoryAction(sourceId: string, targetId: string): Promise<Result> {
+  const admin = await requireAdmin();
+  if (!sourceId || !targetId || sourceId === targetId) {
+    return { ok: false, message: "Choose a different category to merge into." };
+  }
+  const [source, target] = await Promise.all([
+    prisma.contractorCategory.findUnique({ where: { id: sourceId } }),
+    prisma.contractorCategory.findUnique({ where: { id: targetId } }),
+  ]);
+  if (!source || !target) return { ok: false, message: "Category not found." };
+  if (target.archivedAt) return { ok: false, message: "Activate the target category first." };
+
+  const { CATEGORY_ALIASES_KEY, loadCategoryAliases } = await import("@/lib/services/taxonomy-registry");
+  const aliases = await loadCategoryAliases(prisma);
+  for (const [from, to] of Object.entries(aliases)) {
+    if (to === source.code) aliases[from] = target.code;
+  }
+  aliases[source.code] = target.code;
+
+  await prisma.$transaction(async (tx) => {
+    const memberships = await tx.contractorCategoryMembership.findMany({ where: { categoryId: source.id } });
+    for (const membership of memberships) {
+      await tx.contractorCategoryMembership.upsert({
+        where: { contractorId_categoryId: { contractorId: membership.contractorId, categoryId: target.id } },
+        update: {},
+        create: {
+          contractorId: membership.contractorId,
+          categoryId: target.id,
+          isPrimary: membership.isPrimary,
+          displayOrder: membership.displayOrder,
+        },
+      });
+    }
+    await tx.contractorCategoryMembership.deleteMany({ where: { categoryId: source.id } });
+    await tx.contractor.updateMany({ where: { contractorCategoryId: source.id }, data: { contractorCategoryId: target.id } });
+    await tx.lead.updateMany({ where: { contractorCategoryId: source.id }, data: { contractorCategoryId: target.id } });
+    await tx.contractorCategory.update({
+      where: { id: source.id },
+      data: { archivedAt: new Date(), isActiveForNewIntake: false },
+    });
+    await tx.appSetting.upsert({
+      where: { key: CATEGORY_ALIASES_KEY },
+      update: { value: JSON.stringify(aliases) },
+      create: { key: CATEGORY_ALIASES_KEY, value: JSON.stringify(aliases) },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorType: "admin",
+        actorId: admin.email,
+        action: "contractorCategory.merged.admin",
+        targetType: "ContractorCategory",
+        targetId: target.id,
+        metadata: { from: source.code, to: target.code, memberships: memberships.length },
+      },
+    });
+  });
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/contractors");
+  return { ok: true, message: `"${source.name}" merged into "${target.name}".` };
+}
+

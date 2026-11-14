@@ -177,6 +177,9 @@ export default function LandingPage() {
             <Link href="/terms" className="transition-colors hover:text-accent">
               How the success fee works
             </Link>
+            <Link href="/privacy" className="transition-colors hover:text-accent">
+              Privacy
+            </Link>
             <span>© {new Date().getFullYear()} Landy&apos;s</span>
           </div>
         </footer>

@@ -1,3 +1,5 @@
+> **Historical document (before 2026-11-13).** Parts of it no longer match the code (Supabase, pay-per-lead pricing, old cron routes, blocked Wix sync). Current references: `docs/ROADMAP-GO-LIVE.md`, `docs/GO-LIVE-CHECKLIST.md`, `docs/AUDIT-PRODUCTION-2026-11-13.md`, `docs/LANDYS-CO-INTEGRATION-NOTES.md`.
+
 # Local Cursor QA — Landy's Pro
 
 Isolated local environment for developing and QAing the **current success-fee

@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { AdminEmptyState, AdminTabBar, AdminTabLink, Chip, PageHeader, Panel } from "@/components/admin/ui";
+import { TestMessageForm } from "@/components/admin/test-message-form";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
         title="Messages"
         subtitle={`Every text and email sent by Landy's Pro. Texts are held between 9 pm and 8 am in the recipient's time zone. Scheduler last ran: ${cronLast?.value ? fmt(new Date(cronLast.value)) : "never"}.`}
       />
+      <TestMessageForm />
       <AdminTabBar>
         <AdminTabLink href="/admin/messages" active={tab === "all"}>
           Latest

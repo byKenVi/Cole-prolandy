@@ -70,7 +70,6 @@ The Next.js source lives at `artifacts/landys-pro/`. When pushing/pulling via Gi
 ## Gotchas
 
 - Tailwind config uses `import tailwindAnimate from "tailwindcss-animate"` (not `require()`). Keep it this way — pnpm's module resolution treats `.ts` configs as ESM.
-- `engines.node` in `artifacts/landys-pro/package.json` warns about Node version mismatch (Replit runs Node 24, spec says `>=22 <23`). This is cosmetic and safe to ignore.
 - Prisma client generation is blocked by pnpm's build-script security. Run `./node_modules/.bin/prisma generate` manually after fresh installs, or use `pnpm approve-builds` interactively.
 - Clerk "keyless mode" CORS errors in the browser console are harmless in dev — the landing page still renders correctly.
 - **vitest is not installable via pnpm** in this Replit environment (package firewall blocks the tarball). Test files (`lib/**/*.test.ts`) are excluded from the main `tsconfig.json` so `tsc --noEmit` passes clean. Run `npm test` locally (where npm resolves vitest normally); vitest is not listed in `package.json` to keep `pnpm install` working.

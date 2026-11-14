@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/money";
+import { onlinePaymentsAvailable } from "@/lib/integrations/payments";
 import type { MatchView } from "@/lib/contractor-views";
 import type { SuccessFeeTierRow } from "@/lib/domain/success-fee";
 import { AcceptActions, type ActionTarget } from "./accept-actions";
@@ -75,8 +76,13 @@ export function JobActionArea({
               />
             </div>
           )}
-          {view.fee && allowPayment && (
+          {view.fee && allowPayment && onlinePaymentsAvailable() && (
             <PayFeeButton target={target} amountLabel={formatMoney(view.fee.amountCents)} savedCard={savedCard} />
+          )}
+          {allowPayment && !onlinePaymentsAvailable() && (
+            <Notice title="Online payment opens soon">
+              Landy&apos;s will contact you to collect this fee. You do not need to do anything now.
+            </Notice>
           )}
           {!allowPayment && (
             <Notice>Pay with the link in our &ldquo;fee is due&rdquo; text or email, or sign in to your account.</Notice>

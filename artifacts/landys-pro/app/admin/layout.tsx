@@ -29,6 +29,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     prisma.successFee.count({ where: { status: "PAID" } }),
   ]);
   const successFeesTotal = formatMoney(successFeesAgg._sum.feeAmountCents ?? 0);
+  const { runScheduledJobsIfStale } = await import("@/lib/services/scheduled-jobs");
+  await runScheduledJobsIfStale();
 
   return (
     <AdminShell

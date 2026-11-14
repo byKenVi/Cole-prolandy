@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
           : { mode: "general" },
     });
 
+    const { runScheduledJobsIfStale } = await import("@/lib/services/scheduled-jobs");
+    await runScheduledJobsIfStale();
     return NextResponse.json(
       {
         ok: true,

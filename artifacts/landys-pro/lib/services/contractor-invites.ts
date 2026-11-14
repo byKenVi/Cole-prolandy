@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { createContractorSignUpLink } from "@/lib/contractor-invitations";
 import { notifyContractorInvitation } from "@/lib/notifications";
 
 /**
@@ -92,6 +91,8 @@ export async function processInvitationQueue(
     if (claimed.count === 0) continue;
 
     try {
+      // Lazy: this module is server-only (Clerk) and must not load in CLI scripts.
+      const { createContractorSignUpLink } = await import("@/lib/contractor-invitations");
       const link = await createContractorSignUpLink(contractor);
       await notifyContractorInvitation({ contractor, signUpLink: link.url });
       await prisma.contractor.update({

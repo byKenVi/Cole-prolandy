@@ -202,13 +202,18 @@ export function feeDueMessages(params: {
   finalValueCents: number;
   ratePercentLabel: string;
   reminderNumber: number;
+  /** False while online card payment is not activated yet. */
+  canPayOnline?: boolean;
 }): { sms: string; email: RenderedEmail } {
   const { summary } = params;
   const amount = formatMoney(params.feeAmountCents);
+  const online = params.canPayOnline !== false;
   const prefix =
     params.reminderNumber === 0 ? "" : params.reminderNumber >= 3 ? "Final reminder: " : "Reminder: ";
   const sms = toSmsText(
-    `Landy's Pro: ${prefix}Your success fee for the ${summary.title} job in ${where(summary)} is due: ${amount} (${params.ratePercentLabel} of ${formatMoney(params.finalValueCents)}). Pay securely by card in 1 minute: ${params.link} ${STOP}`,
+    online
+      ? `Landy's Pro: ${prefix}Your success fee for the ${summary.title} job in ${where(summary)} is due: ${amount} (${params.ratePercentLabel} of ${formatMoney(params.finalValueCents)}). Pay securely by card in 1 minute: ${params.link} ${STOP}`
+      : `Landy's Pro: ${prefix}Your success fee for the ${summary.title} job in ${where(summary)} is ${amount} (${params.ratePercentLabel} of ${formatMoney(params.finalValueCents)}). Landy's will contact you to collect it. Details: ${params.link} ${STOP}`,
   );
   const content: EmailContent = {
     preheader: `${amount} success fee for the ${summary.title} job`,
@@ -223,9 +228,11 @@ export function feeDueMessages(params: {
       { label: "Final job price", value: formatMoney(params.finalValueCents) },
       { label: "Landy's fee", value: `${amount} (${params.ratePercentLabel})` },
     ],
-    buttons: [{ label: `Pay ${amount} now`, href: params.link }],
+    buttons: [{ label: online ? `Pay ${amount} now` : "See the details", href: params.link }],
     notes: [
-      "Payment is by card through Stripe, our secure payment provider. You do not need to log in.",
+      online
+        ? "Payment is by card through Stripe, our secure payment provider. You do not need to log in."
+        : "Online card payment opens soon. Landy's will contact you to collect this fee.",
       "Something is wrong with this amount? Reply to this email before paying and we will fix it.",
     ],
   };
@@ -337,6 +344,7 @@ export function contractorInvitationMessages(params: {
     ],
     notes: [
       "It takes about 2 minutes. You can keep accepting requests from the text messages even before you sign up.",
+      "Landy's sends job requests and follow-ups by text and email. Message and data rates may apply. Reply STOP to any text to stop texts.",
     ],
   };
   return { sms, email: email(content, `${params.contractorName}, your Landy's Pro account is ready`) };

@@ -35,7 +35,8 @@ export const clerkAppearance: ClerkAppearance = {
     // Spacing & shape
     borderRadius: "0.75rem",
     fontFamily: '"Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif',
-    fontSize: "0.9375rem",
+    // Contractors are often older and on phones: 17px base, large controls.
+    fontSize: "1.0625rem",
     fontWeight: {
       normal: 400,
       medium: 500,
@@ -53,15 +54,15 @@ export const clerkAppearance: ClerkAppearance = {
     headerSubtitle: "hidden",
     // Form inputs — match the app's field style
     formFieldInput:
-      "border-border bg-[#FEFBF6] text-text placeholder:text-text-muted focus:ring-primary focus:border-primary rounded-xl text-sm",
-    formFieldLabel: "text-text text-sm font-medium",
+      "min-h-[56px] border-2 border-border bg-white text-text placeholder:text-text-muted focus:ring-primary focus:border-primary rounded-xl text-[18px]",
+    formFieldLabel: "text-text text-[17px] font-semibold",
     // Primary action button
     formButtonPrimary:
-      "bg-primary hover:bg-primary-hover active:bg-[#1e3026] text-white font-semibold rounded-xl shadow-sm transition-colors",
+      "min-h-[58px] text-[18px] bg-primary hover:bg-primary-hover active:bg-[#1e3026] text-white font-semibold rounded-xl shadow-sm transition-colors",
     // Social / secondary buttons — overflow visible so "Last used" badge isn't clipped
     socialButtonsBlockButton:
-      "relative overflow-visible border-border bg-surface text-text hover:bg-[#F5F0E8] rounded-xl font-medium transition-colors",
-    socialButtonsBlockButtonText: "text-sm font-medium",
+      "relative overflow-visible min-h-[56px] border-2 border-border bg-surface text-text hover:bg-[#F5F0E8] rounded-xl font-medium transition-colors",
+    socialButtonsBlockButtonText: "text-[17px] font-medium",
     // Divider
     dividerLine: "bg-border",
     dividerText: "text-text-muted text-xs",
@@ -71,16 +72,16 @@ export const clerkAppearance: ClerkAppearance = {
     footerActionLink: "text-accent hover:text-accent-hover font-medium",
     footerActionText: "text-text-muted text-sm",
     // Identifier / alternate links inside the form
-    identityPreviewText: "text-text text-sm",
+    identityPreviewText: "text-text text-[17px]",
     identityPreviewEditButton: "text-accent hover:text-accent-hover",
     // OTP / code input
     otpCodeFieldInput:
-      "border-border bg-[#FEFBF6] text-text rounded-xl focus:ring-primary focus:border-primary",
+      "min-h-[56px] text-[22px] border-2 border-border bg-white text-text rounded-xl focus:ring-primary focus:border-primary",
     // Error messages
-    formFieldErrorText: "text-danger text-xs",
-    alertText: "text-sm",
+    formFieldErrorText: "text-danger text-[15px]",
+    alertText: "text-[16px]",
     // Back link
-    backLink: "text-accent hover:text-accent-hover text-sm font-medium",
+    backLink: "text-accent hover:text-accent-hover text-[16px] font-medium",
     // Spinner
     spinner: "text-primary",
   },
