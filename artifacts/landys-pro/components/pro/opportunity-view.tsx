@@ -21,6 +21,9 @@ export function OpportunityView({
   const open = view.state === "open";
   const left = open ? timeLeft(view.expiresAt) : null;
   const unlocked = !["open", "expired", "declined", "taken"].includes(view.state);
+  // Before accepting, the details come first (read, then decide). Afterwards the
+  // next action (call the homeowner, report, pay) comes first.
+  const actionsFirst = !open;
 
   return (
     <article className={`pro-ticket${view.direct && open ? " pro-ticket--direct" : ""}`}>
@@ -50,6 +53,8 @@ export function OpportunityView({
       <Perforation />
 
       <div className="pro-ticket-body">
+        {actionsFirst && <div style={{ margin: "6px 0 26px" }}>{children}</div>}
+        {actionsFirst && <h2 className="pro-quote-label" style={{ marginTop: 0 }}>Job details</h2>}
         <Facts
           items={[
             { label: "Budget", value: summary.budgetLabel ?? "Not given" },
@@ -100,7 +105,7 @@ export function OpportunityView({
           </div>
         )}
 
-        <div style={{ marginTop: 24 }}>{children}</div>
+        {!actionsFirst && <div style={{ marginTop: 24 }}>{children}</div>}
       </div>
     </article>
   );

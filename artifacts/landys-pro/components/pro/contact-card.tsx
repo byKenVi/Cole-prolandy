@@ -27,7 +27,7 @@ export function ContactCard({ view, showNextSteps = true }: { view: MatchView; s
             <Phone size={22} aria-hidden /> Call {firstName}
           </LinkButton>
         )}
-        <div className="pro-btn-row pro-btn-row--2">
+        <div className="pro-btn-row pro-btn-row--pair">
           {landowner.phone && (
             <LinkButton href={`sms:${landowner.phone}?&body=${smsBody}`} variant="secondary">
               <MessageSquare size={20} aria-hidden /> Text

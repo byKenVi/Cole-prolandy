@@ -46,7 +46,8 @@
   border-radius: 6px;
 }
 
-.pro a {
+/* Zero specificity so component classes (.pro-tab, .pro-btn--primary...) win. */
+:where(.pro) a {
   color: inherit;
 }
 
@@ -536,6 +537,10 @@ a.pro-ticket:active {
   gap: 12px;
 }
 
+.pro-btn-row--pair {
+  grid-template-columns: 1fr 1fr;
+}
+
 @media (min-width: 560px) {
   .pro-btn-row--2 {
     grid-template-columns: 1fr 1fr;
@@ -799,4 +804,20 @@ a.pro-ticket:active {
     transition: none;
     transform: none !important;
   }
+}
+
+/* Tailwind's preflight makes every svg a block; icons sit inline with text here. */
+.pro p svg,
+.pro span svg,
+.pro a svg,
+.pro button svg {
+  display: inline-block;
+  vertical-align: -0.15em;
+  flex: none;
+}
+
+.pro-ticket-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
