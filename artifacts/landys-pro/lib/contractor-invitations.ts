@@ -124,3 +124,35 @@ export async function sendContractorAccountInvitation(
     };
   }
 }
+
+/**
+ * Create a Clerk invitation WITHOUT Clerk's generic email and return its
+ * sign-up URL, so we can send our own explicit, branded email + SMS.
+ * Falls back to the plain sign-up page when Clerk is not configured.
+ */
+export async function createContractorSignUpLink(contractor: {
+  name: string;
+  email: string;
+}): Promise<{ url: string; provider: "clerk" | "fallback"; error?: string }> {
+  const fallback = `${appUrl()}/sign-up`;
+  if (authMode() !== "clerk") return { url: fallback, provider: "fallback" };
+  try {
+    const client = await clerkClient();
+    const invitation = await client.invitations.createInvitation({
+      emailAddress: contractor.email,
+      redirectUrl: `${appUrl()}/sign-up`,
+      ignoreExisting: true,
+      notify: false,
+      expiresInDays: 30,
+      publicMetadata: { role: "contractor", contractorName: contractor.name },
+    });
+    return { url: invitation.url || fallback, provider: "clerk" };
+  } catch (error) {
+    return {
+      url: fallback,
+      provider: "fallback",
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+

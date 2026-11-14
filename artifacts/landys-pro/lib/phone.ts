@@ -53,3 +53,12 @@ export function normalizePhoneForStorage(
 ): string {
   return normalizePhone(raw, defaultCountry) ?? raw.trim();
 }
+
+/** "+19362426129" → "(936) 242-6129"; other inputs are returned trimmed. */
+export function formatPhoneForDisplay(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const e164 = normalizePhone(raw);
+  const match = e164?.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
+  if (match) return `(${match[1]}) ${match[2]}-${match[3]}`;
+  return raw.trim();
+}

@@ -5,12 +5,16 @@ import {
 import { rateLimit } from "@/lib/rate-limit";
 import { DomainError } from "@/lib/domain/errors";
 import { OfficialEstimateSchema } from "@/lib/integrations/estimate-fields";
+import { publicEstimateFormEnabled } from "@/lib/public-estimate";
 
 /**
  * Public Landy's Pro estimate intake. Schema v2 persists an unresolved request
  * for explicit tier review. Requests without schemaVersion 2 are rejected.
  */
 export async function POST(req: NextRequest) {
+  if (!publicEstimateFormEnabled()) {
+    return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
+  }
   const spamProtection =
     process.env.NODE_ENV === "production" || process.env.FORM_SPAM_PROTECTION !== "false";
 

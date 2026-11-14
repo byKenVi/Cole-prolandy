@@ -38,14 +38,12 @@ const isPublicRoute = createRouteMatcher([
   // FAPI proxy lives on api-server, but if a handshake request is ever
   // forwarded to Next (proxy no-op / misroute), auth.protect() must not 403 it.
   "/api/__clerk(.*)",
+  "/terms(.*)",
   "/api/estimate",
+  "/api/accept(.*)",
   "/api/integrations/wix/estimate-requests",
   "/api/stripe/webhook",
-  "/api/cron/expire-leads",
-  "/api/cron/follow-ups",
-  "/api/cron/align-qa-identities",
-  "/api/cron/initialize-settings",
-  "/api/cron/wix-contractor-sync",
+  "/api/cron/run",
 ]);
 
 // Explicitly supply publishableKey so the middleware always uses the same Clerk

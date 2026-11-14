@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/money";
 import { formatDate } from "@/lib/format";
 import { leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
 import { LeadReviewForm } from "@/components/admin/lead-review-form";
+import { HeldLeadPanel, type ContractorOption } from "@/components/admin/held-lead-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -142,6 +143,35 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
   });
   if (!lead) notFound();
 
+  let heldOptions: ContractorOption[] = [];
+  if (lead.reviewStatus !== "ROUTED") {
+    const contractors = await prisma.contractor.findMany({
+      where: { deactivatedAt: null },
+      orderBy: { name: "asc" },
+      take: 500,
+      select: {
+        id: true,
+        name: true,
+        serviceZipCodes: true,
+        serviceCounties: true,
+        contractorCategoryId: true,
+        categoryMemberships: { select: { categoryId: true } },
+      },
+    });
+    heldOptions = contractors.map((c) => ({
+      id: c.id,
+      name: c.name,
+      detail:
+        [c.serviceZipCodes.slice(0, 4).join(", "), c.serviceCounties.slice(0, 2).join(", ")].filter(Boolean).join(" - ") ||
+        "No service area",
+      sameCategory: Boolean(
+        lead.contractorCategoryId &&
+          (c.contractorCategoryId === lead.contractorCategoryId ||
+            c.categoryMemberships.some((m) => m.categoryId === lead.contractorCategoryId)),
+      ),
+    }));
+  }
+
   return (
     <div className="admin-fade-up flex w-full flex-col gap-8">
       <Link
@@ -200,6 +230,10 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           />
         </div>
       </header>
+
+      {lead.reviewStatus !== "ROUTED" && (
+        <HeldLeadPanel leadId={lead.id} reason={lead.reviewBlocker} contractors={heldOptions} />
+      )}
 
       {lead.reviewStatus !== "ROUTED" && (lead.budgetReviewRequired || lead.tierReviewRequired) && (
         <LeadReviewForm

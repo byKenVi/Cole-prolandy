@@ -201,6 +201,26 @@ model Contractor {
   logoUrl                      String?
   // Soft-deactivate: blocks login + lead distribution while preserving money/lead history.
   deactivatedAt                DateTime?
+  /// Who deactivated: "admin" (never auto-reactivated) or "wix" (follows landys.co status).
+  deactivationSource           String?
+  /// Service area. A lead matches when its ZIP is within `serviceRadiusMiles`
+  /// (or the global default) of any service ZIP, or inside a service county.
+  serviceZipCodes              String[]  @default([])
+  /// Free-form county labels, e.g. "Sabine County" or "Sabine County, TX".
+  serviceCounties              String[]  @default([])
+  serviceRadiusMiles           Int?
+  websiteUrl                   String?
+  /// Contractor-controlled pause: no new general leads until this date.
+  leadsPausedUntil             DateTime?
+  /// Set when the carrier reports the number opted out (STOP). SMS is skipped.
+  smsOptedOutAt                DateTime?
+  /// Account invitation queue (bulk / scheduled invitations).
+  inviteScheduledFor           DateTime?
+  lastInvitedAt                DateTime?
+  inviteCount                  Int       @default(0)
+  inviteLastError              String?
+  /// First time the contractor accepted the success-fee terms.
+  termsAcceptedAt              DateTime?
   createdAt                    DateTime  @default(now())
   updatedAt                    DateTime  @updatedAt
 
@@ -216,6 +236,7 @@ model Contractor {
   @@index([contractorTypeId])
   @@index([contractorCategoryId])
   @@index([deactivatedAt])
+  @@index([inviteScheduledFor])
 }
 
 /// Provider-neutral mapping used by isolated contractor import adapters.
@@ -303,6 +324,8 @@ enum FollowUpAction {
   REPORT_OUTCOME
   CONFIRM_PAID
   LANDOWNER_HIRED
+  /// Login-free link to pay a DUE success fee.
+  PAY_FEE
 }
 
 enum WalletTransactionType {
@@ -413,6 +436,10 @@ model LeadMatch {
   outcomeReportedAt DateTime?
   followUpStage     String?
   followUpNextAt    DateTime?
+  /// Reminders sent for the current follow-up stage (reset when the stage changes).
+  followUpAttempts  Int       @default(0)
+  /// When the landowner was told this contractor accepted.
+  landownerNotifiedAt DateTime?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -444,6 +471,8 @@ model SuccessFee {
   paymentMethod         String?
   paidByAdminId         String?
   manualPaymentNote     String?
+  lastReminderAt        DateTime?
+  reminderCount         Int              @default(0)
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
@@ -475,6 +504,10 @@ model LandownerConfirmation {
   respondedAt      DateTime?
   mismatchFlagged  Boolean   @default(false)
   mismatchReason   String?
+  /// "Did you hire one of these pros?" email schedule (null = legacy row, never sent by cron).
+  sendAfter        DateTime?
+  sentAt           DateTime?
+  reminderSentAt   DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -600,6 +633,41 @@ model AdminInvite {
   @@index([email])
   @@index([token])
   @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Notifications
+// ─────────────────────────────────────────────────────────────
+
+/// Every SMS / email the app sends goes through this outbox: quiet hours,
+/// retries, provider rate limits and a readable message log for admins.
+model NotificationMessage {
+  id           String    @id @default(cuid())
+  /// "sms" | "email"
+  channel      String
+  /// Machine label, e.g. "lead.new", "followup.outcome", "fee.due".
+  kind         String
+  recipient    String
+  subject      String?
+  body         String
+  html         String?
+  contractorId String?
+  leadId       String?
+  leadMatchId  String?
+  sendAfter    DateTime  @default(now())
+  /// "PENDING" | "SENDING" | "SENT" | "FAILED" | "SKIPPED"
+  status       String    @default("PENDING")
+  attempts     Int       @default(0)
+  lastError    String?
+  providerId   String?
+  sentAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, sendAfter])
+  @@index([contractorId])
+  @@index([leadId])
+  @@index([createdAt])
 }
 
 // ─────────────────────────────────────────────────────────────

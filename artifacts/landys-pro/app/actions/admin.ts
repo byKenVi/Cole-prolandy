@@ -7,15 +7,22 @@ import { prisma } from "@/lib/prisma";
 import { refundLeadMatch } from "@/lib/domain/leads";
 import { chargeContractorSavedCard } from "@/lib/services/recharge";
 import {
+  assignLeadToContractors,
   createOfficialEstimateRequest,
   finalizeLeadForRouting,
+  retryLeadRouting,
 } from "@/lib/services/lead-intake";
 import { requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
 import { normalizePhoneForStorage } from "@/lib/phone";
 import { ICON_KEYS, ICON_AUTO, ICON_NONE } from "@/lib/project-icons";
 import { revalidateAdminShell, revalidateContractorShell } from "@/lib/revalidate";
-import { sendContractorAccountInvitation } from "@/lib/contractor-invitations";
+import {
+  cancelScheduledInvitations,
+  processInvitationQueue,
+  scheduleContractorInvitations,
+} from "@/lib/services/contractor-invites";
+import { cleanCountyList, cleanZipList } from "@/lib/domain/service-area";
 import { availableIntegrationCode } from "@/lib/taxonomy";
 import { assertNoDestructiveBurst } from "@/lib/domain/destructive-guard";
 
@@ -87,6 +94,18 @@ const SettingSchema = z.discriminatedUnion("key", [
   z.object({
     key: z.literal("followUpPaymentRetryHours"),
     value: z.coerce.number().int().min(1).max(8760),
+  }),
+  z.object({
+    key: z.literal("serviceRadiusMiles"),
+    value: z.coerce.number().int().min(1).max(500),
+  }),
+  z.object({
+    key: z.literal("landownerHireCheckDelayDays"),
+    value: z.coerce.number().int().min(1).max(120),
+  }),
+  z.object({
+    key: z.literal("followUpMaxAttempts"),
+    value: z.coerce.number().int().min(1).max(10),
   }),
 ]);
 
@@ -300,7 +319,7 @@ export async function deactivateContractor(id: string): Promise<Result> {
   await prisma.$transaction(async (tx) => {
     await tx.contractor.update({
       where: { id },
-      data: { deactivatedAt: new Date() },
+      data: { deactivatedAt: new Date(), deactivationSource: "admin" },
     });
     await tx.auditLog.create({
       data: {
@@ -332,7 +351,7 @@ export async function reactivateContractor(id: string): Promise<Result> {
   await prisma.$transaction(async (tx) => {
     await tx.contractor.update({
       where: { id },
-      data: { deactivatedAt: null },
+      data: { deactivatedAt: null, deactivationSource: null },
     });
     await tx.auditLog.create({
       data: {
@@ -910,9 +929,14 @@ const ContractorSchema = z.object({
   name: z.string().min(2, "Name is required"),
   email: z.string().email("A valid email is required"),
   phone: z.string().min(7, "A valid phone number is required"),
-  /** Assigned projects (ContractorType ids). At least one required. */
-  projectIds: z.array(z.string().min(1)).min(1, "Assign at least one project"),
+  /** Legacy land projects (ContractorType ids). Optional since the success-fee model. */
+  projectIds: z.array(z.string().min(1)).default([]),
   contractorCategoryId: z.string().min(1, "Choose one contractor category"),
+  /** Comma / newline separated ZIP codes. */
+  serviceZipCodes: z.string().max(4000).default(""),
+  /** One county per line, e.g. "Sabine County, TX". */
+  serviceCounties: z.string().max(4000).default(""),
+  serviceRadiusMiles: z.coerce.number().int().min(1).max(500).nullable().default(null),
   aboutSection: z.string().max(1000).optional().or(z.literal("")),
   businessHours: z.string().max(280).optional().or(z.literal("")),
   isPro: z.boolean().default(false),
@@ -937,7 +961,7 @@ async function syncContractorProjects(
   tx: Prisma.TransactionClient,
   contractorId: string,
   projectIds: string[],
-  primaryProjectId: string,
+  primaryProjectId: string | null,
 ) {
   await tx.contractorProject.deleteMany({ where: { contractorId } });
   for (const contractorTypeId of projectIds) {
@@ -970,15 +994,14 @@ export async function createContractor(
   }
 
   const projectIds = await validProjectIds(data.projectIds);
-  if (projectIds.length === 0) {
-    return { ok: false, message: "Assign at least one valid project." };
-  }
-  const primaryProjectId = projectIds[0]!;
+  const primaryProjectId = projectIds[0] ?? null;
   const category = await prisma.contractorCategory.findFirst({
     where: { id: data.contractorCategoryId, archivedAt: null },
     select: { id: true },
   });
   if (!category) return { ok: false, message: "Choose one active contractor category." };
+  const serviceZipCodes = cleanZipList(data.serviceZipCodes);
+  const serviceCounties = cleanCountyList(data.serviceCounties.split(/\n/));
 
   try {
     const contractor = await prisma.$transaction(async (tx) => {
@@ -991,9 +1014,13 @@ export async function createContractor(
           phone,
           contractorTypeId: primaryProjectId,
           contractorCategoryId: category.id,
+          categoryMemberships: { create: { categoryId: category.id, isPrimary: true } },
           aboutSection: data.aboutSection || null,
           businessHours: data.businessHours || null,
           isPro: data.isPro,
+          serviceZipCodes,
+          serviceCounties,
+          serviceRadiusMiles: data.serviceRadiusMiles,
           projects: {
             create: projectIds.map((contractorTypeId) => ({ contractorTypeId })),
           },
@@ -1018,34 +1045,20 @@ export async function createContractor(
       return created;
     });
 
-    const invitation = await sendContractorAccountInvitation({
-      name: data.name,
-      email,
+    // Branded account invitation (email + text), sent right away.
+    await scheduleContractorInvitations({
+      contractorIds: [contractor.id],
+      sendAt: new Date(),
+      actorEmail: admin.email,
     });
-    if (!invitation.ok) {
-      console.error("[contractor.create] Account invitation failed", {
-        contractorId: contractor.id,
-        error: invitation.error,
-      });
+    const queue = await processInvitationQueue(new Date(), 5);
+    if (queue.failed > 0) {
+      revalidatePath("/admin/contractors");
       return {
         ok: true,
-        message: "Contractor created, but the invitation failed. Retry it from the contractor list.",
+        message: "Contractor created, but the invitation failed. Retry it from the Invitations page.",
         contractorId: contractor.id,
       };
-    }
-
-    try {
-      await prisma.auditLog.create({
-        data: {
-          actorType: "system",
-          action: "contractor.invitation.sent",
-          targetType: "Contractor",
-          targetId: contractor.id,
-          metadata: { email, provider: invitation.provider },
-        },
-      });
-    } catch (auditError) {
-      console.error("[contractor.create] Invitation audit failed", auditError);
     }
     revalidatePath("/admin/contractors");
     return {
@@ -1062,26 +1075,63 @@ export async function resendContractorInvitation(contractorId: string): Promise<
   const admin = await requireAdmin();
   const contractor = await prisma.contractor.findUnique({
     where: { id: contractorId },
-    select: { id: true, name: true, email: true, clerkUserId: true, deactivatedAt: true },
+    select: { id: true, clerkUserId: true, deactivatedAt: true },
   });
   if (!contractor) return { ok: false, message: "Contractor not found." };
   if (contractor.deactivatedAt) return { ok: false, message: "Reactivate this contractor first." };
-  if (contractor.clerkUserId) return { ok: false, message: "This contractor has already signed in." };
+  if (contractor.clerkUserId) return { ok: false, message: "This contractor already has an account." };
 
-  const invitation = await sendContractorAccountInvitation(contractor);
-  await prisma.auditLog.create({
-    data: {
-      actorType: "admin",
-      actorId: admin.email,
-      action: invitation.ok ? "contractor.invitation.resent" : "contractor.invitation.failed",
-      targetType: "Contractor",
-      targetId: contractor.id,
-      metadata: invitation.ok ? { email: contractor.email } : { error: invitation.error },
-    },
+  await scheduleContractorInvitations({
+    contractorIds: [contractorId],
+    sendAt: new Date(),
+    actorEmail: admin.email,
   });
-  if (!invitation.ok) return { ok: false, message: "Invitation failed. Check Clerk configuration." };
+  const queue = await processInvitationQueue(new Date(), 5);
   revalidatePath("/admin/contractors");
-  return { ok: true, message: "Invitation sent." };
+  revalidatePath("/admin/invitations");
+  if (queue.failed > 0) return { ok: false, message: "Invitation failed. See the Messages page." };
+  return { ok: true, message: "Invitation sent by email and text." };
+}
+
+// ── Bulk / scheduled account invitations ──
+export async function scheduleInvitationsAction(input: {
+  contractorIds: string[];
+  /** ISO date-time; omitted = send now. */
+  sendAt?: string | null;
+}): Promise<Result & { scheduled?: number }> {
+  const admin = await requireAdmin();
+  if (!Array.isArray(input.contractorIds) || input.contractorIds.length === 0) {
+    return { ok: false, message: "Select at least one contractor." };
+  }
+  const sendAt = input.sendAt ? new Date(input.sendAt) : new Date();
+  if (Number.isNaN(sendAt.getTime())) return { ok: false, message: "Choose a valid date and time." };
+  const res = await scheduleContractorInvitations({
+    contractorIds: input.contractorIds,
+    sendAt,
+    actorEmail: admin.email,
+  });
+  const now = !input.sendAt || sendAt.getTime() <= Date.now() + 60_000;
+  if (now) {
+    // Send the first batch right away; the scheduler sends the rest every 10 minutes.
+    await processInvitationQueue(new Date(), 25);
+  }
+  revalidatePath("/admin/invitations");
+  revalidatePath("/admin/contractors");
+  const skipped = res.skipped > 0 ? ` ${res.skipped} skipped (already have an account, deactivated or no email).` : "";
+  return {
+    ok: true,
+    scheduled: res.scheduled,
+    message: now
+      ? `Sending ${res.scheduled} invitation${res.scheduled === 1 ? "" : "s"} now.${skipped}`
+      : `${res.scheduled} invitation${res.scheduled === 1 ? "" : "s"} scheduled.${skipped}`,
+  };
+}
+
+export async function cancelInvitationsAction(contractorIds: string[]): Promise<Result> {
+  const admin = await requireAdmin();
+  const count = await cancelScheduledInvitations({ contractorIds, actorEmail: admin.email });
+  revalidatePath("/admin/invitations");
+  return { ok: true, message: `${count} scheduled invitation${count === 1 ? "" : "s"} cancelled.` };
 }
 
 /**
@@ -1137,10 +1187,7 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
   }
 
   const projectIds = await validProjectIds(data.projectIds);
-  if (projectIds.length === 0) {
-    return { ok: false, message: "Assign at least one valid project." };
-  }
-  const primaryProjectId = projectIds[0]!;
+  const primaryProjectId = projectIds[0] ?? null;
   const category = await prisma.contractorCategory.findFirst({
     where: { id: data.contractorCategoryId, archivedAt: null },
     select: { id: true },
@@ -1158,7 +1205,15 @@ export async function updateContractor(id: string, input: ContractorInput): Prom
         aboutSection: data.aboutSection || null,
         businessHours: data.businessHours || null,
         isPro: data.isPro,
+        serviceZipCodes: cleanZipList(data.serviceZipCodes),
+        serviceCounties: cleanCountyList(data.serviceCounties.split(/\n/)),
+        serviceRadiusMiles: data.serviceRadiusMiles,
       },
+    });
+    await tx.contractorCategoryMembership.upsert({
+      where: { contractorId_categoryId: { contractorId: id, categoryId: category.id } },
+      update: { isPrimary: true },
+      create: { contractorId: id, categoryId: category.id, isPrimary: true },
     });
     await syncContractorProjects(tx, id, projectIds, primaryProjectId);
     await tx.auditLog.create({
@@ -1219,11 +1274,27 @@ export async function syncWixContractors(dryRun = false): Promise<
     const { runWixContractorSync } = await import("@/lib/integrations/wix/contractor-sync");
     const summary = await runWixContractorSync({ dryRun });
     revalidatePath("/admin/contractors");
+    revalidatePath("/admin/invitations");
+    const parts = [
+      `${summary.fetched} read from landys.co`,
+      `${summary.created} ${dryRun ? "to create" : "created"}`,
+      `${summary.updated} ${dryRun ? "to update" : "updated"}`,
+      `${summary.unchanged} unchanged`,
+    ];
+    if (summary.invalidIdentity) parts.push(`${summary.invalidIdentity} skipped (missing name or email)`);
+    if (summary.withoutServiceArea) parts.push(`${summary.withoutServiceArea} without a service area`);
+    if (summary.deactivated) parts.push(`${summary.deactivated} deactivated (inactive on landys.co)`);
+    if (summary.reactivated) parts.push(`${summary.reactivated} reactivated`);
+    if (summary.errors.length) parts.push(`${summary.errors.length} error(s): ${summary.errors.slice(0, 2).join(" | ")}`);
+    if (dryRun && summary.categoriesCreated.length) {
+      parts.push(`new categories: ${summary.categoriesCreated.slice(0, 8).join(", ")}`);
+    }
+    if (dryRun && summary.sampleKeys.length) {
+      parts.push(`fields received from landys.co: ${summary.sampleKeys.slice(0, 40).join(", ")}`);
+    }
     return {
-      ok: true,
-      message: dryRun
-        ? `Dry run: ${summary.created} create, ${summary.updated} update, ${summary.invalidIdentity} invalid identity.`
-        : `Sync complete: ${summary.created} created, ${summary.updated} updated.`,
+      ok: summary.errors.length === 0,
+      message: `${dryRun ? "Dry run" : "Sync complete"}: ${parts.join(", ")}.`,
       summary: summary as unknown as Record<string, unknown>,
     };
   } catch (error) {
@@ -1311,3 +1382,27 @@ export async function createManualLead(input: {
     return { ok: false, message: e instanceof DomainError ? e.message : "Failed to create opportunity." };
   }
 }
+
+// ── Held leads: retry routing or hand-pick contractors ──
+export async function retryLeadRoutingAction(leadId: string): Promise<Result> {
+  const admin = await requireAdmin();
+  const res = await retryLeadRouting({ leadId, actorId: admin.email });
+  revalidatePath("/admin/leads");
+  revalidatePath(`/admin/leads/${leadId}`);
+  return res.heldForReview
+    ? { ok: false, message: "Still no matching contractor. Pick contractors by hand below." }
+    : { ok: true, message: `Sent to ${res.recipients} contractor${res.recipients === 1 ? "" : "s"}.` };
+}
+
+export async function assignLeadAction(leadId: string, contractorIds: string[]): Promise<Result> {
+  const admin = await requireAdmin();
+  try {
+    const res = await assignLeadToContractors({ leadId, contractorIds, actorId: admin.email });
+    revalidatePath("/admin/leads");
+    revalidatePath(`/admin/leads/${leadId}`);
+    return { ok: true, message: `Sent to ${res.recipients} contractor${res.recipients === 1 ? "" : "s"}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof DomainError ? error.message : "Could not send this request." };
+  }
+}
+

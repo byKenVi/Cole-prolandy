@@ -6,6 +6,7 @@ import { acceptLeadMatch, declineLeadMatch } from "@/lib/domain/leads";
 import { DomainError } from "@/lib/domain/errors";
 import { getSession } from "@/lib/auth";
 import { revalidateContractorShell } from "@/lib/revalidate";
+import { termsSnapshot } from "@/lib/terms";
 
 export type ActionResult =
   | { ok: true; status: string }
@@ -34,6 +35,7 @@ export async function acceptLeadAction(leadMatchId: string): Promise<ActionResul
       leadMatchId,
       actorType: session.role === "admin" ? "admin" : "contractor",
       actorId: session.contractorId,
+      termsShown: await termsSnapshot({ leadMatchId }),
     });
     revalidatePath("/opportunities");
     revalidatePath("/dashboard");
@@ -65,8 +67,14 @@ export async function declineLeadAction(leadMatchId: string): Promise<ActionResu
 
 export async function acceptByTokenAction(acceptToken: string): Promise<ActionResult> {
   try {
-    const res = await acceptLeadMatch({ acceptToken, actorType: "contractor" });
+    const res = await acceptLeadMatch({
+      acceptToken,
+      actorType: "contractor",
+      termsShown: await termsSnapshot({ acceptToken }),
+    });
     revalidatePath(`/accept/${acceptToken}`);
+    revalidatePath("/dashboard");
+    revalidatePath("/jobs");
     return { ok: true, status: res.status };
   } catch (e) {
     return toResult(e);

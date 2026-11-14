@@ -14,6 +14,13 @@ vi.mock("@/lib/prisma", () => ({
   }),
 }));
 
+vi.mock("@/lib/services/landowner-confirmation", () => ({
+  afterContractorAccepted: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/lib/notifications", () => ({
+  notifyFeeDue: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { acceptLeadMatch } from "./leads";
 import { reportJobWon, confirmContractorPaid } from "./job-outcome";
 import { markSuccessFeePaid } from "./success-fee";

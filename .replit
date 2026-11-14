@@ -50,9 +50,13 @@ channel = "stable-25_05"
 # registered on the Stripe connector account (we_1TyZA1DZftuEtu8223cR6xoe).
 CLERK_PROXY_URL = "https://cole-prolandy-project.replit.app/api/__clerk"
 NEXT_PUBLIC_APP_URL = "https://cole-prolandy-project.replit.app"
-STRIPE_MOCK = "true"
-RESEND_MOCK = "true"
+# Never "true" in production: mocked payments would mark fees paid with no
+# money collected, and mocked email silently drops every message.
+STRIPE_MOCK = "false"
+RESEND_MOCK = "false"
 TWILIO_MOCK = "false"
+# The public /estimate form stays off: landys.co (Wix) is the only lead source.
+PUBLIC_ESTIMATE_FORM_ENABLED = "false"
 LANDYS_ENV = "production"
 ADMIN_EMAILS = "cole@mudrockcapital.com"
 

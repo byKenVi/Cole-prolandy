@@ -1,185 +1,202 @@
-import {
-  normalizeLiveCategoryCode,
-  normalizeLiveWorkTypeCode,
-} from "@/lib/taxonomy/live-v3";
+import { normalizeLiveWorkTypeCode } from "@/lib/taxonomy/live-v3";
+import { cleanCountyList, cleanZipList, splitList } from "@/lib/domain/service-area";
+import { slugifyTaxonomy } from "@/lib/services/taxonomy-registry";
+import { normalizeLiveCategoryCode } from "@/lib/taxonomy/live-v3";
 import type { NormalizedContractorSyncRecord } from "@/lib/integrations/contractors/contract";
+
+/**
+ * Wix "All Contractors" CMS item → Landy's Pro contractor.
+ *
+ * The Wix Data API returns field KEYS (e.g. `companyName` or `title`) while
+ * the CMS UI and the landys.co PDF show display NAMES ("Company Name"). We do
+ * not know which keys the live collection uses, so every lookup goes through
+ * `pickField`, which matches keys case- and punctuation-insensitively against
+ * a list of aliases. Lists may arrive as arrays or "a, b, c" strings, and
+ * booleans as true / "Yes".
+ */
 
 /** Wix returns dates as either a plain ISO string or a `{ $date: string }` object. */
 export type WixDateValue = string | { $date: string };
 
-/** Extract an ISO date string from whatever format Wix uses for date fields. */
-export function parseWixDate(value: WixDateValue | undefined): string | undefined {
+export function parseWixDate(value: unknown): string | undefined {
   if (!value) return undefined;
   if (typeof value === "string") return value;
-  return value.$date;
+  if (typeof value === "object" && value !== null && "$date" in value) {
+    const date = (value as { $date: unknown }).$date;
+    return typeof date === "string" ? date : undefined;
+  }
+  return undefined;
 }
 
-export type WixAllContractorItem = {
-  _id: string;
-  contractorId?: string;
-  proPortalId?: string;
-  _createdDate?: WixDateValue;
-  _updatedDate?: WixDateValue;
-  companyName?: string;
-  email?: string;
-  phone?: string;
-  websiteUrl?: string;
-  shortDescription?: string;
-  longDescription?: string;
-  logo?: unknown;
-  heroImage?: unknown;
-  gallery?: unknown;
-  status?: string;
-  verified?: boolean;
-  badge?: string;
-  topProBadge?: boolean;
-  featured?: boolean;
-  contractorsCategory?: string[];
-  secondaryCategories?: string[];
-  projectType?: string[];
-  projectSpecialties?: string[];
-  landTypes?: string[];
-  yearsExperience?: number;
-  budgetTier?: string;
-  timelineCapacity?: string;
-  responseSpeed?: string;
-  serviceZipCodes?: string[];
-  serviceCounties?: string[];
-  reviews?: unknown;
-  googleReviewsUrl?: string;
-};
+export type WixAllContractorItem = Record<string, unknown> & { _id: string };
 
-const LEGACY_CATEGORIES = new Map<string, string>([
-  ["land clearing", "land-clearing"],
-  ["surveyors", "surveyors"],
-  ["builders", "builders"],
-  ["dirt work & excavation", "dirt-work-excavation"],
-  ["fencing & entrances", "fencing-entrances"],
-  ["water well & septic", "water-well-septic"],
-  ["forestry & timber", "forestry-timber"],
-  ["property maintenance", "property-maintenance"],
-  ["wildlife management", "wildlife-management"],
-  ["farm & agriculture", "farm-agriculture"],
-  ["land lenders", "land-lenders"],
-  ["land realtors", "land-realtors"],
-]);
+const FIELD_ALIASES = {
+  name: ["companyName", "company", "businessName", "title", "name"],
+  email: ["email", "emailAddress", "contactEmail", "businessEmail"],
+  phone: ["phone", "phoneNumber", "contactPhone", "businessPhone", "mobile"],
+  website: ["websiteUrl", "website", "websiteLink", "url"],
+  shortDescription: ["shortDescription", "tagline"],
+  longDescription: ["longDescription", "description", "about", "aboutUs"],
+  status: ["status", "contractorStatus"],
+  categories: ["contractorsCategory", "contractorCategory", "contractorsCategories", "categories", "category"],
+  secondaryCategories: ["secondaryCategories", "secondaryCategory"],
+  projectTypes: ["projectType", "projectTypes", "services"],
+  projectSpecialties: ["projectSpecialties", "specialties"],
+  landTypes: ["landTypes", "landType"],
+  serviceZipCodes: ["serviceZipCodes", "serviceZipCode", "serviceZips", "zipCodes", "zipCode", "serviceAreaZipCodes"],
+  serviceCounties: ["serviceCounties", "serviceCounty", "counties", "county", "serviceArea"],
+  contractorId: ["contractorId"],
+  proPortalId: ["proPortalId"],
+  createdDate: ["_createdDate", "createdDate"],
+  updatedDate: ["_updatedDate", "updatedDate"],
+  verified: ["verified"],
+  featured: ["featured"],
+  topProBadge: ["topProBadge"],
+  badge: ["badge"],
+  reviews: ["reviews"],
+  googleReviewsUrl: ["googleReviewsUrl"],
+  yearsExperience: ["yearsExperience"],
+  responseSpeed: ["responseSpeed"],
+  budgetTier: ["budgetTier"],
+  timelineCapacity: ["timelineCapacity"],
+  profilePath: ["allContractorsItem", "link-all-contractors-title", "profileUrl"],
+} as const;
 
-const LEGACY_PROJECT_TYPES = new Map<string, string>([
-  ["culvert install", "culvert-install"],
-  ["barndominium building", "barndominium-building"],
-  ["brush hogging", "brush-hogging"],
-  ["pond building", "pond-building"],
-  ["cabin construction", "cabin-construction"],
-  ["driveway construction", "driveway-construction"],
-  ["water well drilling", "water-well-drilling"],
-  ["gated entrance", "gated-entrance"],
-  ["drainage improvement", "drainage-improvement"],
-  ["irrigation system installation", "irrigation-system-installation"],
-  ["retaining wall construction", "retaining-wall-construction"],
-  ["utility trenching", "utility-trenching"],
-  ["tree removal & stump grinding", "tree-removal-stump-grinding"],
-  ["land grading & leveling", "land-grading-leveling"],
-]);
+type FieldName = keyof typeof FIELD_ALIASES;
 
-function normalizeLabel(value: string): string {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
+function keyOf(raw: string): string {
+  return raw.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function indexItem(item: Record<string, unknown>): Map<string, unknown> {
+  const map = new Map<string, unknown>();
+  for (const [key, value] of Object.entries(item)) {
+    const k = keyOf(key);
+    if (!map.has(k)) map.set(k, value);
+  }
+  return map;
+}
+
+export function pickField(item: Record<string, unknown> | Map<string, unknown>, field: FieldName): unknown {
+  const index = item instanceof Map ? item : indexItem(item);
+  for (const alias of FIELD_ALIASES[field]) {
+    const value = index.get(keyOf(alias));
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return undefined;
+}
+
+function asText(value: unknown): string | undefined {
+  if (typeof value === "string") return value.trim() || undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return undefined;
+}
+
+export function asBoolean(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const v = value.trim().toLowerCase();
+    if (["yes", "true", "y", "1", "active"].includes(v)) return true;
+    if (["no", "false", "n", "0"].includes(v)) return false;
+  }
+  return null;
+}
+
+/**
+ * Active unless the CMS says otherwise. A missing status means the field is
+ * not used — treating that as "inactive" would deactivate everyone.
+ */
+export function normalizeWixContractorStatus(status: unknown): "active" | "inactive" {
+  const text = asText(status)?.toLowerCase();
+  if (!text) return "active";
+  if (["active", "approved", "live", "published", "verified", "yes"].includes(text)) return "active";
+  return "inactive";
+}
+
+/** Category label → stable code ("Roofing" → roofing, "Land Lenders" → land-lenders). */
 export function resolveOfficialCategoryCode(label: string): string | null {
-  return (
-    normalizeLiveCategoryCode(label) ??
-    LEGACY_CATEGORIES.get(normalizeLabel(label)) ??
-    null
-  );
-}
-
-export function resolveOfficialProjectTypeCode(label: string): string | null {
-  return LEGACY_PROJECT_TYPES.get(normalizeLabel(label)) ?? null;
+  const trimmed = label.trim();
+  if (!trimmed) return null;
+  return normalizeLiveCategoryCode(trimmed) ?? (slugifyTaxonomy(trimmed) || null);
 }
 
 export function resolveOfficialWorkTypeCode(label: string): string | null {
   return normalizeLiveWorkTypeCode(label);
 }
 
-export function normalizeWixContractorStatus(status: string | undefined): "active" | "inactive" {
-  if (!status?.trim()) return "inactive";
-  return normalizeLabel(status) === "active" ? "active" : "inactive";
-}
-
-export function normalizeWixContractorRecord(item: WixAllContractorItem): {
+export type NormalizedWixContractor = {
   record: NormalizedContractorSyncRecord;
-  unresolvedCategories: string[];
-  unresolvedProjectTypes: string[];
-  unresolvedWorkTypes: string[];
-  unresolvedLandTypes: string[];
+  /** Primary first, then secondary; raw labels as written on landys.co. */
+  categoryLabels: string[];
+  serviceZipCodes: string[];
+  serviceCounties: string[];
+  websiteUrl: string | null;
   sourceStatus: string | null;
   isActive: boolean;
+  /** Keys present on the raw item (shown in the admin dry-run to verify mapping). */
+  rawKeys: string[];
   metadata: Record<string, unknown>;
-} {
-  const unresolvedCategories: string[] = [];
-  const categoryCodes = (item.contractorsCategory ?? [])
-    .map((label) => {
-      const code = resolveOfficialCategoryCode(label);
-      if (!code) unresolvedCategories.push(label);
-      return code;
-    })
-    .filter((code): code is string => Boolean(code));
+};
 
-  const unresolvedProjectTypes: string[] = [];
-  const inputProjectTypes = item.projectType ?? [];
-  const resolvedWorkCodes = inputProjectTypes
-    .map((label) => {
-      const code = resolveOfficialWorkTypeCode(label);
-      if (!code) unresolvedProjectTypes.push(label);
-      return code;
-    })
-    .filter((code): code is string => Boolean(code));
+export function normalizeWixContractorRecord(item: WixAllContractorItem): NormalizedWixContractor {
+  const index = indexItem(item);
+  const get = (field: FieldName) => pickField(index, field);
 
-  const workTypeCodes: string[] | undefined =
-    inputProjectTypes.length > 0 && resolvedWorkCodes.length === 0
-      ? undefined
-      : [...new Set(resolvedWorkCodes)];
+  const primary = splitList(get("categories"));
+  const secondary = splitList(get("secondaryCategories"));
+  const categoryLabels = [...new Set([...primary, ...secondary])];
+  const firstCategoryCode = categoryLabels.map(resolveOfficialCategoryCode).find(Boolean) ?? undefined;
 
-  const unresolvedLandTypes = (item.landTypes ?? []).map((v) => v.trim()).filter(Boolean);
-  const sourceStatus = item.status?.trim() ?? null;
-  const isActive = normalizeWixContractorStatus(item.status) === "active";
+  const longDescription = asText(get("longDescription"));
+  const shortDescription = asText(get("shortDescription"));
+  const status = asText(get("status")) ?? null;
+  const website = asText(get("website")) ?? null;
 
   return {
     record: {
       source: "wix",
       externalId: item._id,
       profile: {
-        name: item.companyName?.trim(),
-        email: item.email?.trim().toLowerCase(),
-        phone: item.phone?.trim(),
-        aboutSection: item.longDescription ?? item.shortDescription ?? null,
+        name: asText(get("name")),
+        email: asText(get("email"))?.toLowerCase(),
+        phone: asText(get("phone")),
+        aboutSection: longDescription ?? shortDescription ?? null,
         businessHours: null,
       },
-      contractorCategoryCode: categoryCodes[0],
-      workTypeCodes,
-      projectTypeCodes: [],
+      contractorCategoryCode: firstCategoryCode,
+      // Work types are informative on landys.co; matching no longer uses them.
+      workTypeCodes: undefined,
+      projectTypeCodes: undefined,
     },
-    unresolvedCategories,
-    unresolvedProjectTypes,
-    unresolvedWorkTypes: unresolvedProjectTypes,
-    unresolvedLandTypes,
-    sourceStatus,
-    isActive,
+    categoryLabels,
+    serviceZipCodes: cleanZipList(get("serviceZipCodes")),
+    serviceCounties: cleanCountyList(get("serviceCounties")),
+    websiteUrl: website && /^https?:\/\//i.test(website) ? website : website ? `https://${website}` : null,
+    sourceStatus: status,
+    isActive: normalizeWixContractorStatus(status) === "active",
+    rawKeys: Object.keys(item).sort(),
     metadata: {
-      contractorId: item.contractorId ?? null,
-      proPortalId: item.proPortalId ?? null,
-      wixCreatedDate: parseWixDate(item._createdDate) ?? null,
-      wixUpdatedDate: parseWixDate(item._updatedDate) ?? null,
-      secondaryCategories: item.secondaryCategories ?? [],
-      landTypes: item.landTypes ?? [],
-      websiteUrl: item.websiteUrl ?? null,
-      shortDescription: item.shortDescription ?? null,
-      status: sourceStatus,
-      verified: item.verified ?? null,
-      featured: item.featured ?? null,
-      serviceZipCodes: item.serviceZipCodes ?? [],
-      serviceCounties: item.serviceCounties ?? [],
-      raw: item,
+      contractorId: asText(get("contractorId")) ?? null,
+      proPortalId: asText(get("proPortalId")) ?? null,
+      wixCreatedDate: parseWixDate(get("createdDate")) ?? null,
+      wixUpdatedDate: parseWixDate(get("updatedDate")) ?? null,
+      secondaryCategories: secondary,
+      projectTypes: splitList(get("projectTypes")),
+      projectSpecialties: splitList(get("projectSpecialties")),
+      landTypes: splitList(get("landTypes")),
+      shortDescription: shortDescription ?? null,
+      status,
+      verified: asBoolean(get("verified")),
+      featured: asBoolean(get("featured")),
+      topProBadge: asBoolean(get("topProBadge")),
+      badge: asText(get("badge")) ?? null,
+      reviews: asText(get("reviews")) ?? null,
+      googleReviewsUrl: asText(get("googleReviewsUrl")) ?? null,
+      yearsExperience: asText(get("yearsExperience")) ?? null,
+      responseSpeed: asText(get("responseSpeed")) ?? null,
+      budgetTier: asText(get("budgetTier")) ?? null,
+      timelineCapacity: asText(get("timelineCapacity")) ?? null,
+      profilePath: asText(get("profilePath")) ?? null,
     },
   };
 }

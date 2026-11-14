@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SystemHealth } from "@/components/admin/system-health";
 import { ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
@@ -298,6 +299,7 @@ export default async function AdminDashboard({
         titleSize={36}
         action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
       />
+      <SystemHealth />
 
       <div
         className="admin-stat-grid"

@@ -1,4 +1,4 @@
-import { JobOutcome, LeadMatchStatus } from "@prisma/client";
+import { FollowUpAction, JobOutcome, LeadMatchStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createSuccessFeeSnapshot, markSuccessFeeDue } from "./success-fee";
 import {
@@ -7,7 +7,12 @@ import {
   getFollowUpPaymentRetryHours,
 } from "./settings";
 import { InvalidStateError, NotFoundError } from "./errors";
-import { scheduleOutcomeFollowUp, schedulePaymentFollowUp } from "./follow-up";
+import {
+  createFollowUpToken,
+  FOLLOW_UP_STAGES,
+  scheduleOutcomeFollowUp,
+  schedulePaymentFollowUp,
+} from "./follow-up";
 
 export async function reportJobWon(params: {
   leadMatchId: string;
@@ -38,7 +43,8 @@ export async function reportJobWon(params: {
         jobOutcome: JobOutcome.WON,
         finalContractValueCents: params.finalContractValueCents,
         outcomeReportedAt: now,
-        followUpStage: "awaiting_contractor_payment",
+        followUpStage: FOLLOW_UP_STAGES.payment,
+        followUpAttempts: 0,
       },
     });
 
@@ -98,6 +104,7 @@ export async function reportJobLost(params: {
         outcomeReportedAt: new Date(),
         followUpStage: null,
         followUpNextAt: null,
+        followUpAttempts: 0,
       },
     });
 
@@ -121,15 +128,27 @@ export async function confirmContractorPaid(params: {
   actorType?: string;
   actorId?: string | null;
 }) {
+  const before = await prisma.successFee.findUnique({
+    where: { leadMatchId: params.leadMatchId },
+    select: { status: true },
+  });
   const fee = await markSuccessFeeDue(prisma, params.leadMatchId);
 
   await prisma.leadMatch.update({
     where: { id: params.leadMatchId },
     data: {
-      followUpStage: "fee_due",
+      followUpStage: FOLLOW_UP_STAGES.feeDue,
       followUpNextAt: null,
+      followUpAttempts: 0,
     },
   });
+
+  // First time the fee becomes due: send the login-free payment link.
+  if (before?.status !== "DUE") {
+    await sendFeeDueNotice(params.leadMatchId, 0).catch((error) =>
+      console.error("[fee] due notice failed", error),
+    );
+  }
 
   await prisma.auditLog.create({
     data: {
@@ -145,6 +164,16 @@ export async function confirmContractorPaid(params: {
   return fee;
 }
 
+/** Send (or re-send) the "your success fee is due" message with a pay link. */
+export async function sendFeeDueNotice(leadMatchId: string, reminderNumber: number) {
+  const token = await createFollowUpToken(prisma, {
+    action: FollowUpAction.PAY_FEE,
+    leadMatchId,
+  });
+  const { notifyFeeDue } = await import("@/lib/notifications");
+  await notifyFeeDue(leadMatchId, token.token, reminderNumber);
+}
+
 /** Contractor says not yet paid — schedule another reminder. */
 export async function deferContractorPaymentCheck(leadMatchId: string) {
   const retryHours = await getFollowUpPaymentRetryHours(prisma);
@@ -152,8 +181,9 @@ export async function deferContractorPaymentCheck(leadMatchId: string) {
   await prisma.leadMatch.update({
     where: { id: leadMatchId },
     data: {
-      followUpStage: "awaiting_contractor_payment",
+      followUpStage: FOLLOW_UP_STAGES.payment,
       followUpNextAt,
+      followUpAttempts: 0,
     },
   });
 }
@@ -165,8 +195,9 @@ export async function schedulePostAcceptFollowUp(leadMatchId: string) {
   await prisma.leadMatch.update({
     where: { id: leadMatchId },
     data: {
-      followUpStage: "outcome_check",
+      followUpStage: FOLLOW_UP_STAGES.outcome,
       followUpNextAt,
+      followUpAttempts: 0,
     },
   });
 }

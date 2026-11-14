@@ -1,223 +1,424 @@
-import { sms, type SendSmsResult } from "@/lib/integrations/sms";
-import { email, type SendEmailResult } from "@/lib/integrations/email";
 import { prisma } from "@/lib/prisma";
 import { appUrl } from "@/lib/app-url";
-import { previewSuccessFeeRate } from "@/lib/domain/success-fee";
+import { parseAdminEmails } from "@/lib/admin-emails";
+import { APP_SETTING_KEYS } from "@/lib/domain/types";
+import { loadSuccessFeeTiers } from "@/lib/domain/success-fee";
 import { followUpLink, landownerConfirmLink } from "@/lib/domain/follow-up";
+import { timeZoneForZip, DEFAULT_TIME_ZONE } from "@/lib/geo/zip";
+import { buildLeadSummary, feeRateLabelFor } from "@/lib/lead-summary";
+import { leadDisplayInclude } from "@/lib/resolved-lead";
+import { formatPhoneForDisplay, normalizePhone } from "@/lib/phone";
+import { enqueueAndDispatch, type OutboxMessage } from "@/lib/notify/outbox";
+import { nextSmsSendTime } from "@/lib/notify/quiet-hours";
 import {
-  safeEmailRecipient,
-  safeSmsRecipient,
-} from "@/lib/integrations/staging-recipient";
+  adminAlertEmail,
+  contractorInvitationMessages,
+  feeDueMessages,
+  landownerContractorAcceptedEmail,
+  landownerHireCheckEmail,
+  newLeadMessages,
+  outcomeCheckMessages,
+  paymentCheckMessages,
+  type RenderedEmail,
+} from "@/lib/notify/templates";
 
-export type LeadNotification = {
-  contractor: { name: string; email: string; phone: string };
-  acceptToken: string;
-  projectTypeName: string;
-  propertyLocation: string;
-  tier: number;
-  /** Estimated job value in cents for success-fee preview. */
-  estimatedValueCents?: number | null;
-  leadId?: string;
-  contractorId?: string;
-};
+/**
+ * High-level notifications. Every function here only ENQUEUES messages in the
+ * outbox (lib/notify/outbox.ts) and never throws on delivery problems.
+ */
 
 export function acceptLink(acceptToken: string): string {
   return `${appUrl()}/accept/${acceptToken}`;
 }
 
-type FailedChannel = {
-  channel: "sms" | "email";
-  error: string;
+type ContractorContact = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  smsOptedOutAt?: Date | null;
+  serviceZipCodes?: string[];
 };
 
-async function recordFailure(
-  context: Record<string, unknown>,
-  failed: FailedChannel,
-): Promise<void> {
-  console.error("[notify] send failed:", { ...context, ...failed });
+async function contractorMessages(params: {
+  contractor: ContractorContact;
+  kind: string;
+  sms: string;
+  email: RenderedEmail;
+  leadId?: string | null;
+  leadMatchId?: string | null;
+  /** Time zone used for SMS quiet hours. */
+  timeZone?: string;
+}): Promise<OutboxMessage[]> {
+  const { contractor } = params;
+  const messages: OutboxMessage[] = [];
+  const base = {
+    kind: params.kind,
+    contractorId: contractor.id,
+    leadId: params.leadId ?? null,
+    leadMatchId: params.leadMatchId ?? null,
+  };
 
+  if (contractor.email?.includes("@")) {
+    messages.push({
+      ...base,
+      channel: "email",
+      recipient: contractor.email,
+      subject: params.email.subject,
+      body: params.email.text,
+      html: params.email.html,
+    });
+  }
+
+  const phone = normalizePhone(contractor.phone);
+  const timeZone =
+    params.timeZone ??
+    (contractor.serviceZipCodes?.[0] ? await timeZoneForZip(contractor.serviceZipCodes[0]) : DEFAULT_TIME_ZONE);
+  messages.push({
+    ...base,
+    channel: "sms",
+    recipient: phone ?? contractor.phone ?? "",
+    body: params.sms,
+    sendAfter: nextSmsSendTime(new Date(), timeZone),
+    skipReason: contractor.smsOptedOutAt
+      ? "Contractor replied STOP (SMS opt-out)."
+      : !phone
+        ? "No valid mobile number on file."
+        : null,
+  });
+  return messages;
+}
+
+const contractorSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  smsOptedOutAt: true,
+  serviceZipCodes: true,
+  websiteUrl: true,
+} as const;
+
+// ─────────────────────────────────────────────────────────────
+// New lead → matched contractors
+// ─────────────────────────────────────────────────────────────
+
+export async function notifyContractorsOfNewLead(
+  leadId: string,
+  matchIds: string[],
+  options: { photoCount?: number } = {},
+): Promise<void> {
+  if (matchIds.length === 0) return;
   try {
-    await prisma.auditLog.create({
-      data: {
-        actorType: "system",
-        action: "NOTIFICATION_FAILED",
-        targetType: "Lead",
-        targetId: (context.leadId as string) ?? null,
-        metadata: { ...context, ...failed },
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      include: {
+        ...leadDisplayInclude,
+        attachments: { where: { ingestionError: null }, select: { id: true } },
       },
     });
-  } catch (err) {
-    console.error("[notify] failed to write AuditLog for send failure:", err);
-  }
-}
+    if (!lead) return;
+    const matches = await prisma.leadMatch.findMany({
+      where: { id: { in: matchIds }, leadId },
+      include: { contractor: { select: contractorSelect } },
+    });
+    const [summary, tiers, timeZone] = await Promise.all([
+      buildLeadSummary(lead),
+      loadSuccessFeeTiers(prisma),
+      timeZoneForZip(lead.propertyZip ?? lead.propertyLocation),
+    ]);
+    const feeRateLabel = feeRateLabelFor(tiers, lead);
+    const expiresInHours = lead.expiresAt
+      ? Math.max(1, Math.round((lead.expiresAt.getTime() - Date.now()) / 3_600_000))
+      : 48;
 
-function feeRateLabel(ratePercent: number): string {
-  const rounded = ratePercent % 1 === 0 ? ratePercent.toFixed(0) : ratePercent.toFixed(1);
-  return `${rounded}% success fee if you win`;
-}
-
-/**
- * Fire opportunity notifications (SMS + email) for a matched contractor.
- * Never throws — failures are logged.
- */
-export async function notifyNewLead(n: LeadNotification): Promise<void> {
-  const link = acceptLink(n.acceptToken);
-  let feeHint = "Pay only when you get paid.";
-  if (n.estimatedValueCents && n.estimatedValueCents > 0) {
-    try {
-      const { ratePercent } = await previewSuccessFeeRate(prisma, n.estimatedValueCents);
-      feeHint = feeRateLabel(ratePercent);
-    } catch {
-      // Non-fatal — generic copy is fine.
+    const messages: OutboxMessage[] = [];
+    for (const match of matches) {
+      const rendered = newLeadMessages({
+        contractorName: match.contractor.name,
+        summary,
+        link: acceptLink(match.acceptToken),
+        feeRateLabel,
+        direct: lead.routingMode === "DIRECT",
+        maxAccepts: lead.maxPurchases,
+        expiresInHours,
+        photoCount: Math.max(options.photoCount ?? 0, lead.attachments.length),
+      });
+      messages.push(
+        ...(await contractorMessages({
+          contractor: match.contractor,
+          kind: "lead.new",
+          sms: rendered.sms,
+          email: rendered.email,
+          leadId,
+          leadMatchId: match.id,
+          timeZone,
+        })),
+      );
     }
-  }
-
-  const smsBody = `Landy's Pro: New ${n.projectTypeName} opportunity near ${n.propertyLocation}. ${feeHint} Accept or pass: ${link}`;
-  const emailBody = `A new ${n.projectTypeName} opportunity is available near ${n.propertyLocation}.\n${feeHint}\n\nAccept or pass: ${link}`;
-
-  const [smsSettled, emailSettled] = await Promise.allSettled([
-    sms.send({ to: safeSmsRecipient(n.contractor.phone), body: smsBody }),
-    email.send({
-      to: safeEmailRecipient(n.contractor.email),
-      subject: `New opportunity: ${n.projectTypeName} near ${n.propertyLocation}`,
-      text: emailBody,
-    }),
-  ]);
-
-  const context = {
-    leadId: n.leadId ?? null,
-    contractorId: n.contractorId ?? null,
-  };
-  const failures: FailedChannel[] = [];
-  collectFailure(failures, "sms", smsSettled);
-  collectFailure(failures, "email", emailSettled);
-  for (const failure of failures) {
-    await recordFailure(context, failure);
+    await enqueueAndDispatch(messages);
+  } catch (error) {
+    console.error("[notify] new lead notifications failed", { leadId, error });
   }
 }
 
-export async function notifyOutcomeFollowUp(params: {
-  contractor: { name: string; email: string; phone: string };
-  token: string;
-  projectLabel: string;
-  location: string;
-  leadMatchId: string;
-}) {
-  const link = followUpLink(params.token);
-  const smsBody = `Landy's Pro: Did you get the ${params.projectLabel} job near ${params.location}? Yes or No: ${link}`;
-  const emailBody = `Quick check on the ${params.projectLabel} job near ${params.location}.\n\nDid you get this job?\n${link}`;
+// ─────────────────────────────────────────────────────────────
+// Follow-ups
+// ─────────────────────────────────────────────────────────────
 
-  await Promise.allSettled([
-    sms.send({ to: safeSmsRecipient(params.contractor.phone), body: smsBody }),
-    email.send({
-      to: safeEmailRecipient(params.contractor.email),
-      subject: `Did you get the job? — ${params.projectLabel}`,
-      text: emailBody,
-    }),
-  ]);
-}
-
-export async function notifyPaymentFollowUp(params: {
-  contractor: { name: string; email: string; phone: string };
-  token: string;
-  projectLabel: string;
-  leadMatchId: string;
-}) {
-  const link = followUpLink(params.token);
-  const emailBody = `Have you been paid for the ${params.projectLabel} job?\n\nYes, I've been paid — or Not yet:\n${link}`;
-  const smsBody = `Landy's Pro: Have you been paid for the ${params.projectLabel} job? Yes, I've been paid / Not yet: ${link}`;
-
-  await Promise.allSettled([
-    sms.send({ to: safeSmsRecipient(params.contractor.phone), body: smsBody }),
-    email.send({
-      to: safeEmailRecipient(params.contractor.email),
-      subject: `Have you been paid? — ${params.projectLabel}`,
-      text: emailBody,
-    }),
-  ]);
-}
-
-export async function notifyFeeDue(params: {
-  contractor: { name: string; email: string; phone: string };
-  token: string;
-  projectLabel: string;
-  feeAmountCents: number;
-  payLink: string;
-}) {
-  const amount = (params.feeAmountCents / 100).toFixed(2);
-  const smsBody = `Landy's Pro: Your ${params.projectLabel} success fee ($${amount}) is due. Pay Landy's: ${params.payLink}`;
-  await Promise.allSettled([
-    sms.send({ to: safeSmsRecipient(params.contractor.phone), body: smsBody }),
-    email.send({
-      to: safeEmailRecipient(params.contractor.email),
-      subject: `Success fee due — ${params.projectLabel}`,
-      text: `Your success fee of $${amount} is due.\n\nPay Landy's: ${params.payLink}`,
-    }),
-  ]);
-}
-
-export async function notifyLandownerConfirmation(params: {
-  landownerEmail: string;
-  landownerName: string | null;
-  token: string;
-  projectLabel: string;
-}) {
-  const link = landownerConfirmLink(params.token);
-  const name = params.landownerName?.trim() || "there";
-  const yesLink = `${link}?a=paid`;
-  const notYetLink = `${link}?a=notyet`;
-  const subject = `Quick question about your ${params.projectLabel} project`;
-  const text = `Hi ${name},
-
-Have you paid the contractor for your ${params.projectLabel} project?
-
-Yes, I paid the contractor: ${yesLink}
-Not yet: ${notYetLink}`;
-  const html = `<!DOCTYPE html>
-<html><body style="margin:0;padding:24px;background:#FEFBF6;font-family:Georgia,serif;color:#3A352D;">
-  <div style="max-width:520px;margin:0 auto;background:#FFFDF9;border:1px solid #EBE3D4;border-radius:18px;padding:28px 24px;">
-    <p style="margin:0 0 6px;font:600 12px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#C0803C;">Landy's Pro</p>
-    <h1 style="margin:0 0 12px;font:600 24px/1.25 Georgia,serif;color:#4A3E2D;">Have you paid your contractor?</h1>
-    <p style="margin:0 0 22px;font:400 16px/1.5 Arial,sans-serif;color:#6B6459;">
-      Hi ${escapeHtml(name)} — this is only about your <strong>${escapeHtml(params.projectLabel)}</strong> project.
-      Tap one button below.
-    </p>
-    <p style="margin:0 0 12px;">
-      <a href="${yesLink}" style="display:inline-block;background:#C0803C;color:#fff;text-decoration:none;font:600 16px/1.2 Arial,sans-serif;padding:14px 20px;border-radius:12px;">Yes, I paid the contractor</a>
-    </p>
-    <p style="margin:0;">
-      <a href="${notYetLink}" style="display:inline-block;background:#FFF;color:#4A3E2D;text-decoration:none;font:600 16px/1.2 Arial,sans-serif;padding:14px 20px;border-radius:12px;border:1px solid #E6DFD1;">Not yet</a>
-    </p>
-  </div>
-</body></html>`;
-  await email.send({
-    to: safeEmailRecipient(params.landownerEmail),
-    subject,
-    text,
-    html,
+async function loadMatchForMessage(leadMatchId: string) {
+  return prisma.leadMatch.findUnique({
+    where: { id: leadMatchId },
+    include: {
+      contractor: { select: contractorSelect },
+      lead: { include: leadDisplayInclude },
+      successFee: true,
+    },
   });
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+export async function notifyOutcomeCheck(leadMatchId: string, token: string, attempt: number): Promise<void> {
+  const match = await loadMatchForMessage(leadMatchId);
+  if (!match) return;
+  const summary = await buildLeadSummary(match.lead);
+  const rendered = outcomeCheckMessages({
+    contractorName: match.contractor.name,
+    summary,
+    link: followUpLink(token),
+    attempt,
+  });
+  await enqueueAndDispatch(
+    await contractorMessages({
+      contractor: match.contractor,
+      kind: "followup.outcome",
+      sms: rendered.sms,
+      email: rendered.email,
+      leadId: match.leadId,
+      leadMatchId,
+    }),
+  );
 }
 
-function collectFailure(
-  failures: FailedChannel[],
-  channel: FailedChannel["channel"],
-  settled: PromiseSettledResult<SendSmsResult | SendEmailResult>,
-): void {
-  if (settled.status === "rejected") {
-    const error =
-      settled.reason instanceof Error ? settled.reason.message : String(settled.reason);
-    failures.push({ channel, error });
-    return;
+export async function notifyPaymentCheck(leadMatchId: string, token: string, attempt: number): Promise<void> {
+  const match = await loadMatchForMessage(leadMatchId);
+  if (!match) return;
+  const summary = await buildLeadSummary(match.lead);
+  const rendered = paymentCheckMessages({
+    contractorName: match.contractor.name,
+    summary,
+    link: followUpLink(token),
+    attempt,
+    finalValueCents: match.finalContractValueCents,
+  });
+  await enqueueAndDispatch(
+    await contractorMessages({
+      contractor: match.contractor,
+      kind: "followup.payment",
+      sms: rendered.sms,
+      email: rendered.email,
+      leadId: match.leadId,
+      leadMatchId,
+    }),
+  );
+}
+
+export async function notifyFeeDue(leadMatchId: string, token: string, reminderNumber: number): Promise<void> {
+  const match = await loadMatchForMessage(leadMatchId);
+  if (!match?.successFee) return;
+  const summary = await buildLeadSummary(match.lead);
+  const rate = match.successFee.rateBasisPoints / 100;
+  const rendered = feeDueMessages({
+    contractorName: match.contractor.name,
+    summary,
+    link: followUpLink(token),
+    feeAmountCents: match.successFee.feeAmountCents,
+    finalValueCents: match.successFee.finalValueCents,
+    ratePercentLabel: `${Number.isInteger(rate) ? rate : rate.toFixed(1)}%`,
+    reminderNumber,
+  });
+  await enqueueAndDispatch(
+    await contractorMessages({
+      contractor: match.contractor,
+      kind: reminderNumber === 0 ? "fee.due" : "fee.reminder",
+      sms: rendered.sms,
+      email: rendered.email,
+      leadId: match.leadId,
+      leadMatchId,
+    }),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Landowner
+// ─────────────────────────────────────────────────────────────
+
+export async function notifyLandownerContractorAccepted(leadMatchId: string): Promise<void> {
+  try {
+    const match = await loadMatchForMessage(leadMatchId);
+    if (!match || match.landownerNotifiedAt || !match.lead.landownerEmail?.includes("@")) return;
+    const claimed = await prisma.leadMatch.updateMany({
+      where: { id: leadMatchId, landownerNotifiedAt: null },
+      data: { landownerNotifiedAt: new Date() },
+    });
+    if (claimed.count === 0) return;
+    const summary = await buildLeadSummary(match.lead);
+    const rendered = landownerContractorAcceptedEmail({
+      summary,
+      contractor: {
+        name: match.contractor.name,
+        phone: formatPhoneForDisplay(match.contractor.phone) || null,
+        email: match.contractor.email,
+        websiteUrl: match.contractor.websiteUrl,
+      },
+      maxAccepts: match.lead.maxPurchases,
+    });
+    await enqueueAndDispatch([
+      {
+        channel: "email",
+        kind: "landowner.contractor_accepted",
+        recipient: match.lead.landownerEmail,
+        subject: rendered.subject,
+        body: rendered.text,
+        html: rendered.html,
+        leadId: match.leadId,
+        leadMatchId,
+      },
+    ]);
+  } catch (error) {
+    console.error("[notify] landowner accepted email failed", { leadMatchId, error });
   }
-  if (!settled.value.ok) {
-    failures.push({ channel, error: settled.value.error });
+}
+
+export async function notifyLandownerHireCheck(confirmationId: string, reminder: boolean): Promise<boolean> {
+  const confirmation = await prisma.landownerConfirmation.findUnique({
+    where: { id: confirmationId },
+    include: {
+      lead: {
+        include: {
+          ...leadDisplayInclude,
+          matches: {
+            where: { status: "ACCEPTED" },
+            orderBy: { acceptedAt: "asc" },
+            select: { id: true, contractor: { select: { name: true } } },
+          },
+        },
+      },
+    },
+  });
+  if (!confirmation || !confirmation.lead.landownerEmail?.includes("@")) return false;
+  if (confirmation.lead.matches.length === 0) return false;
+  const summary = await buildLeadSummary(confirmation.lead);
+  const base = landownerConfirmLink(confirmation.token);
+  const rendered = landownerHireCheckEmail({
+    summary,
+    contractors: confirmation.lead.matches.map((m) => ({
+      name: m.contractor.name,
+      link: `${base}?choice=${encodeURIComponent(m.id)}`,
+    })),
+    noneLink: `${base}?choice=none`,
+    otherLink: `${base}?choice=other`,
+    reminder,
+  });
+  await enqueueAndDispatch([
+    {
+      channel: "email",
+      kind: reminder ? "landowner.hire_check_reminder" : "landowner.hire_check",
+      recipient: confirmation.lead.landownerEmail,
+      subject: rendered.subject,
+      body: rendered.text,
+      html: rendered.html,
+      leadId: confirmation.leadId,
+    },
+  ]);
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Contractor invitation
+// ─────────────────────────────────────────────────────────────
+
+export async function notifyContractorInvitation(params: {
+  contractor: ContractorContact;
+  signUpLink: string;
+}): Promise<void> {
+  const tiers = await loadSuccessFeeTiers(prisma);
+  const sorted = [...tiers].sort((a, b) => a.sortOrder - b.sortOrder);
+  const feeSummary =
+    sorted.length > 0
+      ? sorted
+          .map((tier, i) => {
+            const pct = `${tier.rateBasisPoints / 100}%`;
+            const prev = sorted[i - 1]?.maxValueCents;
+            if (tier.maxValueCents === null) {
+              return prev ? `${pct} above $${Math.round(prev / 100).toLocaleString("en-US")}` : pct;
+            }
+            return `${pct} up to $${Math.round(tier.maxValueCents / 100).toLocaleString("en-US")}`;
+          })
+          .join(", ") + " of the final job price"
+      : "A small percentage of the final job price";
+  const rendered = contractorInvitationMessages({
+    contractorName: params.contractor.name,
+    contractorEmail: params.contractor.email,
+    signUpLink: params.signUpLink,
+    signInLink: `${appUrl()}/sign-in`,
+    feeSummary,
+  });
+  await enqueueAndDispatch(
+    await contractorMessages({
+      contractor: params.contractor,
+      kind: "contractor.invitation",
+      sms: rendered.sms,
+      email: rendered.email,
+    }),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Admin alerts
+// ─────────────────────────────────────────────────────────────
+
+export async function adminAlertRecipients(): Promise<string[]> {
+  const [admins, extra] = await Promise.all([
+    prisma.adminUser.findMany({ where: { disabledAt: null }, select: { email: true } }),
+    prisma.appSetting.findUnique({ where: { key: APP_SETTING_KEYS.adminAlertEmails } }),
+  ]);
+  const all = [
+    ...admins.map((a) => a.email.toLowerCase()),
+    ...parseAdminEmails(process.env.ADMIN_EMAILS),
+    ...parseAdminEmails(extra?.value),
+  ];
+  return [...new Set(all.filter((e) => e.includes("@")))];
+}
+
+export async function notifyAdmins(params: {
+  kind: string;
+  title: string;
+  lines: string[];
+  link?: { label: string; path: string } | null;
+  leadId?: string | null;
+  contractorId?: string | null;
+}): Promise<void> {
+  try {
+    const recipients = await adminAlertRecipients();
+    if (recipients.length === 0) return;
+    const rendered = adminAlertEmail({
+      title: params.title,
+      lines: params.lines,
+      link: params.link ? { label: params.link.label, href: `${appUrl()}${params.link.path}` } : null,
+    });
+    await enqueueAndDispatch(
+      recipients.map((recipient) => ({
+        channel: "email" as const,
+        kind: `admin.${params.kind}`,
+        recipient,
+        subject: rendered.subject,
+        body: rendered.text,
+        html: rendered.html,
+        leadId: params.leadId ?? null,
+        contractorId: params.contractorId ?? null,
+      })),
+    );
+  } catch (error) {
+    console.error("[notify] admin alert failed", { kind: params.kind, error });
   }
 }

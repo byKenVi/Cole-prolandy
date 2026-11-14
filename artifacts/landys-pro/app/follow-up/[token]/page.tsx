@@ -1,130 +1,199 @@
-import { MapPin, Hammer } from "lucide-react";
-import Image from "next/image";
+import Link from "next/link";
 import { FollowUpAction } from "@prisma/client";
+import { MapPin } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { FollowUpTokenActions } from "@/components/follow-up-token-actions";
-import { iconSrcFor } from "@/lib/project-icons";
-import { hasResolvedLeadSnapshot, leadCategoryIcon, leadCategoryLabel, leadDisplayInclude, leadScopeLabel } from "@/lib/resolved-lead";
+import { formatMoney } from "@/lib/money";
+import { loadSuccessFeeTiers } from "@/lib/domain/success-fee";
+import { matchViewInclude, toMatchView, type MatchView } from "@/lib/contractor-views";
+import { PublicFrame } from "@/components/pro/shell";
+import { OutcomeActions, PaidActions, PayFeeButton } from "@/components/pro/job-actions";
+import { Facts, Notice, PageHead, Perforation } from "@/components/pro/ui";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Quick update - Landy's Pro", robots: { index: false } };
 
-function Wordmark() {
+function JobStub({ view, children }: { view: MatchView; children: React.ReactNode }) {
   return (
-    <div className="inline-flex items-baseline gap-2.5">
-      <span className="font-vibes text-[32px] leading-none text-[#5C5142]">Landys</span>
-      <span className="brand-pro">Pro</span>
-    </div>
+    <article className="pro-ticket">
+      <div className="pro-ticket-top">
+        <div className="pro-ticket-kind">{view.summary.title}</div>
+        <p className="pro-ticket-place">{view.summary.cityState ?? view.summary.place}</p>
+        <p className="pro-ticket-sub">
+          <MapPin size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
+          Homeowner: {view.landowner.name}
+        </p>
+      </div>
+      <Perforation />
+      <div className="pro-ticket-body" style={{ paddingTop: 10 }}>
+        {children}
+      </div>
+    </article>
   );
 }
 
-function Notice({ text }: { text: string }) {
+function Message({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-md rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-6 text-center text-[16px] text-[#5A5449] shadow-[0_12px_32px_rgba(58,53,45,0.08)]">
-      {text}
-    </div>
+    <PublicFrame>
+      <PageHead title={title} />
+      {children}
+      <div style={{ marginTop: 22 }}>
+        <Link href="/sign-in" className="pro-btn pro-btn--secondary">
+          Sign in to see all your jobs
+        </Link>
+      </div>
+    </PublicFrame>
   );
 }
 
-export default async function FollowUpPage({ params }: { params: Promise<{ token: string }> }) {
+/**
+ * Login-free follow-up links sent by text and email:
+ *  - REPORT_OUTCOME: "Did you get the job?"
+ *  - CONFIRM_PAID:   "Has the homeowner paid you?"
+ *  - PAY_FEE:        pay Landy's success fee by card
+ */
+export default async function FollowUpPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ paid?: string }>;
+}) {
   const { token } = await params;
-
+  const { paid } = await searchParams;
   const row = await prisma.followUpToken.findUnique({
     where: { token },
-    include: {
-      leadMatch: {
-        include: {
-          contractor: { select: { name: true } },
-          lead: { include: leadDisplayInclude },
-        },
-      },
-    },
+    include: { leadMatch: { include: matchViewInclude } },
   });
 
-  const expired = !!row && row.expiresAt.getTime() <= Date.now();
-  const used = !!row?.usedAt;
-  const invalid =
-    !row ||
-    !row.leadMatch ||
-    (row.action !== FollowUpAction.REPORT_OUTCOME && row.action !== FollowUpAction.CONFIRM_PAID);
+  if (!row?.leadMatch) {
+    return (
+      <Message title="This link does not work">
+        <Notice>The link may be incomplete. Open the latest text or email from Landy&apos;s Pro.</Notice>
+      </Message>
+    );
+  }
 
-  const match =
-    row?.leadMatch && hasResolvedLeadSnapshot(row.leadMatch.lead)
-      ? row.leadMatch
-      : null;
+  const tiers = await loadSuccessFeeTiers(prisma);
+  const view = await toMatchView(row.leadMatch, tiers);
+  const expired = row.expiresAt.getTime() <= Date.now();
 
-  const iconSrc = match
-    ? iconSrcFor({
-        icon: leadCategoryIcon(match.lead),
-        category: leadCategoryLabel(match.lead),
-        project: leadScopeLabel(match.lead),
-      })
-    : null;
+  // ── Pay the fee ─────────────────────────────────────────
+  if (row.action === FollowUpAction.PAY_FEE) {
+    if (view.fee?.status === "PAID") {
+      return (
+        <Message title="Thank you, your fee is paid">
+          <Notice tone="ok">
+            We received {formatMoney(view.fee.amountCents)} for the {view.summary.title} job. A receipt was sent to
+            your email by Stripe.
+          </Notice>
+        </Message>
+      );
+    }
+    if (paid === "1") {
+      return (
+        <Message title="Payment received">
+          <Notice tone="ok">
+            Thank you. Stripe is confirming your payment; this page will show &ldquo;paid&rdquo; within a minute.
+          </Notice>
+        </Message>
+      );
+    }
+    if (!view.fee || view.fee.status !== "DUE" || expired) {
+      return (
+        <Message title={expired ? "This payment link has expired" : "Nothing to pay right now"}>
+          <Notice>
+            {expired
+              ? "Sign in to pay from your account, or reply to our email and we will send a new link."
+              : "This fee is not due yet."}
+          </Notice>
+        </Message>
+      );
+    }
+    return (
+      <PublicFrame>
+        <PageHead title="Pay Landy's success fee" intro="You told us the homeowner paid you. Thank you for working with Landy's." />
+        <JobStub view={view}>
+          <p className="pro-small" style={{ margin: 0 }}>
+            Amount to pay
+          </p>
+          <p className="pro-money" style={{ margin: "2px 0 14px", fontSize: 46, fontWeight: 600, lineHeight: 1.05 }}>
+            {formatMoney(view.fee.amountCents)}
+          </p>
+          <Facts
+            items={[
+              { label: "Final job price", value: formatMoney(view.fee.finalValueCents) },
+              { label: "Fee rate", value: view.fee.ratePercentLabel },
+            ]}
+          />
+          <div style={{ marginTop: 20 }}>
+            <PayFeeButton target={{ kind: "token", token }} amountLabel={formatMoney(view.fee.amountCents)} />
+          </div>
+          <p className="pro-small" style={{ margin: "14px 0 0" }}>
+            Wrong amount? Reply to our email before paying and we will fix it.
+          </p>
+        </JobStub>
+      </PublicFrame>
+    );
+  }
 
-  const title =
-    row?.action === FollowUpAction.CONFIRM_PAID
-      ? "Payment check-in"
-      : "Job outcome check-in";
+  // ── Outcome / payment questions ─────────────────────────
+  if (row.usedAt) {
+    return (
+      <Message title="Thank you, your answer is saved">
+        <Notice tone="ok">You can close this page.</Notice>
+      </Message>
+    );
+  }
+  if (expired) {
+    return (
+      <Message title="This link has expired">
+        <Notice>Sign in to update this job from your account, or wait for our next text.</Notice>
+      </Message>
+    );
+  }
 
-  const subtitle =
-    row?.action === FollowUpAction.CONFIRM_PAID
-      ? "Let us know if the landowner has paid you for this job."
-      : "Quick update on how this lead turned out.";
+  if (row.action === FollowUpAction.REPORT_OUTCOME) {
+    if (view.state !== "accepted") {
+      return (
+        <Message title="Already answered">
+          <Notice tone="ok">We already have your answer for this job. Thank you.</Notice>
+        </Message>
+      );
+    }
+    return (
+      <PublicFrame>
+        <PageHead title="Did you get the job?" intro="One quick answer helps us close this request." />
+        <JobStub view={view}>
+          <OutcomeActions target={{ kind: "token", token }} homeownerName={view.landowner.name} tiers={tiers} />
+        </JobStub>
+      </PublicFrame>
+    );
+  }
+
+  if (row.action === FollowUpAction.CONFIRM_PAID) {
+    if (view.state !== "won_waiting_payment") {
+      return (
+        <Message title="Already answered">
+          <Notice tone="ok">We already have your answer for this job. Thank you.</Notice>
+        </Message>
+      );
+    }
+    return (
+      <PublicFrame>
+        <PageHead
+          title="Have you been paid?"
+          intro={`You won this job${view.finalContractValueCents ? ` for ${formatMoney(view.finalContractValueCents)}` : ""}. Landy's fee is due only once the homeowner pays you.`}
+        />
+        <JobStub view={view}>
+          <PaidActions target={{ kind: "token", token }} homeownerName={view.landowner.name} />
+        </JobStub>
+      </PublicFrame>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-[#FEFBF6] font-inter">
-      <header className="px-4 pb-1 pt-5 text-center">
-        <Wordmark />
-        {!invalid && !used && !expired && match && (
-          <p className="mt-2 text-[15px] text-[#6B6459]">{subtitle}</p>
-        )}
-      </header>
-
-      {invalid ? (
-        <div className="px-4 py-8">
-          <Notice text="This follow-up link is not valid. It may have been mistyped or removed." />
-        </div>
-      ) : used ? (
-        <div className="px-4 py-8">
-          <Notice text="This link has already been used. Thank you!" />
-        </div>
-      ) : expired ? (
-        <div className="px-4 py-8">
-          <Notice text="This follow-up link has expired." />
-        </div>
-      ) : !match ? (
-        <div className="px-4 py-8">
-          <Notice text="This follow-up link is not valid. It may have been mistyped or removed." />
-        </div>
-      ) : (
-        <div className="mx-auto w-full max-w-lg px-4 pb-16 pt-4">
-          <div className="rounded-[20px] border border-[#EBE3D4] bg-[#FFFDF9] p-5 shadow-[0_12px_32px_rgba(58,53,45,0.10)]">
-            <p className="text-[14px] font-medium text-[#8A6B2E]">{title}</p>
-            <div className="mb-4 mt-3 flex items-start gap-3">
-              <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[12px] bg-[#F5EEDF]">
-                {iconSrc ? (
-                  <Image src={iconSrc} alt="" aria-hidden width={40} height={40} className="h-7 w-7 object-contain" />
-                ) : (
-                  <Hammer className="h-6 w-6 text-[#9A6E2E]" aria-hidden />
-                )}
-              </span>
-              <div className="min-w-0">
-                <h1 className="font-fraunces text-[20px] font-medium leading-tight tracking-[-0.01em] text-[#3A352D]">
-                  {leadScopeLabel(match.lead)}
-                </h1>
-                <p className="mt-1 flex items-center gap-1 text-[13px] text-[#6B6459]">
-                  <MapPin className="h-3.5 w-3.5 flex-none" strokeWidth={1.7} />
-                  <span className="truncate">{match.lead.propertyLocation}</span>
-                </p>
-              </div>
-            </div>
-
-            <FollowUpTokenActions
-              token={token}
-              action={row.action as "REPORT_OUTCOME" | "CONFIRM_PAID"}
-            />
-          </div>
-        </div>
-      )}
-    </main>
+    <Message title="This link does not work">
+      <Notice>Open the latest text or email from Landy&apos;s Pro.</Notice>
+    </Message>
   );
 }

@@ -18,7 +18,7 @@ export function SignOutLink({
 }: {
   className?: string;
   label?: string;
-  variant?: "sidebar" | "admin" | "icon" | "adminIcon" | "sidebarIcon";
+  variant?: "sidebar" | "admin" | "icon" | "adminIcon" | "sidebarIcon" | "pro";
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -36,7 +36,9 @@ export function SignOutLink({
   }
 
   const base =
-    variant === "admin"
+    variant === "pro"
+      ? "pro-btn pro-btn--secondary"
+      : variant === "admin"
       ? "flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
       : variant === "adminIcon"
         ? "inline-flex h-11 w-11 items-center justify-center rounded-full text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"

@@ -3,6 +3,8 @@ import { EstimateForm } from "@/components/estimate-form";
 import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
 import { getActiveEstimateTaxonomies } from "@/lib/services/estimate-taxonomies";
+import { notFound } from "next/navigation";
+import { publicEstimateFormEnabled } from "@/lib/public-estimate";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,7 @@ export default async function EstimatePage({
 }) {
   const { embed } = await searchParams;
   const isEmbed = embed === "1" || embed === "true";
+  if (!publicEstimateFormEnabled()) notFound();
 
   const { projectTypes, landTypes, contractorCategories } =
     await getActiveEstimateTaxonomies(prisma);

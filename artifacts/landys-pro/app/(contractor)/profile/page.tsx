@@ -1,141 +1,168 @@
 import { prisma } from "@/lib/prisma";
 import { getSession, authMode } from "@/lib/auth";
-import { Badge } from "@/components/ui/badge";
+import { formatPhoneForDisplay } from "@/lib/phone";
+import { getServiceRadiusMiles } from "@/lib/domain/settings";
 import { OnboardingForm } from "@/components/onboarding-form";
 import { ProfileLogoUpload } from "@/components/profile-logo-upload";
 import { PasswordChangeForm } from "@/components/password-change-form";
+import { SignOutLink } from "@/components/auth/sign-out-link";
+import { PauseControl } from "@/components/pro/pause-control";
+import { Chip, Facts, Notice, PageHead, Section } from "@/components/pro/ui";
 
 export const dynamic = "force-dynamic";
 
-const cardClass =
-  "rounded-[18px] border border-[#EBE3D4] bg-white p-5 shadow-[0_2px_8px_rgba(58,53,45,0.05)] sm:p-6";
-
-export default async function ProfilePage() {
+export default async function AccountPage() {
   const session = await getSession();
-
   const contractor = session.contractorId
     ? await prisma.contractor.findUnique({
         where: { id: session.contractorId },
         include: {
           categoryMemberships: {
-            include: { category: { select: { id: true, name: true } } },
-            orderBy: { category: { name: "asc" } },
+            include: { category: { select: { name: true } } },
+            orderBy: { displayOrder: "asc" },
           },
-          workTypes: {
-            include: { workType: { select: { id: true, name: true } } },
-            orderBy: { workType: { name: "asc" } },
-          },
+          contractorCategory: { select: { name: true } },
+          externalIdentities: { where: { source: "wix" }, select: { id: true } },
         },
       })
     : null;
 
-  const assignedProjects = contractor
-    ? [
-        ...contractor.categoryMemberships.map((membership) => ({
-          id: `category-${membership.category.id}`,
-          name: membership.category.name,
-        })),
-        ...contractor.workTypes.map((membership) => ({
-          id: `work-${membership.workType.id}`,
-          name: membership.workType.name,
-        })),
-      ]
-    : [];
-
   if (!contractor) {
     return (
-      <div className="contractor-page flex min-h-full flex-col">
-        <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-[26px]">
-          <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
-            Set up your profile
-          </h1>
-          <p className="mt-[5px] text-[14px] text-[#8A7E68]">
-            If Landy’s already created your contractor account, sign in with that email to claim it.
-            Otherwise contact Landy’s to get set up.
-          </p>
-        </header>
-        <div className="flex-1 px-4 py-6 sm:px-5 md:px-[34px]">
-          <div className={`mx-auto max-w-2xl ${cardClass}`}>
-            <OnboardingForm
-              mode="claim"
-              assignedProjects={[]}
-              initial={{
-                name: "",
-                phone: "",
-                aboutSection: "",
-                businessHours: "",
-              }}
-            />
-          </div>
+      <>
+        <PageHead
+          title="Link your account"
+          intro="If Landy's already lists you as a pro, sign in with the same email as your landys.co profile."
+        />
+        <div className="pro-card">
+          <OnboardingForm
+            mode="claim"
+            assignedProjects={[]}
+            initial={{ name: "", phone: "", aboutSection: "", businessHours: "" }}
+          />
         </div>
-      </div>
+      </>
     );
   }
 
-  const initial = (contractor.name.trim()[0] ?? "?").toUpperCase();
-  const projectLabel =
-    assignedProjects.length === 0
-      ? "Matching not configured"
-      : assignedProjects.length === 1
-        ? assignedProjects[0]!.name
-        : `${assignedProjects.length} matching rules`;
+  const fromLandys = contractor.externalIdentities.length > 0;
+  const categories = [
+    ...new Set([
+      ...contractor.categoryMemberships.map((m) => m.category.name),
+      ...(contractor.contractorCategory ? [contractor.contractorCategory.name] : []),
+    ]),
+  ];
+  const radius = contractor.serviceRadiusMiles ?? (await getServiceRadiusMiles(prisma));
+  const hasArea = contractor.serviceZipCodes.length > 0 || contractor.serviceCounties.length > 0;
 
   return (
-    <div className="contractor-page flex min-h-full flex-col">
-      <header className="border-b border-[#EDE4D3] px-4 pb-5 pt-5 sm:px-5 md:px-[34px] md:pt-[26px]">
-        <h1 className="font-fraunces text-[26px] font-semibold tracking-[-0.01em] text-[#3A352D] sm:text-[30px]">
-          Profile
-        </h1>
-        <p className="mt-[5px] text-[14px] text-[#8A7E68]">
-          Update your contact details. Opportunity matching is managed by Landy’s.
-        </p>
-      </header>
+    <>
+      <PageHead title="My account" intro={contractor.name} />
 
-      <div className="flex-1 px-4 py-6 sm:px-5 md:px-[34px]">
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
-          <div className={`flex min-w-0 flex-col items-center gap-3 text-center lg:sticky lg:top-6 ${cardClass}`}>
-            <ProfileLogoUpload logoUrl={contractor.logoUrl} initials={initial} />
-            <div className="min-w-0 w-full">
-              <p className="truncate font-fraunces text-[20px] font-semibold text-[#3A352D]">{contractor.name}</p>
-              <p className="mt-0.5 text-sm text-[#8A7E68]">{projectLabel}</p>
-            </div>
-            {contractor.isPro ? (
-              <Badge>Pro</Badge>
-            ) : (
-              <Badge variant="neutral">Free</Badge>
-            )}
-            {contractor.businessHours && (
-              <p className="mt-2 text-xs text-[#A79E8D]">{contractor.businessHours}</p>
-            )}
-          </div>
-
-          <div className="flex min-w-0 flex-col gap-6">
-            <div className={`min-w-0 ${cardClass}`}>
-              <OnboardingForm
-                assignedProjects={assignedProjects}
-                initial={{
-                  name: contractor.name,
-                  phone: contractor.phone,
-                  aboutSection: contractor.aboutSection ?? "",
-                  businessHours: contractor.businessHours ?? "",
-                }}
+      <Section title="Your business">
+        <div className="pro-card">
+          {fromLandys ? (
+            <>
+              <Facts
+                items={[
+                  { label: "Business", value: contractor.name },
+                  { label: "Mobile", value: formatPhoneForDisplay(contractor.phone) || "Not on file" },
+                  { label: "Email", value: contractor.email },
+                  { label: "Website", value: contractor.websiteUrl },
+                ]}
               />
-            </div>
-
-            {authMode() === "clerk" && (
-              <div className={`min-w-0 ${cardClass}`}>
-                <h2 className="mb-1 font-fraunces text-[18px] font-semibold text-[#3A352D]">
-                  Security
-                </h2>
-                <p className="mb-5 text-[13px] text-[#8A7E68]">
-                  Change your account password.
-                </p>
-                <PasswordChangeForm />
-              </div>
-            )}
-          </div>
+              <p className="pro-small" style={{ margin: "16px 0 0" }}>
+                These details come from your profile on landys.co. To change them, update landys.co or call Landy&apos;s.
+              </p>
+            </>
+          ) : (
+            <OnboardingForm
+              assignedProjects={categories.map((name) => ({ id: name, name }))}
+              initial={{
+                name: contractor.name,
+                phone: contractor.phone,
+                aboutSection: contractor.aboutSection ?? "",
+                businessHours: contractor.businessHours ?? "",
+              }}
+            />
+          )}
         </div>
-      </div>
-    </div>
+      </Section>
+
+      <Section title="Where you get jobs">
+        <div className="pro-card">
+          {categories.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              {categories.map((name) => (
+                <Chip key={name}>{name}</Chip>
+              ))}
+            </div>
+          )}
+          {hasArea ? (
+            <Facts
+              items={[
+                {
+                  label: "Around ZIPs",
+                  value: contractor.serviceZipCodes.length ? `${contractor.serviceZipCodes.join(", ")} (${radius} miles)` : null,
+                },
+                { label: "Counties", value: contractor.serviceCounties.length ? contractor.serviceCounties.join(", ") : null },
+              ]}
+            />
+          ) : (
+            <Notice tone="warn" title="No service area on file">
+              Add the ZIP codes or counties you serve to your landys.co profile so we can send you nearby jobs.
+            </Notice>
+          )}
+          <p className="pro-small" style={{ margin: "16px 0 0" }}>
+            You receive requests for these trades inside this area.
+          </p>
+        </div>
+      </Section>
+
+      <section id="pause" className="pro-section">
+        <div className="pro-section-head">
+          <h2 className="pro-section-title">New job requests</h2>
+        </div>
+        <div className="pro-card">
+          <PauseControl pausedUntil={contractor.leadsPausedUntil?.toISOString() ?? null} />
+        </div>
+      </section>
+
+      <Section title="Text messages">
+        <div className="pro-card">
+          {contractor.smsOptedOutAt ? (
+            <Notice tone="warn" title="Texts are turned off">
+              You replied STOP, so we only email you. To get texts again, reply START to any Landy&apos;s Pro text, then
+              call Landy&apos;s so we can turn them back on.
+            </Notice>
+          ) : (
+            <p style={{ margin: 0 }}>
+              We text new job requests to <strong>{formatPhoneForDisplay(contractor.phone) || "your mobile"}</strong>, between 8 am and
+              9 pm. Reply STOP to any text to stop them.
+            </p>
+          )}
+        </div>
+      </Section>
+
+      <Section title="Company logo">
+        <div className="pro-card">
+          <ProfileLogoUpload logoUrl={contractor.logoUrl} initials={(contractor.name.trim()[0] ?? "?").toUpperCase()} />
+        </div>
+      </Section>
+
+      {authMode() === "clerk" && (
+        <Section title="Password">
+          <div className="pro-card">
+            <PasswordChangeForm />
+          </div>
+        </Section>
+      )}
+
+      {authMode() === "clerk" && (
+        <div style={{ marginTop: 32 }}>
+          <SignOutLink variant="pro" label="Sign out" />
+        </div>
+      )}
+    </>
   );
 }

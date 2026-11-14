@@ -32,7 +32,7 @@ export type SendSmsParams = {
 /** Structured result — send() NEVER throws raw errors to callers. */
 export type SendSmsResult =
   | { ok: true; id: string; mocked: boolean }
-  | { ok: false; error: string; mocked: boolean };
+  | { ok: false; error: string; mocked: boolean; code?: number };
 
 export interface SmsProvider {
   send(params: SendSmsParams): Promise<SendSmsResult>;
@@ -99,10 +99,17 @@ export class TwilioSmsProvider implements SmsProvider {
       // Never leak a raw error to the caller — normalize to a string. Common
       // trial-account failure: recipient number isn't a Verified Caller ID.
       const error = err instanceof Error ? err.message : String(err);
-      return { ok: false, mocked: false, error };
+      const rawCode = (err as { code?: unknown } | null)?.code;
+      const code = typeof rawCode === "number" ? rawCode : undefined;
+      return { ok: false, mocked: false, error, code };
     }
   }
 }
+
+/** Twilio errors that will never succeed on retry (bad / unsubscribed number). */
+export const PERMANENT_SMS_ERROR_CODES = new Set([21211, 21408, 21610, 21612, 21614]);
+/** Twilio 21610: the recipient replied STOP. */
+export const SMS_UNSUBSCRIBED_CODE = 21610;
 
 function createSmsProvider(): SmsProvider {
   if (isMock()) {

@@ -4,12 +4,21 @@ import { createHash } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { createSuccessFeeCheckout, payments } from "@/lib/integrations/payments";
+import {
+  createSuccessFeeCheckout,
+  payments,
+  paymentsAreMocked,
+} from "@/lib/integrations/payments";
 import { markSuccessFeePaid } from "@/lib/domain/success-fee";
 import { requireContractorId, requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
 import { appUrl } from "@/lib/app-url";
 import { confirmSuccessFeePayment } from "@/lib/services/stripe-webhook";
+import { FollowUpAction } from "@prisma/client";
+import { peekFollowUpToken } from "@/lib/domain/follow-up";
+
+const PAYMENT_UNAVAILABLE =
+  "Online payment is not available right now. Please try again later or call Landy's.";
 
 export type FeeActionResult =
   | { ok: true; checkoutUrl?: string; paid?: boolean }
@@ -32,16 +41,23 @@ export async function startSuccessFeePayment(leadMatchId: string): Promise<FeeAc
   }
 
   const base = appUrl();
-  const { checkoutUrl, customerId } = await createSuccessFeeCheckout({
-    leadMatchId,
-    contractorId,
-    amountCents: match.successFee.feeAmountCents,
-    stripeCustomerId: match.contractor.stripeCustomerId,
-    contractorEmail: match.contractor.email,
-    contractorName: match.contractor.name,
-    successUrl: `${base}/fees?paid=${leadMatchId}`,
-    cancelUrl: `${base}/fees/${leadMatchId}`,
-  });
+  let checkout: Awaited<ReturnType<typeof createSuccessFeeCheckout>>;
+  try {
+    checkout = await createSuccessFeeCheckout({
+      leadMatchId,
+      contractorId,
+      amountCents: match.successFee.feeAmountCents,
+      stripeCustomerId: match.contractor.stripeCustomerId,
+      contractorEmail: match.contractor.email,
+      contractorName: match.contractor.name,
+      successUrl: `${base}/fees?paid=${leadMatchId}`,
+      cancelUrl: `${base}/fees/${leadMatchId}`,
+    });
+  } catch (error) {
+    console.error("[fees] checkout creation failed", error);
+    return { ok: false, message: PAYMENT_UNAVAILABLE };
+  }
+  const { checkoutUrl, customerId } = checkout;
 
   if (customerId && !match.contractor.stripeCustomerId) {
     await prisma.contractor.update({
@@ -50,7 +66,8 @@ export async function startSuccessFeePayment(leadMatchId: string): Promise<FeeAc
     });
   }
 
-  if (process.env.STRIPE_MOCK !== "false") {
+  // Development only: createSuccessFeeCheckout refuses mock mode in production.
+  if (paymentsAreMocked() && process.env.NODE_ENV !== "production") {
     await markSuccessFeePaid({
       leadMatchId,
       paymentMethod: "stripe",
@@ -176,3 +193,65 @@ export async function markFeePaidManually(
     };
   }
 }
+
+/**
+ * Login-free payment from the "your fee is due" text/email link. The token
+ * only allows paying THIS fee, so it is safe to use without an account.
+ */
+export async function startFeePaymentByToken(token: string): Promise<FeeActionResult> {
+  let row;
+  try {
+    row = await peekFollowUpToken(token, FollowUpAction.PAY_FEE);
+  } catch (e) {
+    return { ok: false, message: e instanceof DomainError ? e.message : "This link is not valid." };
+  }
+  if (!row.leadMatchId) return { ok: false, message: "This link is not valid." };
+  const match = await prisma.leadMatch.findUnique({
+    where: { id: row.leadMatchId },
+    include: {
+      successFee: true,
+      contractor: { select: { id: true, name: true, email: true, stripeCustomerId: true } },
+    },
+  });
+  if (!match?.successFee) return { ok: false, message: "Fee not found." };
+  if (match.successFee.status === "PAID") return { ok: true, paid: true };
+  if (match.successFee.status !== "DUE") {
+    return { ok: false, message: "This success fee is not ready to pay yet." };
+  }
+
+  const base = appUrl();
+  let checkout: Awaited<ReturnType<typeof createSuccessFeeCheckout>>;
+  try {
+    checkout = await createSuccessFeeCheckout({
+      leadMatchId: match.id,
+      contractorId: match.contractorId,
+      amountCents: match.successFee.feeAmountCents,
+      stripeCustomerId: match.contractor.stripeCustomerId,
+      contractorEmail: match.contractor.email,
+      contractorName: match.contractor.name,
+      successUrl: `${base}/follow-up/${token}?paid=1`,
+      cancelUrl: `${base}/follow-up/${token}`,
+    });
+  } catch (error) {
+    console.error("[fees] token checkout creation failed", error);
+    return { ok: false, message: PAYMENT_UNAVAILABLE };
+  }
+  if (checkout.customerId && !match.contractor.stripeCustomerId) {
+    await prisma.contractor.update({
+      where: { id: match.contractorId },
+      data: { stripeCustomerId: checkout.customerId },
+    });
+  }
+  if (checkout.mocked) {
+    // Development only (production refuses mock payments above).
+    await markSuccessFeePaid({
+      leadMatchId: match.id,
+      paymentMethod: "stripe",
+      stripePaymentIntentId: checkout.paymentIntentId ?? `pi_mock_fee_${Date.now()}`,
+    });
+    revalidatePath(`/follow-up/${token}`);
+    return { ok: true, paid: true };
+  }
+  return { ok: true, checkoutUrl: checkout.checkoutUrl };
+}
+

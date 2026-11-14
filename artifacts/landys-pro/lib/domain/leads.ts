@@ -3,7 +3,8 @@ import { LeadMatchStatus, LeadStatus, WalletTransactionType } from "@prisma/clie
 import { prisma } from "@/lib/prisma";
 import { generateAcceptToken } from "@/lib/tokens";
 import type { DbClient } from "./types";
-import { getAcceptanceUnlimited } from "./settings";
+import { getAcceptanceUnlimited, getServiceRadiusMiles } from "./settings";
+import { selectContractorsForZip } from "./service-area";
 import { applyWalletTransactionInTx } from "./wallet";
 import {
   InvalidStateError,
@@ -18,6 +19,8 @@ import {
 
 export type DistributeLeadResult = {
   leadId: string;
+  /** True when no contractor with a declared service area covered the lead. */
+  usedFallback: boolean;
   matches: {
     id: string;
     contractorId: string;
@@ -35,18 +38,19 @@ function categoryFilter(categoryId: string): Prisma.ContractorWhereInput {
   };
 }
 
-function contractorMatchesWorkType(
-  contractor: { workTypes: Array<{ workTypeId: string }> },
-  workTypeId: string | null,
-): boolean {
-  if (contractor.workTypes.length === 0) return true;
-  if (!workTypeId) return false;
-  return contractor.workTypes.some((entry) => entry.workTypeId === workTypeId);
+/** Not deactivated and not on a self-declared pause. */
+function availableNow(now: Date): Prisma.ContractorWhereInput {
+  return {
+    deactivatedAt: null,
+    OR: [{ leadsPausedUntil: null }, { leadsPausedUntil: { lt: now } }],
+  };
 }
 
 /**
  * Distribute a lead to ALL eligible contractors by creating PENDING LeadMatch rows.
- * Live intake: category required; work type optional on contractor (empty = generalist).
+ * Live intake: same category (primary or secondary) AND service area covering
+ * the property ZIP (contractors without any service area are a fallback).
+ * Work types from landys.co are informative and do not restrict matching.
  * Legacy intake: project assignment + optional category filter.
  */
 export async function distributeLead(
@@ -58,12 +62,7 @@ export async function distributeLead(
     include: { projectType: true, workType: true, matches: true },
   });
   if (!lead) throw new NotFoundError("Lead");
-  if (
-    lead.expiresAt === null ||
-    lead.tierReviewRequired ||
-    lead.budgetReviewRequired ||
-    lead.contractorReviewRequired
-  ) {
+  if (lead.expiresAt === null || lead.contractorReviewRequired) {
     throw new InvalidStateError("This lead is still awaiting intake review.");
   }
   if (lead.status === LeadStatus.SOLD_OUT || lead.status === LeadStatus.EXPIRED) {
@@ -71,23 +70,23 @@ export async function distributeLead(
   }
 
   const alreadyMatchedIds = new Set(lead.matches.map((m) => m.contractorId));
+  const now = new Date();
+  let usedFallback = false;
   let candidates: Array<{
     id: string;
     name: string;
     email: string;
     phone: string;
-    workTypes?: Array<{ workTypeId: string }>;
   }>;
 
-  if (lead.workTypeId) {
+  if (lead.workTypeId || !lead.projectTypeId) {
     if (!lead.contractorCategoryId) {
       throw new InvalidStateError("General live leads require a contractor category.");
     }
     const rows = await db.contractor.findMany({
       where: {
-        deactivatedAt: null,
         id: { notIn: Array.from(alreadyMatchedIds) },
-        ...categoryFilter(lead.contractorCategoryId),
+        AND: [availableNow(now), categoryFilter(lead.contractorCategoryId)],
       },
       orderBy: { createdAt: "asc" },
       select: {
@@ -95,12 +94,19 @@ export async function distributeLead(
         name: true,
         email: true,
         phone: true,
-        workTypes: { select: { workTypeId: true } },
+        serviceZipCodes: true,
+        serviceCounties: true,
+        serviceRadiusMiles: true,
       },
     });
-    candidates = rows.filter((contractor) =>
-      contractorMatchesWorkType(contractor, lead.workTypeId),
+    const radius = await getServiceRadiusMiles(db);
+    const selection = await selectContractorsForZip(
+      rows,
+      lead.propertyZip ?? lead.propertyLocation,
+      radius,
     );
+    usedFallback = selection.usedFallback;
+    candidates = selection.eligible;
   } else {
     if (!lead.projectType) {
       throw new InvalidStateError("Legacy leads require a project type.");
@@ -111,10 +117,9 @@ export async function distributeLead(
       : {};
     candidates = await db.contractor.findMany({
       where: {
-        deactivatedAt: null,
         id: { notIn: Array.from(alreadyMatchedIds) },
         projects: { some: { contractorTypeId: projectId } },
-        ...legacyCategoryFilter,
+        AND: [availableNow(now), legacyCategoryFilter],
       },
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true, email: true, phone: true },
@@ -132,7 +137,10 @@ export async function distributeLead(
       },
       select: { id: true, contractorId: true, acceptToken: true },
     });
-    matches.push({ ...match, contractor: c });
+    matches.push({
+      ...match,
+      contractor: { id: c.id, name: c.name, email: c.email, phone: c.phone },
+    });
   }
 
   if (matches.length > 0 && lead.status === LeadStatus.NEW) {
@@ -142,7 +150,7 @@ export async function distributeLead(
     });
   }
 
-  return { leadId, matches };
+  return { leadId, matches, usedFallback };
 }
 
 /** @deprecated Legacy pay-per-lead charge — inactive in success-fee model. */
@@ -167,6 +175,8 @@ export type AcceptLeadMatchInput = {
   acceptToken?: string;
   actorType?: "contractor" | "admin" | "system";
   actorId?: string | null;
+  /** Success-fee terms shown next to the Accept button (recorded as proof). */
+  termsShown?: { version: string; feeRateLabel: string | null } | null;
 };
 
 export type AcceptLeadMatchResult = {
@@ -308,13 +318,24 @@ export async function acceptLeadMatch(
       });
     }
 
+    await tx.contractor.updateMany({
+      where: { id: match.contractorId, termsAcceptedAt: null },
+      data: { termsAcceptedAt: new Date() },
+    });
+
     await writeAudit(tx, {
       actorType: input.actorType ?? "contractor",
       actorId: input.actorId ?? match.contractorId,
       action: "LEAD_ACCEPTED",
       targetType: "LeadMatch",
       targetId: match.id,
-      metadata: { leadId: lead.id },
+      metadata: {
+        leadId: lead.id,
+        contractorId: match.contractorId,
+        termsVersion: input.termsShown?.version ?? null,
+        feeRateShown: input.termsShown?.feeRateLabel ?? null,
+        via: input.acceptToken ? "link" : "portal",
+      },
     });
 
     return { status: "accepted" as const, leadMatchId: match.id, contact: contactPayload };
@@ -322,15 +343,13 @@ export async function acceptLeadMatch(
 
   if (result.status === "accepted") {
     const { schedulePostAcceptFollowUp } = await import("./job-outcome");
-    const { maybeNotifyLandownerAfterAccept } = await import("@/lib/services/landowner-confirmation");
-    await schedulePostAcceptFollowUp(result.leadMatchId).catch(() => undefined);
-    const match = await prisma.leadMatch.findUnique({
-      where: { id: result.leadMatchId },
-      select: { leadId: true },
-    });
-    if (match) {
-      await maybeNotifyLandownerAfterAccept(match.leadId).catch(() => undefined);
-    }
+    const { afterContractorAccepted } = await import("@/lib/services/landowner-confirmation");
+    await schedulePostAcceptFollowUp(result.leadMatchId).catch((error) =>
+      console.error("[accept] follow-up scheduling failed", error),
+    );
+    await afterContractorAccepted(result.leadMatchId).catch((error) =>
+      console.error("[accept] landowner notification failed", error),
+    );
   }
 
   return result;

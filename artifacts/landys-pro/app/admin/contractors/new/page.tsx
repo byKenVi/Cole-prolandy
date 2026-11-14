@@ -52,6 +52,9 @@ export default async function NewContractorPage() {
             aboutSection: "",
             businessHours: "",
             isPro: false,
+            serviceZipCodes: "",
+            serviceCounties: "",
+            serviceRadiusMiles: null,
           }}
         />
       </Card>

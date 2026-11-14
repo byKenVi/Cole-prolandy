@@ -1,7 +1,6 @@
-import { FollowUpAction, JobOutcome } from "@prisma/client";
+import { JobOutcome } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { createFollowUpToken, findDueFollowUps } from "@/lib/domain/follow-up";
-import { notifyOutcomeFollowUp, notifyPaymentFollowUp } from "@/lib/notifications";
+import { notifyAdmins } from "@/lib/notifications";
 import { leadDisplayInclude } from "@/lib/resolved-lead";
 import { InvalidStateError, NotFoundError } from "./errors";
 
@@ -46,6 +45,14 @@ export async function submitLandownerConfirmation(params: {
     }
   }
 
+  if (params.hired && !params.hiredLeadMatchId) {
+    const anyWon = row.lead.matches.some((m) => m.jobOutcome === JobOutcome.WON);
+    if (anyWon) {
+      mismatchFlagged = true;
+      mismatchReason = "Landowner hired someone else, but a contractor reported won.";
+    }
+  }
+
   if (!params.hired) {
     const anyWon = row.lead.matches.some((m) => m.jobOutcome === JobOutcome.WON);
     if (anyWon) {
@@ -78,6 +85,16 @@ export async function submitLandownerConfirmation(params: {
       },
     },
   });
+
+  if (mismatchFlagged) {
+    await notifyAdmins({
+      kind: "landowner_mismatch",
+      title: "Homeowner answer does not match a contractor's report",
+      lines: [mismatchReason ?? "Mismatch detected.", "Review it before collecting or waiving a success fee."],
+      link: { label: "Open confirmations", path: "/admin/confirmations" },
+      leadId: row.leadId,
+    });
+  }
 
   return updated;
 }
@@ -117,60 +134,6 @@ export async function resolveLandownerMismatch(params: {
   });
 
   return updated;
-}
-
-export async function dispatchDueFollowUps(now: Date = new Date()) {
-  const due = await findDueFollowUps(now);
-  let sent = 0;
-
-  for (const match of due) {
-    const projectLabel =
-      match.lead.workType?.name ?? match.lead.projectType?.name ?? "project";
-
-    if (match.followUpStage === "outcome_check" && match.jobOutcome === JobOutcome.OPEN) {
-      const token = await createFollowUpToken(prisma, {
-        action: FollowUpAction.REPORT_OUTCOME,
-        leadMatchId: match.id,
-      });
-      await notifyOutcomeFollowUp({
-        contractor: match.contractor,
-        token: token.token,
-        projectLabel,
-        location: match.lead.propertyLocation,
-        leadMatchId: match.id,
-      });
-      await prisma.leadMatch.update({
-        where: { id: match.id },
-        data: { followUpNextAt: null },
-      });
-      sent += 1;
-      continue;
-    }
-
-    if (
-      match.followUpStage === "payment_check" &&
-      match.jobOutcome === JobOutcome.WON &&
-      match.successFee?.status === "AWAITING_CONTRACTOR_PAYMENT"
-    ) {
-      const token = await createFollowUpToken(prisma, {
-        action: FollowUpAction.CONFIRM_PAID,
-        leadMatchId: match.id,
-      });
-      await notifyPaymentFollowUp({
-        contractor: match.contractor,
-        token: token.token,
-        projectLabel,
-        leadMatchId: match.id,
-      });
-      await prisma.leadMatch.update({
-        where: { id: match.id },
-        data: { followUpNextAt: null },
-      });
-      sent += 1;
-    }
-  }
-
-  return { sent, checked: due.length };
 }
 
 export async function getAcceptedMatchesForLandowner(leadId: string) {

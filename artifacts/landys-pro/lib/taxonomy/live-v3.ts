@@ -121,17 +121,40 @@ const URGENCY_ENTRIES: TaxonomyEntry[] = [
 ];
 
 const BUDGET_BAND_ENTRIES: Array<{ band: BudgetBand; labels: readonly string[] }> = [
-  { band: "UNDER_5K", labels: ["Under $5K", "Under $5,000", "Under 5k", "Under 5000"] },
+  {
+    band: "UNDER_5K",
+    labels: ["Under $5K", "Under $5,000", "Under 5k", "Under 5000", "under-5k", "less-than-5k", "0-5k"],
+  },
   {
     band: "BETWEEN_5K_15K",
-    labels: ["$5–15K", "$5-15K", "$5,000–$15,000", "$5,000-$15,000", "$5K–$15K"],
+    labels: [
+      "$5–15K", "$5-15K", "$5,000–$15,000", "$5,000-$15,000", "$5K–$15K", "$5K-$15K",
+      "5k-15k", "5k-to-15k", "5-15k",
+    ],
   },
   {
     band: "BETWEEN_15K_50K",
-    labels: ["$15–50K", "$15-50K", "$15,000–$50,000", "$15,000-$50,000", "$15K–$50K"],
+    labels: [
+      "$15–50K", "$15-50K", "$15,000–$50,000", "$15,000-$50,000", "$15K–$50K", "$15K-$50K",
+      "15k-50k", "15k-to-50k", "15-50k",
+    ],
   },
-  { band: "OVER_50K", labels: ["$50K+", "$50,000+", "Over $50K", "Over $50,000", "50k+"] },
+  {
+    band: "OVER_50K",
+    labels: [
+      "$50K+", "$50,000+", "Over $50K", "Over $50,000", "50k+", "50k-plus", "over-50k",
+      "50k-and-up", "more-than-50k",
+    ],
+  },
 ];
+
+/** Human label shown to contractors and landowners. */
+export const BUDGET_BAND_LABELS: Record<BudgetBand, string> = {
+  UNDER_5K: "Under $5,000",
+  BETWEEN_5K_15K: "$5,000 - $15,000",
+  BETWEEN_15K_50K: "$15,000 - $50,000",
+  OVER_50K: "$50,000+",
+};
 
 const CATEGORY_LOOKUP = buildLookup(CATEGORY_ENTRIES);
 const WORK_TYPE_LOOKUP = buildLookup(WORK_TYPE_ENTRIES);
@@ -176,6 +199,16 @@ export function normalizeLiveBudgetBand(input: string | null | undefined): Budge
   if (!input?.trim()) return null;
   return BUDGET_BAND_LOOKUP.get(normalizeLabel(input)) ?? null;
 }
+
+function canonicalNames(entries: readonly TaxonomyEntry[]): Map<string, string> {
+  return new Map(entries.map((entry) => [entry.code, entry.labels[0] ?? entry.code]));
+}
+
+export const LIVE_V3_CATEGORY_NAMES = canonicalNames(CATEGORY_ENTRIES);
+export const LIVE_V3_WORK_TYPE_NAMES = canonicalNames(WORK_TYPE_ENTRIES);
+export const LIVE_V3_LAND_TYPE_NAMES = canonicalNames(LAND_TYPE_ENTRIES);
+export const LIVE_V3_TIMELINE_NAMES = canonicalNames(TIMELINE_ENTRIES);
+export const LIVE_V3_URGENCY_NAMES = canonicalNames(URGENCY_ENTRIES);
 
 export function isLiveV3CategoryCode(code: string): boolean {
   return (LIVE_V3_CATEGORY_CODES as readonly string[]).includes(code);

@@ -120,6 +120,31 @@ export class PrismaContractorSyncStore implements ContractorSyncStore {
   async createContractor(
     write: ContractorSyncWrite,
   ): Promise<{ contractorId: string }> {
+    // A contractor created by hand in the admin before the first sync has the
+    // same email: link the landys.co identity to it instead of failing.
+    const sameEmail = await this.db.contractor.findFirst({
+      where: { email: { equals: write.profile.email, mode: "insensitive" } },
+      select: { id: true, externalIdentities: { where: { source: write.source }, select: { externalId: true } } },
+    });
+    if (sameEmail) {
+      if (sameEmail.externalIdentities.length > 0) {
+        throw new Error(
+          `Email ${write.profile.email} is already used by another ${write.source} contractor (${sameEmail.externalIdentities[0].externalId}).`,
+        );
+      }
+      await this.db.externalContractorIdentity.create({
+        data: {
+          source: write.source,
+          externalId: write.externalId,
+          contractorId: sameEmail.id,
+          lastPayloadHash: null,
+          lastSyncedAt: new Date(),
+        },
+      });
+      await this.updateContractor(sameEmail.id, write);
+      return { contractorId: sameEmail.id };
+    }
+
     return this.db.$transaction(async (tx) => {
       const primaryProject = write.projects[0];
       const contractor = await tx.contractor.create({

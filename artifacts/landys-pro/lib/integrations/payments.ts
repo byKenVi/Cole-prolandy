@@ -113,6 +113,20 @@ export type CreateCardSetupParams = {
 const isMock = () => process.env.STRIPE_MOCK !== "false";
 
 /**
+ * Money must never be simulated in production: a mocked success-fee payment
+ * would mark the fee PAID with no money collected.
+ */
+export function assertRealPaymentsInProduction(): void {
+  if (isMock() && process.env.NODE_ENV === "production") {
+    throw new Error('Payments are mocked in production. Set STRIPE_MOCK="false" and connect Stripe.');
+  }
+}
+
+export function paymentsAreMocked(): boolean {
+  return isMock();
+}
+
+/**
  * MOCK provider: logs to console and returns a local URL that simulates a
  * successful top-up completion (see /wallet/topup/complete route).
  */
@@ -459,6 +473,7 @@ export type CreateSuccessFeeCheckoutParams = {
 export async function createSuccessFeeCheckout(
   params: CreateSuccessFeeCheckoutParams,
 ): Promise<CreateTopUpResult> {
+  assertRealPaymentsInProduction();
   if (isMock()) {
     const paymentIntentId = `pi_mock_fee_${Date.now()}`;
     const url = new URL(params.successUrl);

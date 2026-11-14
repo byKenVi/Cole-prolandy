@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+import "./pro.css";
 import { DevBar } from "@/components/dev/dev-bar";
 import { ToastProvider } from "@/components/ui/toast";
 import { authMode } from "@/lib/auth";

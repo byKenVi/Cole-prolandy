@@ -18,16 +18,17 @@ export async function queryWixContractors(params: {
   offset?: number;
   limit?: number;
   updatedAfter?: Date;
+  id?: string;
 }): Promise<WixQueryResponse> {
   const config = getWixConfig();
   if (!config) throw new Error("Wix API is not configured.");
 
   const filter =
-    params.updatedAfter != null
-      ? {
-          _updatedDate: { $gt: params.updatedAfter.toISOString() },
-        }
-      : undefined;
+    params.id != null
+      ? { _id: { $eq: params.id } }
+      : params.updatedAfter != null
+        ? { _updatedDate: { $gt: params.updatedAfter.toISOString() } }
+        : undefined;
 
   const response = await fetch(WIX_QUERY_URL, {
     method: "POST",
@@ -49,7 +50,8 @@ export async function queryWixContractors(params: {
   });
 
   if (!response.ok) {
-    throw new Error(`Wix query failed with status ${response.status}.`);
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Wix query failed with status ${response.status}. ${detail.slice(0, 300)}`.trim());
   }
   return (await response.json()) as WixQueryResponse;
 }
@@ -75,4 +77,12 @@ export async function fetchAllWixContractors(updatedAfter?: Date) {
   }
 
   return items;
+}
+
+/** Fetch one contractor by Wix `_id` (used when a direct request names an unknown pro). */
+export async function fetchWixContractorById(id: string): Promise<Record<string, unknown> | null> {
+  const page = await queryWixContractors({ id, limit: 1 });
+  const entry = page.dataItems?.[0];
+  if (!entry) return null;
+  return { _id: entry.id ?? (entry.data?._id as string | undefined), ...entry.data };
 }

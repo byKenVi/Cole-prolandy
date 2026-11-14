@@ -2,31 +2,35 @@ import { prisma } from "@/lib/prisma";
 import { APP_SETTING_KEYS } from "@/lib/domain/types";
 import type { Prisma } from "@prisma/client";
 import { PrismaContractorSyncStore } from "@/lib/integrations/contractors/prisma-store";
-import {
-  syncContractor,
-} from "@/lib/integrations/contractors/sync-service";
-import type { ContractorSyncResult } from "@/lib/integrations/contractors/contract";
-import type { ContractorSyncOwnershipPolicy } from "@/lib/integrations/contractors/contract";
+import { syncContractor } from "@/lib/integrations/contractors/sync-service";
+import type {
+  ContractorSyncOwnershipPolicy,
+  ContractorSyncResult,
+} from "@/lib/integrations/contractors/contract";
 import {
   normalizeWixContractorRecord,
   parseWixDate,
   resolveOfficialCategoryCode,
+  type NormalizedWixContractor,
   type WixAllContractorItem,
 } from "@/lib/integrations/wix/contractor-adapter";
-import { fetchAllWixContractors, getWixConfig } from "@/lib/integrations/wix/wix-client";
+import {
+  fetchAllWixContractors,
+  fetchWixContractorById,
+  getWixConfig,
+} from "@/lib/integrations/wix/wix-client";
+import { ensureCategory } from "@/lib/services/taxonomy-registry";
 
+/**
+ * landys.co (Wix CMS) owns the contractor directory: profile, categories,
+ * service area and active status. Landy's Pro owns money, leads, accounts and
+ * admin decisions. In particular, a contractor deactivated by an ADMIN here is
+ * never reactivated by the sync; one deactivated because landys.co marked it
+ * inactive is reactivated when landys.co marks it active again.
+ */
 export const WIX_CONTRACTOR_SYNC_POLICY: ContractorSyncOwnershipPolicy = {
   allowCreate: true,
-  writableProfileFields: [
-    "name",
-    "email",
-    "phone",
-    "aboutSection",
-    "businessHours",
-    "contractorCategory",
-    "projects",
-    "workTypes",
-  ],
+  writableProfileFields: ["name", "email", "phone", "aboutSection", "contractorCategory"],
 };
 
 export type WixContractorSyncSummary = {
@@ -35,27 +39,27 @@ export type WixContractorSyncSummary = {
   created: number;
   updated: number;
   unchanged: number;
-  /** Records skipped due to invalid identity (missing _id, missing required profile fields). */
+  /** Records skipped (missing _id, name or email). */
   invalidIdentity: number;
+  /** Newly deactivated because landys.co marks them inactive. */
   deactivated: number;
+  /** Newly reactivated because landys.co marks them active again. */
   reactivated: number;
+  /** Active on landys.co but deactivated here by an admin (left as is). */
+  keptDeactivatedByAdmin: number;
+  withoutServiceArea: number;
+  categoriesCreated: string[];
   errors: string[];
   unresolvedCategories: string[];
   unresolvedProjectTypes: string[];
   unresolvedLandTypes: string[];
   skipped: Array<{ externalId: string; reason: string }>;
+  /** Field keys seen on the first items — lets admins verify the mapping. */
+  sampleKeys: string[];
 };
 
-export async function runWixContractorSync(options: {
-  dryRun?: boolean;
-  incremental?: boolean;
-} = {}): Promise<WixContractorSyncSummary> {
-  const dryRun = options.dryRun ?? false;
-  const config = getWixConfig();
-  if (!config) throw new Error("Wix contractor sync is not configured.");
-
-  const store = new PrismaContractorSyncStore(prisma);
-  const summary: WixContractorSyncSummary = {
+function emptySummary(dryRun: boolean): WixContractorSyncSummary {
+  return {
     dryRun,
     fetched: 0,
     created: 0,
@@ -64,12 +68,25 @@ export async function runWixContractorSync(options: {
     invalidIdentity: 0,
     deactivated: 0,
     reactivated: 0,
+    keptDeactivatedByAdmin: 0,
+    withoutServiceArea: 0,
+    categoriesCreated: [],
     errors: [],
     unresolvedCategories: [],
     unresolvedProjectTypes: [],
     unresolvedLandTypes: [],
     skipped: [],
+    sampleKeys: [],
   };
+}
+
+export async function runWixContractorSync(options: {
+  dryRun?: boolean;
+  incremental?: boolean;
+} = {}): Promise<WixContractorSyncSummary> {
+  const dryRun = options.dryRun ?? false;
+  if (!getWixConfig()) throw new Error("Wix contractor sync is not configured.");
+  const summary = emptySummary(dryRun);
 
   let updatedAfter: Date | undefined;
   if (options.incremental) {
@@ -84,181 +101,217 @@ export async function runWixContractorSync(options: {
     }
   }
 
-  await prisma.appSetting.upsert({
-    where: { key: APP_SETTING_KEYS.wixContractorSyncLastAttemptAt },
-    update: { value: new Date().toISOString() },
-    create: { key: APP_SETTING_KEYS.wixContractorSyncLastAttemptAt, value: new Date().toISOString() },
-  });
+  if (!dryRun) {
+    await prisma.appSetting.upsert({
+      where: { key: APP_SETTING_KEYS.wixContractorSyncLastAttemptAt },
+      update: { value: new Date().toISOString() },
+      create: { key: APP_SETTING_KEYS.wixContractorSyncLastAttemptAt, value: new Date().toISOString() },
+    });
+  }
 
   let items: Record<string, unknown>[];
   try {
     items = await fetchAllWixContractors(updatedAfter);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Wix fetch failed.";
-    summary.errors.push(message);
-    await persistSyncSummary(summary);
+    summary.errors.push(error instanceof Error ? error.message : "Wix fetch failed.");
+    if (!dryRun) await persistSyncSummary(summary);
     throw error;
   }
 
   summary.fetched = items.length;
+  summary.sampleKeys = [...new Set(items.slice(0, 5).flatMap((item) => Object.keys(item)))].sort();
 
   for (const raw of items) {
-    const item = raw as WixAllContractorItem;
-    if (!item._id) {
-      summary.skipped.push({ externalId: "unknown", reason: "Missing Wix _id." });
-      summary.invalidIdentity += 1;
-      continue;
-    }
-
-    const normalized = normalizeWixContractorRecord(item);
-    summary.unresolvedCategories.push(...normalized.unresolvedCategories);
-    summary.unresolvedProjectTypes.push(...normalized.unresolvedProjectTypes);
-    summary.unresolvedLandTypes.push(...normalized.unresolvedLandTypes);
-
-    // Skip inactive contractors that have no name — they cannot be meaningfully created.
-    if (!normalized.isActive && !normalized.record.profile?.name) {
-      summary.skipped.push({
-        externalId: item._id,
-        reason: "Inactive contractor with no name skipped.",
-      });
-      summary.invalidIdentity += 1;
-      continue;
-    }
-
-    let result: ContractorSyncResult;
-    try {
-      result = await syncContractor(store, normalized.record, WIX_CONTRACTOR_SYNC_POLICY, {
-        dryRun,
-      });
-    } catch (error) {
-      summary.errors.push(
-        `${item._id}: ${error instanceof Error ? error.message : "sync failed"}`,
-      );
-      continue;
-    }
-
-    if (result.status === "created") summary.created += 1;
-    else if (result.status === "updated") summary.updated += 1;
-    else if (result.status === "unchanged") summary.unchanged += 1;
-    else {
-      // Unresolved = missing required profile fields (name/email/phone).
-      summary.invalidIdentity += 1;
-      summary.skipped.push({
-        externalId: item._id,
-        reason: result.reasons.join("; ") || "Missing required profile fields.",
-      });
-      continue;
-    }
-
-    if (!dryRun && result.contractorId) {
-      await applyWixOperationalUpdates({
-        contractorId: result.contractorId,
-        externalId: item._id,
-        isActive: normalized.isActive,
-        metadata: normalized.metadata,
-        sourceUpdatedAt: parseWixDate(item._updatedDate) ? new Date(parseWixDate(item._updatedDate)!) : null,
-        categoryLabels: item.contractorsCategory ?? [],
-      });
-
-      if (normalized.isActive) summary.reactivated += 1;
-      else summary.deactivated += 1;
-    }
+    await syncOneItem(raw, { dryRun, summary });
   }
 
   summary.unresolvedCategories = [...new Set(summary.unresolvedCategories)];
   summary.unresolvedProjectTypes = [...new Set(summary.unresolvedProjectTypes)];
   summary.unresolvedLandTypes = [...new Set(summary.unresolvedLandTypes)];
+  summary.categoriesCreated = [...new Set(summary.categoriesCreated)];
 
-  if (!dryRun && summary.errors.length === 0) {
-    await prisma.appSetting.upsert({
-      where: { key: APP_SETTING_KEYS.wixContractorSyncLastSuccessAt },
-      update: { value: new Date().toISOString() },
-      create: {
-        key: APP_SETTING_KEYS.wixContractorSyncLastSuccessAt,
-        value: new Date().toISOString(),
+  if (!dryRun) {
+    if (summary.errors.length === 0) {
+      await prisma.appSetting.upsert({
+        where: { key: APP_SETTING_KEYS.wixContractorSyncLastSuccessAt },
+        update: { value: new Date().toISOString() },
+        create: { key: APP_SETTING_KEYS.wixContractorSyncLastSuccessAt, value: new Date().toISOString() },
+      });
+    }
+    await persistSyncSummary(summary);
+    await prisma.auditLog.create({
+      data: {
+        actorType: "system",
+        action: "wix.contractor_sync.completed",
+        metadata: { ...summary, skipped: summary.skipped.slice(0, 50) } as unknown as Prisma.InputJsonObject,
       },
     });
   }
 
-  await persistSyncSummary(summary);
-  await prisma.auditLog.create({
-    data: {
-      actorType: "system",
-      action: "wix.contractor_sync.completed",
-      metadata: summary as unknown as Prisma.InputJsonObject,
-    },
-  });
-
   return summary;
+}
+
+/** Sync a single contractor (direct requests naming a pro we have not seen yet). */
+export async function syncWixContractorById(externalId: string): Promise<boolean> {
+  if (!getWixConfig()) return false;
+  const item = await fetchWixContractorById(externalId);
+  if (!item) return false;
+  const summary = emptySummary(false);
+  await syncOneItem(item, { dryRun: false, summary });
+  return summary.created + summary.updated + summary.unchanged > 0;
+}
+
+async function syncOneItem(
+  raw: Record<string, unknown>,
+  ctx: { dryRun: boolean; summary: WixContractorSyncSummary },
+) {
+  const { summary, dryRun } = ctx;
+  const id = typeof raw._id === "string" ? raw._id : null;
+  if (!id) {
+    summary.skipped.push({ externalId: "unknown", reason: "Missing Wix _id." });
+    summary.invalidIdentity += 1;
+    return;
+  }
+  const normalized = normalizeWixContractorRecord(raw as WixAllContractorItem);
+
+  // Create every category landys.co uses (dry-run only reports them).
+  const categoryIds: string[] = [];
+  let primaryCode: string | undefined;
+  for (const label of normalized.categoryLabels) {
+    if (dryRun) {
+      const code = resolveOfficialCategoryCode(label);
+      if (code && !(await prisma.contractorCategory.findUnique({ where: { code }, select: { id: true } }))) {
+        summary.categoriesCreated.push(`${label} (would be created)`);
+      }
+      continue;
+    }
+    try {
+      const ref = await ensureCategory(prisma, label);
+      if (!ref) continue;
+      if (ref.created) summary.categoriesCreated.push(ref.name);
+      categoryIds.push(ref.id);
+      primaryCode ??= ref.code;
+    } catch (error) {
+      summary.unresolvedCategories.push(label);
+      console.error("[wix-sync] category creation failed", { label, error });
+    }
+  }
+  if (primaryCode) normalized.record.contractorCategoryCode = primaryCode;
+
+  let result: ContractorSyncResult;
+  try {
+    result = await syncContractor(new PrismaContractorSyncStore(prisma), normalized.record, WIX_CONTRACTOR_SYNC_POLICY, {
+      dryRun,
+    });
+  } catch (error) {
+    summary.errors.push(`${id}: ${error instanceof Error ? error.message : "sync failed"}`);
+    return;
+  }
+
+  if (result.status === "unresolved") {
+    summary.invalidIdentity += 1;
+    summary.skipped.push({
+      externalId: id,
+      reason: result.reasons.join("; ") || "Missing required profile fields.",
+    });
+    return;
+  }
+  if (result.status === "created") summary.created += 1;
+  else if (result.status === "updated") summary.updated += 1;
+  else summary.unchanged += 1;
+
+  if (normalized.serviceZipCodes.length === 0 && normalized.serviceCounties.length === 0) {
+    summary.withoutServiceArea += 1;
+  }
+
+  if (!dryRun && result.contractorId) {
+    const transition = await applyWixOperationalUpdates({
+      contractorId: result.contractorId,
+      externalId: id,
+      normalized,
+      sourceUpdatedAt: parseWixDate(normalized.metadata.wixUpdatedDate),
+      categoryIds,
+    });
+    if (transition === "deactivated") summary.deactivated += 1;
+    if (transition === "reactivated") summary.reactivated += 1;
+    if (transition === "kept_admin_deactivation") summary.keptDeactivatedByAdmin += 1;
+  }
 }
 
 async function applyWixOperationalUpdates(params: {
   contractorId: string;
   externalId: string;
-  isActive: boolean;
-  metadata: Record<string, unknown>;
-  sourceUpdatedAt: Date | null;
-  categoryLabels: string[];
-}) {
+  normalized: NormalizedWixContractor;
+  sourceUpdatedAt: string | undefined;
+  categoryIds: string[];
+}): Promise<"deactivated" | "reactivated" | "kept_admin_deactivation" | null> {
+  const { normalized } = params;
   await prisma.externalContractorIdentity.update({
     where: { source_externalId: { source: "wix", externalId: params.externalId } },
     data: {
-      sourceMetadata: params.metadata as object,
-      sourceUpdatedAt: params.sourceUpdatedAt,
+      sourceMetadata: { ...normalized.metadata, rawKeys: normalized.rawKeys } as Prisma.InputJsonObject,
+      sourceUpdatedAt: params.sourceUpdatedAt ? new Date(params.sourceUpdatedAt) : null,
       lastSyncedAt: new Date(),
     },
   });
 
-  await prisma.contractor.update({
+  const current = await prisma.contractor.findUnique({
     where: { id: params.contractorId },
-    data: {
-      deactivatedAt: params.isActive ? null : new Date(),
-    },
+    select: { deactivatedAt: true, deactivationSource: true },
   });
 
-  const categoryIds: string[] = [];
-  for (const [index, label] of params.categoryLabels.entries()) {
-    const code = resolveOfficialCategoryCode(label);
-    if (!code) continue;
-    const category = await prisma.contractorCategory.findFirst({
-      where: { code, archivedAt: null },
-      select: { id: true },
-    });
-    if (!category) continue;
-    categoryIds.push(category.id);
+  let transition: "deactivated" | "reactivated" | "kept_admin_deactivation" | null = null;
+  const data: Prisma.ContractorUpdateInput = {
+    serviceZipCodes: normalized.serviceZipCodes,
+    serviceCounties: normalized.serviceCounties,
+    websiteUrl: normalized.websiteUrl,
+  };
+  if (!normalized.isActive && !current?.deactivatedAt) {
+    data.deactivatedAt = new Date();
+    data.deactivationSource = "wix";
+    transition = "deactivated";
+  } else if (normalized.isActive && current?.deactivatedAt) {
+    if (current.deactivationSource === "wix") {
+      data.deactivatedAt = null;
+      data.deactivationSource = null;
+      transition = "reactivated";
+    } else {
+      transition = "kept_admin_deactivation";
+    }
+  }
+  await prisma.contractor.update({ where: { id: params.contractorId }, data });
+
+  // Memberships mirror landys.co categories (primary first, then secondary).
+  for (const [index, categoryId] of params.categoryIds.entries()) {
     await prisma.contractorCategoryMembership.upsert({
-      where: {
-        contractorId_categoryId: {
-          contractorId: params.contractorId,
-          categoryId: category.id,
-        },
-      },
+      where: { contractorId_categoryId: { contractorId: params.contractorId, categoryId } },
       update: { isPrimary: index === 0, displayOrder: index },
       create: {
         contractorId: params.contractorId,
-        categoryId: category.id,
+        categoryId,
         isPrimary: index === 0,
         displayOrder: index,
       },
     });
   }
-
-  if (categoryIds[0]) {
+  if (params.categoryIds.length > 0) {
+    await prisma.contractorCategoryMembership.deleteMany({
+      where: { contractorId: params.contractorId, categoryId: { notIn: params.categoryIds } },
+    });
     await prisma.contractor.update({
       where: { id: params.contractorId },
-      data: { contractorCategoryId: categoryIds[0] },
+      data: { contractorCategoryId: params.categoryIds[0] },
     });
   }
+  return transition;
 }
 
 async function persistSyncSummary(summary: WixContractorSyncSummary) {
+  const value = JSON.stringify({ ...summary, skipped: summary.skipped.slice(0, 100) });
   await prisma.appSetting.upsert({
     where: { key: APP_SETTING_KEYS.wixContractorSyncLastResult },
-    update: { value: JSON.stringify(summary) },
-    create: {
-      key: APP_SETTING_KEYS.wixContractorSyncLastResult,
-      value: JSON.stringify(summary),
-    },
+    update: { value },
+    create: { key: APP_SETTING_KEYS.wixContractorSyncLastResult, value },
   });
 }
 

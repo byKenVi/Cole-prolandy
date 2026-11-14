@@ -14,7 +14,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 vi.mock("@/lib/services/landowner-confirmation", () => ({
-  maybeNotifyLandownerAfterAccept: vi.fn().mockResolvedValue(undefined),
+  afterContractorAccepted: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { acceptLeadMatch } from "./leads";

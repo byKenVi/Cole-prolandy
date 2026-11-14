@@ -70,7 +70,7 @@ describe("destructive contractor actions vs. burst guard", () => {
     const res = await deactivateContractor("c1");
     expect(res.ok).toBe(true);
     expect(mocks.contractor.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "c1" }, data: { deactivatedAt: expect.any(Date) } }),
+      expect.objectContaining({ where: { id: "c1" }, data: { deactivatedAt: expect.any(Date), deactivationSource: "admin" } }),
     );
   });
 

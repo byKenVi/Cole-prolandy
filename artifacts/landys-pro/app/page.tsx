@@ -4,6 +4,7 @@ import { MapPin, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand-logo";
 import { authMode } from "@/lib/auth";
+import { publicEstimateFormEnabled } from "@/lib/public-estimate";
 
 const STEPS = [
   {
@@ -164,11 +165,18 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted">
-            <Link href="/estimate" className="transition-colors hover:text-accent">
-              Request an estimate
+            {publicEstimateFormEnabled() ? (
+              <Link href="/estimate" className="transition-colors hover:text-accent">
+                Request an estimate
+              </Link>
+            ) : (
+              <a href="https://www.landys.co" className="transition-colors hover:text-accent">
+                landys.co
+              </a>
+            )}
+            <Link href="/terms" className="transition-colors hover:text-accent">
+              How the success fee works
             </Link>
-            <span>Privacy</span>
-            <span>Terms</span>
             <span>© {new Date().getFullYear()} Landy&apos;s</span>
           </div>
         </footer>

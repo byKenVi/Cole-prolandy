@@ -3,6 +3,7 @@ import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { claimPendingAdminInvite } from "@/lib/admin-invites";
 import { isLocal } from "@/lib/runtime-environment";
+import { parseAdminEmails } from "@/lib/admin-emails";
 
 /**
  * Auth abstraction.
@@ -76,18 +77,7 @@ export function assertAuthConfigFailClosed(): void {
   }
 }
 
-/**
- * Parse ADMIN_EMAILS from env. Strips wrapping quotes (common when values are
- * copy-pasted into Vercel with quotes) and normalizes case/whitespace.
- */
-export function parseAdminEmails(raw: string | undefined | null): string[] {
-  return (raw ?? "")
-    .trim()
-    .replace(/^["']|["']$/g, "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase().replace(/^["']|["']$/g, ""))
-    .filter((e) => e.includes("@"));
-}
+export { parseAdminEmails };
 
 function adminEmails(): string[] {
   const fromEnv = parseAdminEmails(process.env.ADMIN_EMAILS);

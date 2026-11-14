@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { OpportunityDistributionForm } from "@/components/admin/opportunity-distribution-form";
 import { FollowUpSettingsForm } from "@/components/admin/follow-up-settings-form";
+import { NumberSettingsForm } from "@/components/admin/number-settings-form";
 import {
   SuccessFeeTiersForm,
   type SuccessFeeTierFormRow,
@@ -95,6 +96,9 @@ export function SettingsTabs({
   projects,
   landTypes,
   contractorCategories,
+  serviceRadiusMiles,
+  landownerHireCheckDelayDays,
+  followUpMaxAttempts,
 }: {
   isOwner: boolean;
   maxLeadPurchases: number;
@@ -107,6 +111,9 @@ export function SettingsTabs({
   projects: CategoryRow[];
   landTypes: LandTypeRow[];
   contractorCategories: ContractorCategoryRow[];
+  serviceRadiusMiles: number;
+  landownerHireCheckDelayDays: number;
+  followUpMaxAttempts: number;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -307,6 +314,20 @@ export function SettingsTabs({
             leadExpiryHours={leadExpiryHours}
             acceptanceUnlimited={acceptanceUnlimited}
           />
+          <NumberSettingsForm
+            submitLabel="Save service area"
+            fields={[
+              {
+                key: "serviceRadiusMiles",
+                label: "Default service radius",
+                help: "A contractor receives a request when the property is within this distance of one of their service ZIP codes (unless their profile sets its own radius).",
+                unit: "miles",
+                value: serviceRadiusMiles,
+                min: 1,
+                max: 500,
+              },
+            ]}
+          />
         </Panel>
       )}
 
@@ -331,6 +352,29 @@ export function SettingsTabs({
             followUpOutcomeDelayHours={followUpOutcomeDelayHours}
             followUpPaymentDelayHours={followUpPaymentDelayHours}
             followUpPaymentRetryHours={followUpPaymentRetryHours}
+          />
+          <NumberSettingsForm
+            submitLabel="Save reminders"
+            fields={[
+              {
+                key: "followUpMaxAttempts",
+                label: "Reminders before alerting an admin",
+                help: "How many times we ask a contractor \"Did you get the job?\" or \"Have you been paid?\" before emailing the admins.",
+                unit: "reminders",
+                value: followUpMaxAttempts,
+                min: 1,
+                max: 10,
+              },
+              {
+                key: "landownerHireCheckDelayDays",
+                label: "Ask the homeowner who they hired after",
+                help: "Days after the first contractor accepted. Used to double-check contractor answers.",
+                unit: "days",
+                value: landownerHireCheckDelayDays,
+                min: 1,
+                max: 120,
+              },
+            ]}
           />
         </Panel>
       )}

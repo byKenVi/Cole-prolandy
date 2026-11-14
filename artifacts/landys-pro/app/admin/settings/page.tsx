@@ -7,6 +7,9 @@ import {
   getFollowUpPaymentRetryHours,
   getLeadExpiryHours,
   getMaxLeadPurchases,
+  getServiceRadiusMiles,
+  getLandownerHireCheckDelayDays,
+  getFollowUpMaxAttempts,
 } from "@/lib/domain/settings";
 import { loadSuccessFeeTierRecords } from "@/lib/domain/success-fee";
 import { getSession } from "@/lib/auth";
@@ -27,6 +30,9 @@ export default async function SettingsPage() {
     landTypes,
     contractorCategories,
     successFeeTiers,
+    serviceRadiusMiles,
+    landownerHireCheckDelayDays,
+    followUpMaxAttempts,
   ] = await Promise.all([
     getSession(),
     getMaxLeadPurchases(prisma),
@@ -72,6 +78,9 @@ export default async function SettingsPage() {
       },
     }),
     loadSuccessFeeTierRecords(prisma),
+    getServiceRadiusMiles(prisma),
+    getLandownerHireCheckDelayDays(prisma),
+    getFollowUpMaxAttempts(prisma),
   ]);
 
   return (
@@ -84,6 +93,9 @@ export default async function SettingsPage() {
         followUpOutcomeDelayHours={followUpOutcomeDelayHours}
         followUpPaymentDelayHours={followUpPaymentDelayHours}
         followUpPaymentRetryHours={followUpPaymentRetryHours}
+        serviceRadiusMiles={serviceRadiusMiles}
+        landownerHireCheckDelayDays={landownerHireCheckDelayDays}
+        followUpMaxAttempts={followUpMaxAttempts}
         successFeeTiers={successFeeTiers.map((tier) => ({
           id: tier.id,
           sortOrder: tier.sortOrder,

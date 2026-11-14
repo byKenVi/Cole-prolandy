@@ -1,0 +1,802 @@
+/*
+ * Landy's Pro — contractor experience.
+ *
+ * Audience: tradespeople on their phones, often older. Rules:
+ *  - 17px body minimum, 18px buttons, Fraunces for places and money;
+ *  - every tap target >= 56px, one obvious primary action per screen;
+ *  - WCAG AA contrast on every text/background pair below;
+ *  - the "job ticket" (perforated work-order card) is the one signature element.
+ */
+
+.pro {
+  --pro-page: #f5efe3;
+  --pro-card: #fffdf8;
+  --pro-forest: #2f4a3c;
+  --pro-forest-deep: #223a2d;
+  --pro-forest-ink: #f3ecdf;
+  --pro-copper: #a85a28;
+  --pro-copper-press: #8e4b20;
+  --pro-gold: #e0a95c;
+  --pro-ink: #27231d;
+  --pro-ink-2: #574e42;
+  --pro-line: #e0d5c1;
+  --pro-line-strong: #c7b99f;
+  --pro-perf: #cdbfa6;
+  --pro-ok: #2a6340;
+  --pro-ok-bg: #e3eee5;
+  --pro-warn: #6f4a00;
+  --pro-warn-bg: #fbeed0;
+  --pro-danger: #9c3127;
+  --pro-danger-bg: #f8e3df;
+  --pro-quote: #f8f2e6;
+  --pro-shadow: 0 1px 0 rgba(39, 35, 29, 0.04), 0 10px 26px -14px rgba(39, 35, 29, 0.28);
+
+  font-family: "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--pro-ink);
+  background: var(--pro-page);
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: lining-nums;
+}
+
+.pro *:focus-visible {
+  outline: 3px solid var(--pro-gold);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.pro a {
+  color: inherit;
+}
+
+.pro-display {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+}
+
+.pro-money {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.015em;
+}
+
+/* ── Shell ─────────────────────────────────────────────── */
+
+.pro-shell {
+  min-height: 100dvh;
+  display: flex;
+}
+
+.pro-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pro-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 16px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  background: var(--pro-forest);
+  color: var(--pro-forest-ink);
+}
+
+.pro-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.pro-wordmark-script {
+  font-family: "Great Vibes", "Caveat", cursive;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.pro-wordmark-badge {
+  font: 700 12px/1 "Rubik", sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--pro-gold);
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
+  padding: 3px 6px 2px;
+  transform: translateY(-3px);
+}
+
+.pro-topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pro-content {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 22px 16px calc(112px + env(safe-area-inset-bottom));
+}
+
+.pro-sidebar {
+  display: none;
+}
+
+/* Bottom tab bar (phones) */
+.pro-tabs {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: var(--pro-forest-deep);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pro-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 66px;
+  padding: 8px 2px 10px;
+  text-decoration: none;
+  color: #c9c0ae;
+  font: 500 13px/1.1 "Rubik", sans-serif;
+}
+
+.pro-tab[aria-current="page"] {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.pro-tab[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 22%;
+  right: 22%;
+  height: 4px;
+  border-radius: 0 0 4px 4px;
+  background: var(--pro-gold);
+}
+
+.pro-tab img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.pro-tab-count {
+  position: absolute;
+  top: 6px;
+  left: calc(50% + 8px);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--pro-copper);
+  color: #fff;
+  font: 700 13px/22px "Rubik", sans-serif;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--pro-forest-deep);
+}
+
+@media (min-width: 900px) {
+  .pro-topbar,
+  .pro-tabs {
+    display: none;
+  }
+
+  .pro-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    width: 272px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 26px 18px 22px;
+    background: var(--pro-forest);
+    color: var(--pro-forest-ink);
+  }
+
+  .pro-sidebar .pro-wordmark {
+    margin: 0 8px 28px;
+  }
+
+  .pro-sidebar-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 54px;
+    padding: 0 14px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #d6cdbb;
+    font: 500 17px/1.2 "Rubik", sans-serif;
+  }
+
+  .pro-sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+  }
+
+  .pro-sidebar-link[aria-current="page"] {
+    background: rgba(224, 169, 92, 0.16);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .pro-sidebar-link img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+  }
+
+  .pro-sidebar-link .pro-tab-count {
+    position: static;
+    margin-left: auto;
+    box-shadow: none;
+  }
+
+  .pro-sidebar-foot {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 8px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 15px;
+  }
+
+  .pro-content {
+    padding: 40px 32px 56px;
+  }
+}
+
+/* ── Page heading ─────────────────────────────────────── */
+
+.pro-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -6px 0 6px;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--pro-ink-2);
+  text-decoration: none;
+}
+
+.pro-title {
+  margin: 0;
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: 31px;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--pro-ink);
+}
+
+.pro-intro {
+  margin: 10px 0 0;
+  max-width: 34em;
+  font-size: 18px;
+  color: var(--pro-ink-2);
+}
+
+.pro-head {
+  margin-bottom: 24px;
+}
+
+.pro-section {
+  margin-top: 36px;
+}
+
+.pro-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.pro-section-title {
+  margin: 0;
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: 23px;
+  line-height: 1.2;
+}
+
+.pro-link {
+  color: var(--pro-copper);
+  font-weight: 600;
+  font-size: 17px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pro-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── The job ticket ───────────────────────────────────── */
+
+.pro-ticket {
+  position: relative;
+  overflow: hidden;
+  background: var(--pro-card);
+  border: 1px solid var(--pro-line);
+  border-radius: 18px;
+  box-shadow: var(--pro-shadow);
+}
+
+a.pro-ticket {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.pro-ticket:active {
+  transform: translateY(1px);
+}
+
+.pro-ticket--direct {
+  border-color: var(--pro-copper);
+  box-shadow: 0 0 0 1px var(--pro-copper), var(--pro-shadow);
+}
+
+.pro-ticket-top {
+  padding: 18px 20px 12px;
+}
+
+.pro-ticket-kind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pro-ink-2);
+}
+
+.pro-ticket-place {
+  margin: 6px 0 0;
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+
+.pro-ticket-sub {
+  margin: 4px 0 0;
+  font-size: 16px;
+  color: var(--pro-ink-2);
+}
+
+.pro-perf {
+  position: relative;
+  height: 24px;
+}
+
+.pro-perf::before,
+.pro-perf::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin-top: -11px;
+  border-radius: 50%;
+  background: var(--pro-page);
+  border: 1px solid var(--pro-line);
+}
+
+.pro-perf::before {
+  left: -12px;
+}
+
+.pro-perf::after {
+  right: -12px;
+}
+
+.pro-perf > i {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: 50%;
+  border-top: 2px dashed var(--pro-perf);
+}
+
+.pro-ticket-body {
+  padding: 4px 20px 20px;
+}
+
+.pro-ticket-cta {
+  margin-top: 16px;
+}
+
+.pro-facts {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) 1fr;
+  gap: 10px 18px;
+  margin: 0;
+}
+
+.pro-facts dt {
+  font-size: 16px;
+  color: var(--pro-ink-2);
+}
+
+.pro-facts dd {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* ── Buttons ──────────────────────────────────────────── */
+
+.pro-btn {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 20px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  font: 600 18px/1.2 "Rubik", sans-serif;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pro-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.pro-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pro-btn--primary {
+  background: var(--pro-copper);
+  color: #fff;
+}
+
+.pro-btn--primary:hover:not(:disabled) {
+  background: var(--pro-copper-press);
+}
+
+.pro-btn--forest {
+  background: var(--pro-forest);
+  color: #fff;
+}
+
+.pro-btn--forest:hover:not(:disabled) {
+  background: var(--pro-forest-deep);
+}
+
+.pro-btn--secondary {
+  background: var(--pro-card);
+  color: var(--pro-ink);
+  border-color: var(--pro-line-strong);
+}
+
+.pro-btn--secondary:hover:not(:disabled) {
+  border-color: var(--pro-ink-2);
+}
+
+.pro-btn--quiet {
+  background: transparent;
+  color: var(--pro-ink-2);
+  min-height: 52px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.pro-btn--big {
+  min-height: 64px;
+  font-size: 20px;
+}
+
+.pro-btn-row {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 560px) {
+  .pro-btn-row--2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Chips, notices, quotes ───────────────────────────── */
+
+.pro-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font: 600 15px/1.35 "Rubik", sans-serif;
+  background: #efe7d7;
+  color: var(--pro-ink-2);
+  white-space: nowrap;
+}
+
+.pro-chip--ok {
+  background: var(--pro-ok-bg);
+  color: var(--pro-ok);
+}
+
+.pro-chip--warn {
+  background: var(--pro-warn-bg);
+  color: var(--pro-warn);
+}
+
+.pro-chip--danger {
+  background: var(--pro-danger-bg);
+  color: var(--pro-danger);
+}
+
+.pro-chip--copper {
+  background: var(--pro-copper);
+  color: #fff;
+}
+
+.pro-notice {
+  border-radius: 14px;
+  padding: 16px 18px;
+  border-left: 5px solid var(--pro-line-strong);
+  background: var(--pro-card);
+  font-size: 17px;
+}
+
+.pro-notice strong {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.pro-notice--ok {
+  background: var(--pro-ok-bg);
+  border-left-color: var(--pro-ok);
+}
+
+.pro-notice--warn {
+  background: var(--pro-warn-bg);
+  border-left-color: #b98a2c;
+}
+
+.pro-notice--danger {
+  background: var(--pro-danger-bg);
+  border-left-color: var(--pro-danger);
+}
+
+.pro-quote {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--pro-quote);
+  font-size: 17px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.pro-quote-label {
+  margin: 18px 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pro-ink-2);
+}
+
+.pro-small {
+  font-size: 16px;
+  color: var(--pro-ink-2);
+}
+
+.pro-card {
+  background: var(--pro-card);
+  border: 1px solid var(--pro-line);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: var(--pro-shadow);
+}
+
+.pro-empty {
+  text-align: center;
+  padding: 34px 22px;
+  border: 2px dashed var(--pro-line-strong);
+  border-radius: 18px;
+  color: var(--pro-ink-2);
+}
+
+.pro-empty h3 {
+  margin: 0 0 6px;
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-size: 22px;
+  color: var(--pro-ink);
+}
+
+/* ── Contact card (after accepting) ───────────────────── */
+
+.pro-contact-name {
+  margin: 0;
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.pro-contact-lines {
+  margin: 6px 0 16px;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+/* A real sequence: what happens after accepting. */
+.pro-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: pro-step;
+  display: grid;
+  gap: 14px;
+}
+
+.pro-steps li {
+  counter-increment: pro-step;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.pro-steps li::before {
+  content: counter(pro-step);
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--pro-forest);
+  color: #fff;
+  font: 700 16px/1 "Rubik", sans-serif;
+}
+
+/* ── Forms ────────────────────────────────────────────── */
+
+.pro-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.pro-money-input {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  border: 2px solid var(--pro-line-strong);
+  border-radius: 14px;
+  background: #fff;
+  padding: 0 16px;
+}
+
+.pro-money-input:focus-within {
+  border-color: var(--pro-forest);
+  box-shadow: 0 0 0 3px rgba(47, 74, 60, 0.18);
+}
+
+.pro-money-input span {
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-size: 26px;
+  color: var(--pro-ink-2);
+  margin-right: 6px;
+}
+
+.pro-money-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: "Fraunces", ui-serif, Georgia, serif;
+  font-size: 28px;
+  color: var(--pro-ink);
+}
+
+.pro-choice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 62px;
+  padding: 12px 16px;
+  border: 2px solid var(--pro-line-strong);
+  border-radius: 14px;
+  background: #fff;
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.pro-choice:has(input:checked) {
+  border-color: var(--pro-forest);
+  background: #eef3ef;
+  font-weight: 700;
+}
+
+.pro-choice input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--pro-forest);
+  flex: none;
+}
+
+.pro-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Public pages (SMS links) share the paper background but no navigation. */
+.pro-public {
+  min-height: 100dvh;
+}
+
+.pro-public-head {
+  background: var(--pro-forest);
+  color: var(--pro-forest-ink);
+  padding: 14px 16px;
+  padding-top: max(14px, env(safe-area-inset-top));
+}
+
+.pro-public-head .pro-wordmark {
+  justify-content: center;
+  width: 100%;
+}
+
+.pro-public .pro-content {
+  padding-bottom: calc(40px + env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pro-btn,
+  a.pro-ticket {
+    transition: none;
+    transform: none !important;
+  }
+}

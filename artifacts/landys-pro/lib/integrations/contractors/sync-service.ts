@@ -162,9 +162,9 @@ export async function syncContractor(
 
   if (!target.name) reasons.push("A contractor name is required for creation.");
   if (!target.email) reasons.push("A contractor email is required for creation.");
-  if (!target.phone) reasons.push("A contractor phone is required for creation.");
+  // Phone is optional: a contractor without a mobile number still gets emails.
   if (!existing) {
-    for (const required of ["name", "email", "phone"] as const) {
+    for (const required of ["name", "email"] as const) {
       if (!writable.has(required)) {
         reasons.push(`Creation policy must explicitly own ${required}.`);
       }

@@ -1,116 +1,48 @@
-import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { expireLeads } from "@/lib/domain/leads";
-import { loadSuccessFeeTiers, resolveSuccessFeeForValue } from "@/lib/domain/success-fee";
-import { formatMoney } from "@/lib/money";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/empty-state";
-import { DEFAULT_PAGE_SIZE, paginationMeta, parsePage } from "@/lib/pagination";
-import {
-  hasResolvedLeadSnapshot,
-  leadCategoryIcon,
-  leadCategoryLabel,
-  leadDisplayInclude,
-  leadScopeLabel,
-} from "@/lib/resolved-lead";
-import { ContractorFeed, type FeedRow } from "../home/feed-client";
+import { loadMatchViews, openRequestWhere } from "@/lib/contractor-views";
+import { JobTicket } from "@/components/pro/job-ticket";
+import { Empty, PageHead, Section } from "@/components/pro/ui";
 
 export const dynamic = "force-dynamic";
 
-function estimatedValueCents(lead: { budgetCents: number | null; priceCents: number | null }) {
-  return lead.budgetCents ?? lead.priceCents;
-}
-
-export default async function OpportunitiesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>;
-}) {
+export default async function RequestsPage() {
   const session = await getSession();
-  if (!session.contractorId) return <NoContractor />;
-
-  await expireLeads(prisma).catch(() => undefined);
-
-  const contractor = await prisma.contractor.findUnique({
-    where: { id: session.contractorId },
-    include: { contractorType: true },
-  });
-  if (!contractor) return <NoContractor />;
-
-  const where = { contractorId: contractor.id, status: "PENDING" as const };
-  const requestedPage = parsePage((await searchParams).page);
-  const totalCount = await prisma.leadMatch.count({ where });
-  const { page, skip, take, totalPages } = paginationMeta(
-    totalCount,
-    requestedPage,
-    DEFAULT_PAGE_SIZE,
-  );
-
-  const [matches, tiers] = await Promise.all([
-    prisma.leadMatch.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip,
-      take,
-      include: { lead: { include: leadDisplayInclude } },
+  if (!session.contractorId) return <PageHead title="Job requests" intro="Sign in to see your job requests." />;
+  const now = new Date();
+  const [open, past] = await Promise.all([
+    loadMatchViews({ contractorId: session.contractorId, where: openRequestWhere(now), take: 50 }),
+    loadMatchViews({
+      contractorId: session.contractorId,
+      where: { status: { in: ["PENDING", "DECLINED", "EXPIRED", "SOLD_OUT"] }, NOT: openRequestWhere(now) },
+      take: 10,
     }),
-    loadSuccessFeeTiers(prisma),
   ]);
 
-  const rows: FeedRow[] = matches.flatMap((m) => {
-    if (!hasResolvedLeadSnapshot(m.lead)) return [];
-    const estimate = estimatedValueCents(m.lead);
-    let feeRatePercent: number | undefined;
-    let estimatedFeeLabel: string | null = null;
-    if (estimate && estimate > 0 && tiers.length > 0) {
-      try {
-        const resolved = resolveSuccessFeeForValue(tiers, estimate);
-        feeRatePercent = resolved.rateBasisPoints / 100;
-        estimatedFeeLabel = formatMoney(resolved.feeAmountCents);
-      } catch {
-        /* non-fatal */
-      }
-    }
-    return [
-      {
-        matchId: m.id,
-        projectTypeName: leadScopeLabel(m.lead),
-        categoryName: leadCategoryLabel(m.lead),
-        categoryIcon: leadCategoryIcon(m.lead) ?? null,
-        location: m.lead.propertyLocation,
-        description: m.lead.description,
-        landTypeName: m.lead.landType?.name ?? null,
-        feeRatePercent,
-        estimatedFeeLabel,
-        estimatedValueLabel: estimate && estimate > 0 ? formatMoney(estimate) : null,
-        receivedAt: m.createdAt,
-        expiresAt: m.lead.expiresAt,
-      },
-    ];
-  });
-
   return (
-    <ContractorFeed
-      rows={rows}
-      pathname="/opportunities"
-      pagination={{ page, totalPages, totalCount, pageSize: DEFAULT_PAGE_SIZE }}
-    />
-  );
-}
-
-function NoContractor() {
-  return (
-    <div className="px-5 py-10 md:px-[34px]">
-      <EmptyState
-        title="Let's set up your profile"
-        description="Tell us about your business to start receiving opportunities."
-        action={
-          <Button asChild variant="accent" size="cta">
-            <Link href="/profile">Get started</Link>
-          </Button>
-        }
+    <>
+      <PageHead
+        title="Job requests"
+        intro="Homeowners near you who asked for an estimate. Accepting is free; the first pros to accept get the contact."
       />
-    </div>
+      {open.length === 0 ? (
+        <Empty title="No requests waiting">New requests arrive by text and show up here right away.</Empty>
+      ) : (
+        <div className="pro-stack">
+          {open.map((view) => (
+            <JobTicket key={view.id} view={view} href={`/opportunities/${view.id}`} />
+          ))}
+        </div>
+      )}
+
+      {past.length > 0 && (
+        <Section title="Closed requests">
+          <div className="pro-stack">
+            {past.map((view) => (
+              <JobTicket key={view.id} view={view} href={`/opportunities/${view.id}`} />
+            ))}
+          </div>
+        </Section>
+      )}
+    </>
   );
 }

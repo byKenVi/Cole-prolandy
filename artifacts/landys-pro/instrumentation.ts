@@ -15,6 +15,20 @@ export async function register() {
   assertStagingRuntimeConfig();
   assertLocalRuntimeConfig();
 
+  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.DATABASE_URL) {
+    // Seed settings, success-fee tiers and taxonomy when they are missing.
+    // Never fatal: the app has in-code defaults for every setting.
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      const { ensureReferenceData } = await import("@/lib/ops/bootstrap");
+      const result = await ensureReferenceData(prisma);
+      const inserted = Object.values(result).reduce((sum, n) => sum + n, 0);
+      if (inserted > 0) console.log("[bootstrap] reference data inserted", result);
+    } catch (error) {
+      console.error("[bootstrap] reference data check failed", error);
+    }
+  }
+
   if (
     process.env.NEXT_RUNTIME === "nodejs" &&
     landysEnvironment() === "development" &&

@@ -20,6 +20,9 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
+vi.mock("@/lib/notifications", () => ({
+  notifyFeeDue: vi.fn().mockResolvedValue(undefined),
+}));
 
 import { consumeFollowUpToken } from "./follow-up";
 import {
@@ -110,6 +113,21 @@ describe("follow-up magic-link actions", () => {
     expect(res).toEqual({ ok: true, status: "won" });
     expect(db.leadMatch.rows[0].jobOutcome).toBe(JobOutcome.WON);
     expect(db.successFee.rows[0]?.status).toBe(SuccessFeeStatus.AWAITING_CONTRACTOR_PAYMENT);
+  });
+
+  it("keeps the link usable when the price is mistyped", async () => {
+    const db = createFakeDb();
+    seedFollowUpMatch(db, {});
+    seedToken(db, FollowUpAction.REPORT_OUTCOME);
+
+    const bad = await followUpReportWonAction("fu-tok", Number.NaN);
+    expect(bad.ok).toBe(false);
+    expect(db.followUpToken.rows[0].usedAt).toBeNull();
+    expect(db.leadMatch.rows[0].jobOutcome).toBe(JobOutcome.OPEN);
+
+    const good = await followUpReportWonAction("fu-tok", 4500);
+    expect(good).toEqual({ ok: true, status: "won" });
+    expect(db.followUpToken.rows[0].usedAt).toBeInstanceOf(Date);
   });
 
   it("report lost transitions match to LOST", async () => {

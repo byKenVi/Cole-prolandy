@@ -88,8 +88,74 @@ function matchWhere(row: Row, where: Row | undefined): boolean {
         return false;
       continue;
     }
+    if (key === "AND" && Array.isArray(cond)) {
+      if (!cond.every((clause) => matchWhere(row, clause as Row))) return false;
+      continue;
+    }
+    if (key === "NOT" && cond && typeof cond === "object") {
+      if (matchWhere(row, cond as Row)) return false;
+      continue;
+    }
+    // Prisma: `field: null` matches a missing value too.
+    if (cond === null) {
+      if (row[key] !== null && row[key] !== undefined) return false;
+      continue;
+    }
+    if (cond && typeof cond === "object" && !(cond instanceof Date) && !Array.isArray(cond)) {
+      if (!matchOperators(row[key], cond as Row)) return false;
+      continue;
+    }
     // plain equality
     if (row[key] !== cond) return false;
+  }
+  return true;
+}
+
+function comparable(value: unknown): number | string | null {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number" || typeof value === "string") return value;
+  return null;
+}
+
+/** Generic scalar operators (in, notIn, lt, lte, gt, gte, not, equals, isEmpty). */
+function matchOperators(value: unknown, ops: Row): boolean {
+  for (const [op, arg] of Object.entries(ops)) {
+    const v = comparable(value);
+    const a = comparable(arg);
+    switch (op) {
+      case "in":
+        if (!(arg as unknown[]).includes(value)) return false;
+        break;
+      case "notIn":
+        if ((arg as unknown[]).includes(value)) return false;
+        break;
+      case "lt":
+        if (v === null || a === null || !(v < a)) return false;
+        break;
+      case "lte":
+        if (v === null || a === null || !(v <= a)) return false;
+        break;
+      case "gt":
+        if (v === null || a === null || !(v > a)) return false;
+        break;
+      case "gte":
+        if (v === null || a === null || !(v >= a)) return false;
+        break;
+      case "not":
+        if (arg === null ? value === null || value === undefined : value === arg) return false;
+        break;
+      case "equals":
+        if (value !== arg) return false;
+        break;
+      case "isEmpty":
+        if (Array.isArray(value) ? (value.length === 0) !== arg : arg !== true) return false;
+        break;
+      case "mode":
+        break;
+      default:
+        // Unknown operator (e.g. relation filters the fake does not model): no match.
+        return false;
+    }
   }
   return true;
 }
@@ -134,6 +200,7 @@ class Table {
         ["projectType", "projectTypeId"],
         ["landType", "landTypeId"],
         ["contractorCategory", "contractorCategoryId"],
+        ["workType", "workTypeId"],
       ] as const) {
         const value = row[relation] as { connect?: { id?: unknown } } | undefined;
         if (value?.connect?.id) row[foreignKey] = value.connect.id;
@@ -377,6 +444,7 @@ export class FakeDb {
   successFee = new Table("successfee");
   followUpToken = new Table("followuptoken");
   landownerConfirmation = new Table("landownerconfirmation");
+  notificationMessage = new Table("notificationmessage");
 
   private transactionChain: Promise<unknown> = Promise.resolve();
 
@@ -412,6 +480,7 @@ export class FakeDb {
       this.successFee,
       this.followUpToken,
       this.landownerConfirmation,
+      this.notificationMessage,
     ];
   }
 

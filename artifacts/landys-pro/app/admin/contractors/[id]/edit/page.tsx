@@ -73,6 +73,9 @@ export default async function EditContractorPage({
             aboutSection: contractor.aboutSection ?? "",
             businessHours: contractor.businessHours ?? "",
             isPro: contractor.isPro,
+            serviceZipCodes: contractor.serviceZipCodes.join(", "),
+            serviceCounties: contractor.serviceCounties.join("\n"),
+            serviceRadiusMiles: contractor.serviceRadiusMiles,
           }}
         />
       </Card>

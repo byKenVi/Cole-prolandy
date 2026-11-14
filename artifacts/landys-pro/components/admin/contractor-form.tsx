@@ -10,7 +10,7 @@ import { createContractor, updateContractor, type ContractorInput } from "@/app/
 import { BusinessHoursPicker } from "@/components/business-hours-picker";
 import { cn } from "@/lib/utils";
 
-const STEPS = ["Basics", "Projects", "Profile"] as const;
+const STEPS = ["Basics", "Service area", "Profile"] as const;
 
 /**
  * Admin contractor form. Project assignment is multi-select and admin-only
@@ -44,6 +44,11 @@ export function ContractorForm({
   const [about, setAbout] = useState(initial.aboutSection ?? "");
   const [hours, setHours] = useState(initial.businessHours ?? "");
   const [isPro, setIsPro] = useState(initial.isPro);
+  const [zips, setZips] = useState(initial.serviceZipCodes ?? "");
+  const [counties, setCounties] = useState(initial.serviceCounties ?? "");
+  const [radius, setRadius] = useState(
+    initial.serviceRadiusMiles ? String(initial.serviceRadiusMiles) : "",
+  );
 
   const isCreate = mode === "create";
 
@@ -59,7 +64,9 @@ export function ContractorForm({
       if (!contractorCategoryId) return "Choose one contractor category.";
     }
     if (s === 1) {
-      if (projectIds.length === 0) return "Assign at least one project.";
+      if (radius && (!/^\d+$/.test(radius) || Number(radius) < 1 || Number(radius) > 500)) {
+        return "Radius must be a whole number of miles between 1 and 500.";
+      }
     }
     return null;
   }
@@ -82,8 +89,9 @@ export function ContractorForm({
         return;
       }
     }
-    if (projectIds.length === 0) {
-      setMessage("Assign at least one project.");
+    const radiusError = validateStep(1);
+    if (radiusError) {
+      setMessage(radiusError);
       return;
     }
     setMessage(null);
@@ -96,6 +104,9 @@ export function ContractorForm({
       aboutSection: about,
       businessHours: hours,
       isPro,
+      serviceZipCodes: zips,
+      serviceCounties: counties,
+      serviceRadiusMiles: radius ? Number(radius) : null,
     };
     startTransition(async () => {
       const res =
@@ -183,19 +194,55 @@ export function ContractorForm({
         <section className="flex flex-col gap-6">
           {isCreate && (
             <StepTitle
-              title="Assigned projects"
-              subtitle="Which jobs should they receive leads for? Select one or more."
+              title="Service area"
+              subtitle="Where does this contractor work? Leads are sent only inside this area."
             />
           )}
-          {!isCreate && (
-            <div>
-              <Label>Assigned projects</Label>
-              <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
-                Determines which leads this contractor receives. Multi-select allowed.
-              </p>
-            </div>
-          )}
-          <div className="flex flex-col gap-2">
+          <div>
+            <Label htmlFor="zips">Service ZIP codes</Label>
+            <Textarea
+              id="zips"
+              className="min-h-[90px] text-lg"
+              value={zips}
+              onChange={(e) => setZips(e.target.value)}
+              placeholder="75948, 75959, 75931"
+            />
+            <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
+              Separate with commas. A lead matches when the property is within the radius of any of these ZIPs.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="radius">Radius around those ZIPs (miles)</Label>
+            <Input
+              id="radius"
+              inputMode="numeric"
+              className="h-14 max-w-[200px] text-lg"
+              value={radius}
+              onChange={(e) => setRadius(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="Default"
+            />
+            <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
+              Leave empty to use the default radius from Settings.
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="counties">Service counties</Label>
+            <Textarea
+              id="counties"
+              className="min-h-[90px] text-lg"
+              value={counties}
+              onChange={(e) => setCounties(e.target.value)}
+              placeholder={"Sabine County, TX\nNewton County, TX"}
+            />
+            <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
+              One per line. Contractors synced from landys.co get their area from their landys.co profile.
+            </p>
+          </div>
+          <details className="rounded-sm border border-border px-4 py-3">
+            <summary className="cursor-pointer text-base text-text">
+              Legacy land projects (optional{projectIds.length ? `, ${projectIds.length} selected` : ""})
+            </summary>
+          <div className="mt-3 flex flex-col gap-2">
             {contractorTypes.length === 0 && (
               <p className="text-sm text-text-muted">No projects in the catalog yet.</p>
             )}
@@ -245,6 +292,7 @@ export function ContractorForm({
               </Select>
             </div>
           )}
+          </details>
         </section>
       )}
 
