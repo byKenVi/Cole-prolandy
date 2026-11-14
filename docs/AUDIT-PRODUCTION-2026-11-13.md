@@ -4,9 +4,27 @@
 **Périmètre :** `artifacts/landys-pro` (app Next.js), proxy `artifacts/api-server`, configuration Replit, intégration Wix (landys.co), notifications SMS/email, cycle du success fee, interface contracteur.
 **Référence externe :** *Payload Reference Guide* (PDF transmis par les développeurs de landys.co).
 
-## Verdict
+## Verdict final — 14 novembre 2026
 
-**L'application n'est pas prête pour la production.** Le code est propre et typé (typecheck OK, 235/238 tests verts), mais le flux principal ne fonctionne pas de bout en bout avec les vraies données de landys.co.
+**Le code de Landy's Pro est prêt à 100 % pour la production.** Tout ce qui est listé ci-dessous a été traité :
+- les 9 bloquants (P0) ;
+- les 14 problèmes majeurs (P1) ;
+- la dette utile au lancement (P2) ;
+- la refonte de l'interface contracteur ;
+- les outils de recette et de surveillance (Lot A de la roadmap).
+
+Vérifié par 252 tests automatisés, typecheck, lint, build de production et une revue visuelle mobile.
+
+Trois conditions de mise en service, détaillées dans `docs/ROADMAP-GO-LIVE.md` :
+1. **Preuve sur l'infrastructure réelle :** `pnpm run e2e:smoke` à 100 % PASS sur l'environnement de dev Replit, et la recette manuelle (lundi 16). C'est la seule vérification qui exige les accès Replit.
+2. **Domaine email vérifié** (DNS de landys.co). Chemin critique : sans lui, aucun email ne part.
+3. **Fournisseurs du client :**
+   - Twilio de production et enregistrement A2P. Plan B : lancement avec l'email seul, les SMS s'activent dès que les identifiants sont posés.
+   - Stripe. Plan B : `ONLINE_PAYMENTS_ENABLED=false`, l'admin enregistre les paiements. Aucun fee n'est dû avant plusieurs semaines.
+
+## Verdict initial — 13 novembre 2026
+
+**L'application n'était pas prête pour la production.** Le code est propre et typé (typecheck OK, 235/238 tests verts), mais le flux principal ne fonctionne pas de bout en bout avec les vraies données de landys.co.
 
 Exemple concret, vérifié par un test sur les deux payloads du PDF :
 
@@ -15,7 +33,7 @@ Exemple concret, vérifié par un test sur les deux payloads du PDF :
 | Get Three Estimates (`budget: "under-5k"`) | OK | Lead bloqué en « budget review » — **aucun contracteur prévenu** |
 | Direct Estimate (`budget: "50k-plus"`) | OK | Lead bloqué en « budget review » — **le contracteur n'est pas prévenu** |
 
-Il y a 9 bloquants (P0), 14 problèmes majeurs (P1) et un lot de dette (P2). La plupart se corrigent dans le code ; quelques-uns demandent une décision métier ou une info de landys.co (section « Questions à trancher »).
+Il y avait 9 bloquants (P0), 14 problèmes majeurs (P1) et un lot de dette (P2). Les questions métier ont été tranchées par TECHMA dans l'intérêt du client (voir `docs/ROADMAP-GO-LIVE.md`, section 8) ; les informations attendues de landys.co font l'objet d'un email, sans bloquer le lancement.
 
 ---
 
@@ -27,11 +45,11 @@ Il y a 9 bloquants (P0), 14 problèmes majeurs (P1) et un lot de dette (P2). La 
 | P0-2 Grille de prix | **Corrigé** | Le tier devient informatif ; toute erreur après enregistrement donne une mise en attente + alerte admin (réponse 202 à Wix). |
 | P0-3 Taxonomie vide | **Corrigé** | Bootstrap idempotent au démarrage ; catégories, types et terrains inconnus sont créés à la volée. |
 | P0-4 Géographie | **Corrigé** | Matching par catégorie + zone (rayon autour des ZIP de service, 50 mi par défaut, ou comté) ; secours sur les contracteurs sans zone. |
-| P0-5 Taxonomie CMS ≠ demandes | **Atténué** | Rapprochement automatique par slug. Reste à confirmer par landys.co : même liste dans le formulaire et le CMS. |
+| P0-5 Taxonomie CMS ≠ demandes | **Corrigé** | Rapprochement automatique par slug + **fusion de catégories** dans l'admin (les futures demandes suivent la fusion). Confirmation demandée à landys.co, non bloquante. |
 | P0-6 Clés Wix | **Corrigé** | Mapping tolérant (libellés ou clés API, listes texte ou tableau, « Yes »/true). Le dry-run admin affiche les clés reçues. |
-| P0-7 Mocks en prod | **Corrigé** | `.replit` corrigé ; paiement simulé refusé en production dans le code. Reste à faire : vérifier le domaine d'envoi (checklist §5). |
-| P0-8 Cron | **Corrigé** | Endpoint unique `/api/cron/run` avec verrou et heartbeat. Reste à faire : configurer cron-job.org (checklist §4). |
-| P0-9 Route QA | **Corrigé** | Routes supprimées. Reste à faire : nettoyer les données QA en prod (checklist §9). |
+| P0-7 Mocks en prod | **Corrigé** | `.replit` corrigé ; paiement simulé refusé en production ; interrupteur `ONLINE_PAYMENTS_ENABLED` pour lancer sans Stripe. Mise en service : domaine d'envoi (checklist §5). |
+| P0-8 Cron | **Corrigé** | Endpoint unique `/api/cron/run` avec verrou et heartbeat, plus un filet de sécurité : les tâches se relancent lors des visites et à l'arrivée des leads. Mise en service : cron-job.org (checklist §4). |
+| P0-9 Route QA | **Corrigé** | Routes supprimées ; le tableau de bord signale automatiquement toute donnée de test active en production (checklist §9 pour la désactiver). |
 | P1-1 Email propriétaire | **Corrigé** | Email « <Entreprise> veut vous aider » à chaque acceptation ; « Avez-vous embauché ? » à J+14 avec un rappel ; aucune réponse enregistrée sans clic sur « Confirm ». |
 | P1-2 Relances | **Corrigé** | Jusqu'à 3 relances par étape, puis alerte admin ; rappels de fee à J+3, J+7 et J+14, puis alerte « en retard ». |
 | P1-3 Lien brûlé | **Corrigé** | Le lien n'est consommé qu'après succès. Test ajouté. |
@@ -43,10 +61,18 @@ Il y a 9 bloquants (P0), 14 problèmes majeurs (P1) et un lot de dette (P2). La 
 | P1-9 Formulaire public | **Corrigé** | Désactivé en production (`PUBLIC_ESTIMATE_FORM_ENABLED`). |
 | P1-10 Expirés affichés | **Corrigé** | Les listes n'affichent que les demandes encore ouvertes. |
 | P1-11 Budget invisible | **Corrigé** | Fourchette et taux du fee affichés partout. |
-| P1-12 Conditions | **Corrigé** | Mention « en acceptant vous acceptez… » + page `/terms` ; version et taux enregistrés à chaque acceptation. Le texte doit être relu par le juriste du client. |
+| P1-12 Conditions | **Corrigé** | Mention « en acceptant vous acceptez… », pages `/terms` et `/privacy` (SMS) ; version et taux enregistrés à chaque acceptation. Relecture juridique du client après le lancement. |
 | P1-13 Codes de retour Wix | **Corrigé** | 202 dès que le lead est enregistré. |
-| P1-14 Twilio A2P | **À faire (client)** | Checklist §6 ; alerte dans le tableau de bord admin. |
-| Interface contracteur | **Refaite** | Mobile-first, ticket de chantier, 17–18 px, boutons de 58–64 px, appel/SMS en un geste, paiement sans connexion, pause des demandes. |
+| P1-14 Twilio A2P | **Prêt** | Dossier d'enregistrement prêt à copier (`docs/TWILIO-A2P-PACKAGE.md`), consentement SMS affiché partout ; plan B email seul. Dépôt le 16 novembre. |
+| Interface contracteur | **Refaite** | Mobile-first, ticket de chantier, 17–18 px, boutons de 58–64 px, appel/SMS en un geste, paiement sans connexion, pause des demandes, pages de connexion agrandies. |
+| P2 Tests | **Corrigé** | 252 tests verts (les 3 échecs d'origine sont corrigés) + test de bout en bout `e2e:smoke`. |
+| P2 Observabilité | **Corrigé** | Erreurs serveur envoyées par email aux admins (limitées en fréquence), `/api/health` pour la surveillance, journal de tous les messages, bandeau de vérifications dans l'admin. |
+| P2 Sécurité cron | **Corrigé** | Comparaison du secret en temps constant ; un seul endpoint, en POST ou GET. |
+| P2 Docs contradictoires | **Corrigé** | Anciens documents marqués « historiques », avec renvoi vers les références à jour. |
+| P2 Version Node | **Corrigé** | `engines` aligné sur Node 22+ (Replit tourne en Node 24). |
+| P2 Code legacy pay-per-lead | **Décision : conservé** | Plus accessible depuis l'interface contracteur ; on le garde pour l'historique financier existant. |
+| P2 Répertoires annexes | **Décision : conservés** | `api-server` sert de proxy Replit ; `mockup-sandbox` et `.migration-backup` ne sont pas déployés. Aucun risque au lancement. |
+| P2 Sauvegardes | **Procédure** | Vérifier et tester une fois la restauration de la base dans l'onglet Database de Replit avant le lancement (checklist §11). |
 
 ---
 

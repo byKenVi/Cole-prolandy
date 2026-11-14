@@ -40,7 +40,8 @@ Vérification : après le déploiement, les logs contiennent `[bootstrap] refere
 | `WIX_ESTIMATE_API_SECRET` | déjà partagé avec landys.co | ok |
 | `WIX_SITE_ID`, `WIX_API_AUTHORIZATION` | déjà présents | ok |
 | `WIX_CONTRACTOR_COLLECTION_ID` | seulement si la collection ne s'appelle pas `AllContractors` | à vérifier |
-| `RESEND_FROM` | `Landy's Pro <pros@landys.co>`, une fois le domaine vérifié (étape 5) | **à créer** |
+| `RESEND_FROM` | `Landy's Pro <pros@mail.landys.co>`, une fois le domaine vérifié (étape 5) | **à créer** |
+| `ONLINE_PAYMENTS_ENABLED` | `false` tant que le compte Stripe du client n'est pas connecté (plan B : l'admin enregistre les paiements) ; à supprimer ensuite | selon Stripe |
 | `TWILIO_MESSAGING_SERVICE_SID` | `MG…`, une fois l'A2P validé (étape 6) | **à créer** |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | compte de production (pas d'essai) | à vérifier |
 | Stripe | connecteur Replit en mode **live** pour la production | à vérifier |
@@ -64,6 +65,8 @@ Vérification : le tableau de bord admin affiche un bandeau « Action needed » 
 Ce cron gère : l'expiration des leads, les relances « Avez-vous eu le job ? » et « Avez-vous été payé ? », les rappels de fee, l'email « Avez-vous embauché ? » au propriétaire, les invitations programmées, la synchro landys.co (toutes les 6 h) et la file d'envoi des SMS et emails.
 
 Vérification : admin → **Messages** affiche « Scheduler last ran: … » mis à jour toutes les 10 minutes.
+
+Ajouter un second job cron-job.org en **surveillance** : `GET https://<domaine>/api/health` toutes les 5 minutes, alerte email si ce n'est pas 200. Par ailleurs, même si le cron externe tombe, les tâches se relancent d'elles-mêmes lors des visites admin ou contracteur et à l'arrivée des leads. Les erreurs serveur sont envoyées par email aux admins.
 
 ## 5. Domaine d'envoi des emails (Resend)
 
@@ -110,6 +113,19 @@ L'ancienne route QA (supprimée) a pu créer en production :
 
 ## 10. Test de bout en bout (avec un vrai téléphone)
 
+**Automatique (en dev, à chaque mise à jour) :**
+
+```bash
+cd artifacts/landys-pro
+pnpm run e2e:smoke          # ajoute -- --keep pour garder les données de test
+```
+
+Le script rejoue tout le parcours sur la base de dev et le serveur de dev. Il affiche PASS ou FAIL étape par étape. Tous les SMS et emails arrivent sur `DEVELOPMENT_NOTIFICATION_PHONE` et `DEVELOPMENT_NOTIFICATION_EMAIL`. Il refuse de tourner contre la production.
+
+Avant de lancer le script, admin → **Messages** → « Send a test message » : un SMS et un email doivent arriver.
+
+**Manuel (recette à deux, sur téléphone) :**
+
 1. Créer un contracteur de test (votre email et votre mobile, ZIP de service = le vôtre, catégorie Roofing).
 2. Envoyer une demande avec ce ZIP, depuis landys.co ou par `curl` (payload du PDF, `budget: "under-5k"`).
 3. Vérifier, dans l'ordre :
@@ -117,10 +133,12 @@ L'ancienne route QA (supprimée) a pu créer en production :
    - le lien ouvre la demande sans connexion ;
    - « Accept this job » affiche le contact ;
    - le propriétaire reçoit « <Entreprise> wants to help with your project ».
-4. Admin → Settings : passer temporairement « followUpOutcomeDelayHours » à 1 pour recevoir « Did you get the job? », répondre « Yes » avec un prix, puis « Has the homeowner paid you? » → « Yes ». Le SMS « Your success fee is due » doit arriver, puis la page de paiement Stripe.
-5. Remettre les délais par défaut (72 h, 336 h).
+4. Admin → fiche du lead → **Follow-up tools** : « Send "Did you get the job?" now », répondre « Yes » avec un prix sur le téléphone, puis « Send "Have you been paid?" now » → « Yes ». Le SMS « Your success fee is due » doit arriver, puis la page de paiement (Stripe test en dev).
+5. Même fiche : « Send "Did you hire someone?" to the homeowner now », puis répondre depuis l'email reçu.
 
-## 11. Routine après lancement
+## 11. Sauvegarde et routine après lancement
+
+- **Avant le lancement :** dans l'onglet Database de Replit (production), vérifier que la restauration à un instant donné (point-in-time) est disponible et noter la procédure. La tester une fois sur la base de dev.
 
 - Chaque jour : tableau de bord admin, bandeau des vérifications, puis Leads « en attente de revue ».
 - Chaque semaine : admin → Messages → onglet **Failed**.

@@ -1,3 +1,5 @@
+> **Historical document (before 2026-11-13).** Parts of it no longer match the code (Supabase, pay-per-lead pricing, old cron routes, blocked Wix sync). Current references: `docs/ROADMAP-GO-LIVE.md`, `docs/GO-LIVE-CHECKLIST.md`, `docs/AUDIT-PRODUCTION-2026-11-13.md`, `docs/LANDYS-CO-INTEGRATION-NOTES.md`.
+
 # Replit Agent — Landy's Pro Production Deployment Handoff
 
 **This is an existing production deployment. Do not rebuild or re-architect working systems. Your job is deployment/configuration/integration validation.**
