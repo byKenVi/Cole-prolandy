@@ -10,7 +10,7 @@ import { Notice, PageHead } from "@/components/pro/ui";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Job request - Landy's Pro", robots: { index: false } };
+export const metadata = { title: "Job request", robots: { index: false, follow: false } };
 
 /**
  * Opened from the new-job text message. Works without an account: the token in

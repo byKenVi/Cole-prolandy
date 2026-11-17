@@ -5,27 +5,28 @@ import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand-logo";
 import { authMode } from "@/lib/auth";
 import { publicEstimateFormEnabled } from "@/lib/public-estimate";
+import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
 
 const STEPS = [
   {
     img: "/icon-job-mono.png",
-    title: "Landy's finds the opportunity",
-    body: "A landowner nearby requests work that matches what you do.",
+    title: "A homeowner asks for an estimate",
+    body: "A homeowner or landowner near you requests work on landys.co that matches what you do.",
   },
   {
     img: "/icon-text-mono.png",
-    title: "We connect you with the landowner",
-    body: "See the job details and success-fee rate. Accept only the ones you want.",
+    title: "You get a text and an email",
+    body: "See the job, the budget and the success-fee rate. Accept only the ones you want, for free.",
   },
   {
     img: "/icon-accept-mono.png",
     title: "You win the work",
-    body: "Complete the job. The landowner pays you directly — outside Landy's.",
+    body: "Call the homeowner, agree on the price and do the work. They pay you directly.",
   },
   {
     img: "/icon-job-mono.png",
     title: "You pay Landy's when you get paid",
-    body: "After the landowner pays you, pay Landy's the applicable success fee. No lead fees. No subscription.",
+    body: "After the homeowner pays you, pay Landy's the success fee. No lead fees. No subscription.",
   },
 ];
 
@@ -40,8 +41,43 @@ export default function LandingPage() {
   const signInHref = clerk ? "/sign-in" : "/home";
   const accessHref = clerk ? "/sign-up" : "/admin";
 
+  const base = siteUrl();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://www.landys.co/#organization",
+        name: "Landy's",
+        url: "https://www.landys.co",
+        logo: `${base}/landys-logo.png`,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${base}/#website`,
+        name: SITE_NAME,
+        url: base,
+        publisher: { "@id": "https://www.landys.co/#organization" },
+      },
+      {
+        "@type": "Service",
+        name: SITE_NAME,
+        serviceType: "Job requests for contractors",
+        description: SITE_DESCRIPTION,
+        provider: { "@id": "https://www.landys.co/#organization" },
+        areaServed: { "@type": "Country", name: "United States" },
+        url: base,
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-bg">
+      <script
+        type="application/ld+json"
+        // JSON-LD for Google rich results; "<" is escaped so the payload cannot close the tag.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
+      />
       <div className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-8 lg:px-10">
         <header className="flex items-center justify-between">
           <BrandLogo className="h-8" priority />
@@ -60,14 +96,16 @@ export default function LandingPage() {
 
         <section className="grid items-center gap-10 py-12 md:grid-cols-2 md:py-16">
           <div className="flex flex-col gap-4">
-            <p className="font-script text-4xl leading-none text-accent">More quality jobs</p>
-            <h1 className="font-sans text-5xl font-black leading-[0.95] tracking-tight text-[#4A3E2D] sm:text-6xl">
-              Less hassle.
+            <h1 className="flex flex-col gap-3">
+              <span className="font-script text-4xl leading-none text-accent">More quality jobs.</span>
+              <span className="font-sans text-5xl font-black leading-[0.95] tracking-tight text-[#4A3E2D] sm:text-6xl">
+                Less hassle.
+              </span>
             </h1>
-            <p className="mt-1 max-w-md text-base leading-relaxed text-text-muted">
-              Landy&apos;s Pro connects you with local landowners — by text and email. Accept the
-              opportunities you want. Pay Landy&apos;s only after you&apos;ve been paid for the
-              work.
+            <p className="mt-1 max-w-md text-lg leading-relaxed text-text-muted">
+              Landy&apos;s Pro sends you estimate requests from homeowners and landowners near you,
+              by text and email. Accept the jobs you want. Pay Landy&apos;s only after you&apos;ve
+              been paid for the work.
             </p>
             <ul className="mt-2 space-y-2">
               {PROMISES.map((item) => (
@@ -89,14 +127,14 @@ export default function LandingPage() {
               </Link>
             </div>
             <p className="mt-2 flex items-center gap-1.5 text-sm text-text-muted">
-              <MapPin className="h-4 w-4" /> Built for local land-service pros
+              <MapPin className="h-4 w-4" aria-hidden /> Built for local contractors and land-service pros
             </p>
           </div>
 
           <div className="relative">
             <Image
               src="/hero-3d-mono.png"
-              alt="Landys 3D tractor on a plot of land"
+              alt="Illustration of a tractor working on a plot of land"
               width={1024}
               height={768}
               priority
@@ -127,8 +165,8 @@ export default function LandingPage() {
               How it works for pros
             </h2>
             <p className="mt-2 text-sm text-text-muted">
-              Landy&apos;s does not process payment from the landowner to you. That happens
-              directly between you and the landowner.
+              Landy&apos;s does not handle the homeowner&apos;s payment to you. That happens
+              directly between you and the homeowner.
             </p>
           </div>
 

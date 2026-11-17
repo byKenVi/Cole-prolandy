@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { ProShell } from "@/components/pro/shell";
 
 export const dynamic = "force-dynamic";
+export const metadata = { robots: { index: false, follow: false } };
 
 export default async function ContractorLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();

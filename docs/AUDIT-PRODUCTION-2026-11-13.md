@@ -72,6 +72,8 @@ Il y avait 9 bloquants (P0), 14 problèmes majeurs (P1) et un lot de dette (P2).
 | P2 Version Node | **Corrigé** | `engines` aligné sur Node 22+ (Replit tourne en Node 24). |
 | P2 Code legacy pay-per-lead | **Décision : conservé** | Plus accessible depuis l'interface contracteur ; on le garde pour l'historique financier existant. |
 | P2 Répertoires annexes | **Décision : conservés** | `api-server` sert de proxy Replit ; `mockup-sandbox` et `.migration-backup` ne sont pas déployés. Aucun risque au lancement. |
+| P2 Code legacy et fichiers morts (17 nov.) | **Supprimé** | Ancienne copie de l'app (`.migration-backup`), prompts collés (`attached_assets`), captures, images inutilisées ; recharge de portefeuille, grille de prix pay-per-lead, pages admin pricing/finance, composants et tests associés ; 30 % de CSS mort. Les tables historiques (wallet, prix) restent en base. |
+| SEO et standards Google (17 nov.) | **Fait** | Titre, description, canonique, Open Graph et Twitter, image de partage, JSON-LD (Organization, WebSite, Service), `robots.txt` et `sitemap.xml` dynamiques ; `noindex` (en-tête HTTP + meta) sur toutes les pages privées et à jeton ; polices auto-hébergées (plus de requête bloquante vers Google Fonts) ; en-têtes de sécurité (HSTS, nosniff, Referrer-Policy, anti-iframe) ; contraste AA ; lint obligatoire au build ; vérification Search Console par variable d'environnement. |
 | P2 Sauvegardes | **Procédure** | Vérifier et tester une fois la restauration de la base dans l'onglet Database de Replit avant le lancement (checklist §11). |
 
 ---

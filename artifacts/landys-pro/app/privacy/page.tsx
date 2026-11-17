@@ -1,7 +1,12 @@
 import { PublicFrame } from "@/components/pro/shell";
 import { PageHead, Section } from "@/components/pro/ui";
 
-export const metadata = { title: "Privacy and text messages - Landy's Pro" };
+export const metadata = {
+  title: "Privacy and text messages",
+  description:
+    "How Landy's Pro uses contractor and homeowner information, and how our job request text messages work (reply STOP to opt out).",
+  alternates: { canonical: "/privacy" },
+};
 
 /**
  * Privacy notice for Landy's Pro, including the SMS terms carriers require for

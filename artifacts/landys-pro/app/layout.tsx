@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-page-custom-font -- root App Router layout loads fonts globally */
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
@@ -6,10 +5,30 @@ import "./pro.css";
 import { DevBar } from "@/components/dev/dev-bar";
 import { ToastProvider } from "@/components/ui/toast";
 import { authMode } from "@/lib/auth";
+import { fontVariables } from "@/lib/fonts";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Landy's Pro",
-  description: "Land-service leads for contractors. Simple for the pro, premium for the brand.",
+  metadataBase: new URL(siteUrl()),
+  title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
+    url: "/",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
+  robots: { index: true, follow: true },
+  // Google Search Console "HTML tag" verification: set GOOGLE_SITE_VERIFICATION
+  // (the content value only) in the Replit secrets, then redeploy.
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
@@ -32,15 +51,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const clerk = authMode() === "clerk";
   const tree = (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Great+Vibes&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
       <body suppressHydrationWarning>
         {!clerk && <DevBar />}
         <ToastProvider>{children}</ToastProvider>

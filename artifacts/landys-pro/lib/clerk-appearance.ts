@@ -34,7 +34,7 @@ export const clerkAppearance: ClerkAppearance = {
     colorTextOnPrimaryBackground: "#FFFFFF",
     // Spacing & shape
     borderRadius: "0.75rem",
-    fontFamily: '"Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif',
+    fontFamily: 'var(--nf-rubik), "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif',
     // Contractors are often older and on phones: 17px base, large controls.
     fontSize: "1.0625rem",
     fontWeight: {

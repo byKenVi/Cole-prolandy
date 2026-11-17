@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
   // real runtime crashes in development that mislead debugging.
   reactStrictMode: false,
   eslint: {
-    // Lint is run separately in CI; don't fail production builds on lint.
-    ignoreDuringBuilds: true,
+    // Lint is part of the build: a lint error stops a broken deploy.
+    ignoreDuringBuilds: false,
   },
   // Allow Replit's proxied preview origins so Next.js doesn't warn about
   // cross-origin /_next/* requests in the iframe preview.
@@ -49,6 +49,48 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "3mb",
     },
+  },
+  poweredByHeader: false,
+  async headers() {
+    // Only "/", "/terms" and "/privacy" may appear in Google. Every other page is
+    // private (account pages, admin, and links carrying a personal token), so it
+    // gets a noindex header even if a link to it leaks somewhere public.
+    const noindex = { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" };
+    const noFraming = { key: "X-Frame-Options", value: "DENY" };
+    const privatePages = [
+      "/accept/:path*",
+      "/follow-up/:path*",
+      "/admin/:path*",
+      "/dashboard/:path*",
+      "/opportunities/:path*",
+      "/jobs/:path*",
+      "/fees/:path*",
+      "/profile/:path*",
+      "/home/:path*",
+      "/leads/:path*",
+      "/wallet/:path*",
+      "/sign-in/:path*",
+      "/sign-up/:path*",
+      "/post-auth/:path*",
+      "/deactivated/:path*",
+      "/dev/:path*",
+      "/storage/:path*",
+      "/api/:path*",
+    ];
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+      ...privatePages.map((source) => ({ source, headers: [noindex, noFraming] })),
+      // The public estimate form may be embedded in landys.co, so it is only noindexed.
+      { source: "/estimate/:path*", headers: [noindex] },
+    ];
   },
 };
 

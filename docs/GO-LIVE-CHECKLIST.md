@@ -136,7 +136,18 @@ Avant de lancer le script, admin → **Messages** → « Send a test message » 
 4. Admin → fiche du lead → **Follow-up tools** : « Send "Did you get the job?" now », répondre « Yes » avec un prix sur le téléphone, puis « Send "Have you been paid?" now » → « Yes ». Le SMS « Your success fee is due » doit arriver, puis la page de paiement (Stripe test en dev).
 5. Même fiche : « Send "Did you hire someone?" to the homeowner now », puis répondre depuis l'email reçu.
 
-## 11. Sauvegarde et routine après lancement
+## 11. Google Search Console
+
+Seules `/`, `/terms` et `/privacy` sont indexables ; toutes les autres pages envoient `noindex`.
+
+1. Search Console → **Ajouter une propriété** → « Préfixe de l'URL » → `https://<domaine>`.
+2. Méthode « Balise HTML » : copier la valeur `content="..."` dans le secret Replit `GOOGLE_SITE_VERIFICATION`, puis redéployer et cliquer sur « Valider ».
+3. **Sitemaps** → soumettre `sitemap.xml`.
+4. **Inspection de l'URL** sur `/` → « Demander une indexation ».
+
+Vérifier ensuite qu'une page privée n'est pas indexable : inspecter `/accept/test`, qui doit indiquer « Exclue par la balise noindex ».
+
+## 12. Sauvegarde et routine après lancement
 
 - **Avant le lancement :** dans l'onglet Database de Replit (production), vérifier que la restauration à un instant donné (point-in-time) est disponible et noter la procédure. La tester une fois sur la base de dev.
 

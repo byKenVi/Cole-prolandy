@@ -11,7 +11,7 @@ import { OutcomeActions, PaidActions, PayFeeButton } from "@/components/pro/job-
 import { Facts, Notice, PageHead, Perforation } from "@/components/pro/ui";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Quick update - Landy's Pro", robots: { index: false } };
+export const metadata = { title: "Quick update", robots: { index: false, follow: false } };
 
 function JobStub({ view, children }: { view: MatchView; children: React.ReactNode }) {
   return (

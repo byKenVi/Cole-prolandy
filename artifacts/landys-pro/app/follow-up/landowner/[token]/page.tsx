@@ -6,7 +6,7 @@ import { LandownerAnswer } from "@/components/pro/landowner-answer";
 import { Notice, PageHead } from "@/components/pro/ui";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Your project - Landy's", robots: { index: false } };
+export const metadata = { title: "Your project", robots: { index: false, follow: false } };
 
 /** Homeowner: "Did you hire one of these pros?" (linked from our email). */
 export default async function LandownerConfirmPage({

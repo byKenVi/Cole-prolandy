@@ -7,6 +7,15 @@ import { getAdminTheme, getAdminSidebarCollapsed } from "@/lib/admin-theme.serve
 import { formatMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Admin", robots: { index: false, follow: false } };
+
+/**
+ * The admin UI still names fonts literally in inline styles ("Inter", "Rubik"),
+ * so it keeps the Google Fonts stylesheet. Public and contractor pages use the
+ * self-hosted fonts from lib/fonts.ts instead (faster, no layout shift).
+ */
+const ADMIN_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -33,6 +42,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   await runScheduledJobsIfStale();
 
   return (
+    <>
+    <link rel="stylesheet" href={ADMIN_FONTS_HREF} precedence="default" />
     <AdminShell
       initialTheme={theme}
       initialCollapsed={collapsed}
@@ -49,5 +60,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     >
       {children}
     </AdminShell>
+    </>
   );
 }

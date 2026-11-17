@@ -5,7 +5,12 @@ import { PublicFrame } from "@/components/pro/shell";
 import { PageHead, Section } from "@/components/pro/ui";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "How the success fee works - Landy's Pro" };
+export const metadata = {
+  title: "How the success fee works",
+  description:
+    "Receiving and accepting job requests on Landy's Pro is free. Contractors pay a small success fee only when a homeowner hires them and has paid them.",
+  alternates: { canonical: "/terms" },
+};
 
 /**
  * Plain-language success-fee terms shown next to every Accept button.
