@@ -47,7 +47,8 @@ const nextConfig: NextConfig = {
   // Logo upload allows up to 2 MB; default Server Action body cap is 1 MB.
   experimental: {
     serverActions: {
-      bodySizeLimit: "3mb",
+      // 10 MB: an admin attaches phone photos to a request entered by hand.
+      bodySizeLimit: "10mb",
     },
   },
   poweredByHeader: false,

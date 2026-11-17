@@ -120,6 +120,33 @@ export async function ensureCategory(db: DbClient, raw: string | null | undefine
   }
 }
 
+/**
+ * The first EXISTING category among several spellings (admin merges honoured).
+ * Never creates one: an inferred category nobody belongs to would only hide
+ * the request from the admins who can route it by hand.
+ */
+export async function findExistingCategory(
+  db: DbClient,
+  candidates: readonly string[],
+): Promise<TaxonomyRef | null> {
+  if (candidates.length === 0) return null;
+  const aliases = await loadCategoryAliases(db);
+  for (const name of candidates) {
+    const code = slugifyTaxonomy(name);
+    if (!code) continue;
+    const row = await db.contractorCategory.findUnique({
+      where: { code: aliases[code] ?? code },
+      select: { id: true, code: true, name: true },
+    });
+    if (row) return { ...row, created: false };
+  }
+  const byName = await db.contractorCategory.findFirst({
+    where: { name: { in: [...candidates], mode: "insensitive" } },
+    select: { id: true, code: true, name: true },
+  });
+  return byName ? { ...byName, created: false } : null;
+}
+
 export async function ensureWorkType(db: DbClient, raw: string | null | undefined): Promise<TaxonomyRef | null> {
   const resolved = raw ? resolveCodeAndName("workType", raw) : null;
   if (!resolved) return null;

@@ -1,16 +1,36 @@
-import { distanceMiles, lookupZip, lookupZips, normalizeZip, type ZipInfo } from "@/lib/geo/zip";
+import {
+  distanceMiles,
+  lookupCounty,
+  lookupZip,
+  lookupZips,
+  normalizeCountyName,
+  normalizeZip,
+  type CountyInfo,
+  type ZipInfo,
+} from "@/lib/geo/zip";
+
+export { normalizeCountyName };
 
 /**
  * Service-area matching.
  *
- * A contractor covers a lead when ANY of these is true:
- *   1. the lead ZIP is one of the contractor's service ZIPs;
- *   2. the lead ZIP is within the contractor's radius (or the global default)
- *      of one of their service ZIPs;
- *   3. the lead ZIP is inside one of the contractor's service counties.
+ * A request is located by a ZIP (older forms, phone requests) or by a county
+ * (the current landys.co form only asks for the county).
+ *
+ * For a ZIP, a contractor covers the request when ANY of these is true:
+ *   1. the ZIP is one of the contractor's service ZIPs;
+ *   2. the ZIP is within the contractor's radius (or the global default) of
+ *      one of their service ZIPs;
+ *   3. the ZIP is inside one of the contractor's service counties.
+ *
+ * For a county, when ANY of these is true:
+ *   1. the county is one of the contractor's service counties;
+ *   2. one of the contractor's service ZIPs is inside the county;
+ *   3. the county's centre is within the contractor's radius of one of their
+ *      service ZIPs.
  *
  * Contractors with no service area at all are only used as a fallback, when
- * nobody with a declared area covers the lead (see `selectContractorsForZip`).
+ * nobody with a declared area covers the request (see `selectContractorsForLocation`).
  */
 
 export type ServiceAreaContractor = {
@@ -29,18 +49,6 @@ const US_STATE_CODES = new Set([
 ]);
 
 export type ParsedCounty = { name: string; state: string | null };
-
-/** Normalize a county name for comparison: "St. Mary Parish" → "saint mary". */
-export function normalizeCountyName(raw: string): string {
-  return raw
-    .toLowerCase()
-    .replace(/\b(county|parish|borough|census area|municipality|city and borough)\b/g, " ")
-    .replace(/\bst\.?\s/g, "saint ")
-    .replace(/\bste\.?\s/g, "sainte ")
-    .replace(/[^a-z0-9 ]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 /** Parse "Sabine County, TX", "Sabine County", "Sabine, TX", "Sabine County TX". */
 export function parseCounty(raw: string): ParsedCounty | null {
@@ -161,6 +169,83 @@ export async function coverageFor(
   }
 
   return { covered: false, reason: null, distanceMiles: closest === null ? null : Math.round(closest) };
+}
+
+/** Does the contractor cover a request located by county (see the header)? */
+export async function coverageForCounty(
+  contractor: ServiceAreaContractor,
+  county: CountyInfo,
+  defaultRadiusMiles: number,
+): Promise<{ covered: boolean; reason: CoverageReason | null; distanceMiles: number | null }> {
+  const target = normalizeCountyName(county.name);
+  for (const raw of contractor.serviceCounties) {
+    const parsed = parseCounty(raw);
+    if (!parsed || parsed.name !== target) continue;
+    if (!parsed.state || parsed.state === county.state) {
+      return { covered: true, reason: "county", distanceMiles: 0 };
+    }
+  }
+
+  const zipInfos = await lookupZips(
+    contractor.serviceZipCodes.map((zip) => normalizeZip(zip)).filter((zip): zip is string => Boolean(zip)),
+  );
+  for (const info of zipInfos.values()) {
+    if (info.state === county.state && normalizeCountyName(info.county) === target) {
+      return { covered: true, reason: "zip", distanceMiles: 0 };
+    }
+  }
+
+  const radius =
+    contractor.serviceRadiusMiles && contractor.serviceRadiusMiles > 0
+      ? contractor.serviceRadiusMiles
+      : defaultRadiusMiles;
+  let closest: number | null = null;
+  for (const info of zipInfos.values()) {
+    const d = distanceMiles(county, info);
+    if (closest === null || d < closest) closest = d;
+  }
+  if (closest !== null && closest <= radius) {
+    return { covered: true, reason: "radius", distanceMiles: Math.round(closest) };
+  }
+  return { covered: false, reason: null, distanceMiles: closest === null ? null : Math.round(closest) };
+}
+
+/**
+ * The county a stored location designates ("Sabine County, TX"), or null when
+ * the location is a ZIP or cannot be read. A county without a state is read
+ * as a Texas county: landys.co only serves Texas today.
+ */
+export async function countyOfLocation(location: string | null | undefined): Promise<CountyInfo | null> {
+  if (!location?.trim() || normalizeZip(location)) return null;
+  const parsed = parseCounty(location);
+  if (!parsed) return null;
+  return lookupCounty(parsed.name, parsed.state ?? "TX");
+}
+
+/**
+ * Pick the contractors who should receive a request located by a ZIP or a
+ * county. Contractors with a declared area win; contractors without any area
+ * are a fallback used only when no declared area covers the request.
+ */
+export async function selectContractorsForLocation<T extends ServiceAreaContractor>(
+  contractors: readonly T[],
+  location: string | null | undefined,
+  defaultRadiusMiles: number,
+): Promise<{ eligible: T[]; usedFallback: boolean }> {
+  const county = await countyOfLocation(location);
+  if (!county) return selectContractorsForZip(contractors, location, defaultRadiusMiles);
+  const zoned: T[] = [];
+  const withoutArea: T[] = [];
+  for (const contractor of contractors) {
+    if (!hasServiceArea(contractor)) {
+      withoutArea.push(contractor);
+      continue;
+    }
+    const { covered } = await coverageForCounty(contractor, county, defaultRadiusMiles);
+    if (covered) zoned.push(contractor);
+  }
+  if (zoned.length > 0) return { eligible: zoned, usedFallback: false };
+  return { eligible: withoutArea, usedFallback: withoutArea.length > 0 };
 }
 
 /**

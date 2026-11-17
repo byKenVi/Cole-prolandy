@@ -13,7 +13,15 @@ import { inferBudgetBandFromCents, resolveLeadBudget } from "@/lib/domain/budget
 import { resolveTierForBudgetBand } from "@/lib/domain/tier-resolution";
 import { REVIEW_BLOCKERS } from "@/lib/taxonomy/live-v3";
 import { resolveTaxonomyInputs } from "@/lib/services/live-taxonomy-resolution";
-import { ensureCategory, ensureLandType, ensureWorkType } from "@/lib/services/taxonomy-registry";
+import {
+  ensureCategory,
+  ensureLandType,
+  ensureWorkType,
+  findExistingCategory,
+} from "@/lib/services/taxonomy-registry";
+import { categoryCandidatesForProject } from "@/lib/taxonomy/landys-form";
+import { countyOfLocation } from "@/lib/domain/service-area";
+import { normalizeZip } from "@/lib/geo/zip";
 import { getLeadExpiryHours, getMaxLeadPurchases } from "@/lib/domain/settings";
 import { DomainError, InvalidStateError, NotFoundError } from "@/lib/domain/errors";
 import type { DbClient } from "@/lib/domain/types";
@@ -44,7 +52,9 @@ export type OfficialEstimateIntakeInput = {
   lastName?: string | null;
   phone?: string | null;
   email: string;
-  propertyZip: string;
+  /** One of propertyZip / propertyCounty is required. landys.co sends the county. */
+  propertyZip?: string | null;
+  propertyCounty?: string | null;
   contractorCategoryCode?: string | null;
   landTypeCode: string;
   projectTypeCode: string;
@@ -141,8 +151,15 @@ export async function createOfficialEstimateRequest(
     budgetBand: input.budgetBand,
   });
 
+  const location = await resolvePropertyLocation(input);
+
+  // landys.co sends a project, not a category: infer the category from the
+  // project when none is given (only an existing one, never a new one).
+  const categoryInferred = !clean(input.contractorCategoryCode);
   const [category, workType, landType] = await Promise.all([
-    ensureCategory(prisma, input.contractorCategoryCode),
+    categoryInferred
+      ? findExistingCategory(prisma, categoryCandidatesForProject(input.projectTypeCode))
+      : ensureCategory(prisma, input.contractorCategoryCode),
     ensureWorkType(prisma, input.projectTypeCode),
     ensureLandType(prisma, input.landTypeCode),
   ]);
@@ -176,8 +193,8 @@ export async function createOfficialEstimateRequest(
     lastName,
     landownerEmail: input.email.trim().toLowerCase(),
     landownerPhone: clean(input.phone),
-    propertyLocation: input.propertyZip.trim(),
-    propertyZip: input.propertyZip.trim(),
+    propertyLocation: location.label,
+    propertyZip: location.zip,
     contractorCategory: category ? { connect: { id: category.id } } : undefined,
     landType: landType ? { connect: { id: landType.id } } : undefined,
     workType: workType ? { connect: { id: workType.id } } : undefined,
@@ -226,6 +243,8 @@ export async function createOfficialEstimateRequest(
     routingMode: input.routing.mode,
     category: category?.code ?? null,
     categoryCreated: category?.created ?? false,
+    categoryInferred,
+    location: location.label,
     workType: workType?.code ?? null,
     workTypeCreated: workType?.created ?? false,
     landType: landType?.code ?? null,
@@ -254,6 +273,21 @@ export async function createOfficialEstimateRequest(
     blockers: routed.blockers,
     recipients: routed.recipients,
   };
+}
+
+/**
+ * Where the property is: a ZIP when one is given, otherwise the county
+ * ("Sabine County, TX", spelled from the ZIP dataset when it is known).
+ */
+async function resolvePropertyLocation(
+  input: Pick<OfficialEstimateIntakeInput, "propertyZip" | "propertyCounty">,
+): Promise<{ label: string; zip: string | null }> {
+  const zip = normalizeZip(input.propertyZip);
+  if (zip) return { label: zip, zip };
+  const raw = clean(input.propertyCounty) ?? clean(input.propertyZip);
+  if (!raw) throw new InvalidStateError("A property ZIP or county is required.");
+  const county = await countyOfLocation(raw);
+  return { label: county ? `${county.name} County, ${county.state}` : raw, zip: null };
 }
 
 /** If a direct request names a contractor we have not synced yet, fetch it from Wix now. */

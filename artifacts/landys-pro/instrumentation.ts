@@ -22,7 +22,7 @@ export async function register() {
       const { prisma } = await import("@/lib/prisma");
       const { ensureReferenceData } = await import("@/lib/ops/bootstrap");
       const result = await ensureReferenceData(prisma);
-      const inserted = Object.values(result).reduce((sum, n) => sum + n, 0);
+      const inserted = Object.values(result).reduce<number>((sum, n) => sum + Number(n), 0);
       if (inserted > 0) console.log("[bootstrap] reference data inserted", result);
     } catch (error) {
       console.error("[bootstrap] reference data check failed", error);

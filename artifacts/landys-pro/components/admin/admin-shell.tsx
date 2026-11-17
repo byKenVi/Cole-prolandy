@@ -1,23 +1,10 @@
 "use client";
 
 import Link, { useLinkStatus } from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ClipboardCheck,
-  HandCoins,
-  HardHat,
-  Inbox,
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
-  SlidersHorizontal,
-  UserPlus,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Loader2, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import type { AdminTheme } from "@/lib/admin-theme";
 import { ADMIN_SIDEBAR_COOKIE } from "@/lib/admin-theme";
 import { AdminThemeProvider } from "@/components/admin/theme-context";
@@ -29,7 +16,8 @@ import { AdminGlobalSearch } from "@/components/admin/global-search";
  * and the themed content area. The sidebar collapses to an icon rail on
  * desktop (cookie-persisted) and becomes an off-canvas drawer below 900px.
  *
- * Every destination has its own icon. Counters only appear on entries where
+ * Every destination has its own 3D icon (the client likes them; never reuse
+ * one for two entries). Counters only appear on entries where
  * something is waiting for the admin, so the menu doubles as a to-do signal.
  *
  * Layout-critical properties live in the `.admin-*` classes in globals.css,
@@ -48,19 +36,25 @@ export type AdminNavCounts = {
 type NavItem = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  /** 3D PNG, unique per entry. */
+  icon: string;
   count?: keyof AdminNavCounts;
 };
 type AdminIdentity = { name: string; email?: string; adminRole?: "owner" | "admin" };
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/leads", label: "Requests", icon: Inbox, count: "leads" },
-  { href: "/admin/contractors", label: "Contractors", icon: HardHat },
-  { href: "/admin/invitations", label: "Invitations", icon: UserPlus },
-  { href: "/admin/confirmations", label: "Confirmations", icon: ClipboardCheck, count: "confirmations" },
-  { href: "/admin/fees", label: "Success fees", icon: HandCoins, count: "fees" },
-  { href: "/admin/settings", label: "Settings", icon: SlidersHorizontal },
+  { href: "/admin", label: "Dashboard", icon: "/admin-icons/dashboard.png" },
+  { href: "/admin/leads", label: "Requests", icon: "/admin-icons/leads.png", count: "leads" },
+  { href: "/admin/contractors", label: "Contractors", icon: "/admin-icons/contractors.png" },
+  { href: "/admin/invitations", label: "Invitations", icon: "/nav-icons/nav-profile.png" },
+  {
+    href: "/admin/confirmations",
+    label: "Confirmations",
+    icon: "/admin-icons/confirmations.png",
+    count: "confirmations",
+  },
+  { href: "/admin/fees", label: "Success fees", icon: "/admin-icons/success-fees.png", count: "fees" },
+  { href: "/admin/settings", label: "Settings", icon: "/admin-icons/settings.png" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -80,7 +74,6 @@ function initialsOf(name: string): string {
 }
 
 function NavLink({ item, active, count }: { item: NavItem; active: boolean; count: number }) {
-  const Icon = item.icon;
   return (
     <Link
       href={item.href}
@@ -90,7 +83,7 @@ function NavLink({ item, active, count }: { item: NavItem; active: boolean; coun
       title={item.label}
     >
       <span className="admin-nav-icon">
-        <Icon size={19} strokeWidth={1.9} aria-hidden />
+        <Image src={item.icon} alt="" aria-hidden width={26} height={26} className="admin-nav-icon-img" />
       </span>
       <NavLabel label={item.label} />
       {count > 0 && (

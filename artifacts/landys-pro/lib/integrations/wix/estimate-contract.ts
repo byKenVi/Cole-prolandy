@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { WixEstimateFieldsSchema } from "@/lib/integrations/wix/estimate-fields-ext";
+import { hasPropertyLocation } from "@/lib/integrations/estimate-fields";
 
 export const WIX_ESTIMATE_SOURCE = "wix" as const;
 export const WIX_CONTRACTOR_SOURCE = "wix" as const;
@@ -19,6 +20,13 @@ export const WixEstimateRequestSchema = WixEstimateFieldsSchema.extend({
 })
   .strict()
   .superRefine((value, context) => {
+    if (!hasPropertyLocation(value)) {
+      context.addIssue({
+        code: "custom",
+        path: ["propertyCounty"],
+        message: "Send the property county (propertyCounty) or ZIP (propertyZip).",
+      });
+    }
     if (
       value.source === WIX_ESTIMATE_REQUEST_SOURCE.DIRECT &&
       !value.externalContractorId

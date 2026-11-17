@@ -1,16 +1,26 @@
-import { Trash2 } from "lucide-react";
+import Image from "next/image";
 
 /**
- * The shared trash icon used by every admin "Delete" affordance (contractors,
- * requests, categories, detail pages), so the treatment stays uniform.
+ * The shared 3D trash icon used by every admin "Delete" affordance
+ * (contractors, requests, categories, detail pages), so the treatment stays
+ * uniform everywhere.
  */
 export function TrashIcon({ size = 18 }: { size?: number }) {
   return (
-    <Trash2
-      size={size}
-      strokeWidth={1.9}
+    <Image
+      src="/admin-icons/trash.png"
+      alt=""
       aria-hidden
-      style={{ display: "inline-block", verticalAlign: "middle", flex: "none" }}
+      width={size}
+      height={size}
+      style={{
+        width: size,
+        height: size,
+        objectFit: "contain",
+        display: "inline-block",
+        verticalAlign: "middle",
+        flex: "none",
+      }}
     />
   );
 }

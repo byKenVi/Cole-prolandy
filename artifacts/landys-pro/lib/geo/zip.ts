@@ -56,6 +56,67 @@ export async function lookupZips(raws: readonly string[]): Promise<Map<string, Z
   return out;
 }
 
+/** Normalize a county name for comparison: "St. Mary Parish" → "saint mary". */
+export function normalizeCountyName(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/\b(county|parish|borough|census area|municipality|city and borough)\b/g, " ")
+    .replace(/\bst\.?\s/g, "saint ")
+    .replace(/\bste\.?\s/g, "sainte ")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export type CountyInfo = {
+  /** Name as the dataset spells it, without "County" ("Sabine"). */
+  name: string;
+  state: string;
+  /** Average position of the county's ZIPs: good enough for radius checks. */
+  lat: number;
+  lng: number;
+  zips: string[];
+};
+
+let counties: Map<string, CountyInfo> | null = null;
+
+const countyKey = (name: string, state: string) => `${normalizeCountyName(name)}|${state.toUpperCase()}`;
+
+async function loadCounties(): Promise<Map<string, CountyInfo>> {
+  if (counties) return counties;
+  const rows = await loadTable();
+  const sums = new Map<string, { name: string; state: string; lat: number; lng: number; zips: string[] }>();
+  for (const [zip, row] of Object.entries(rows)) {
+    const key = countyKey(row[4], row[3]);
+    const entry = sums.get(key) ?? { name: row[4], state: row[3], lat: 0, lng: 0, zips: [] };
+    entry.lat += row[0];
+    entry.lng += row[1];
+    entry.zips.push(zip);
+    sums.set(key, entry);
+  }
+  counties = new Map(
+    [...sums].map(([key, e]) => [
+      key,
+      { name: e.name, state: e.state, lat: e.lat / e.zips.length, lng: e.lng / e.zips.length, zips: e.zips },
+    ]),
+  );
+  return counties;
+}
+
+/** County by name and state ("Sabine County", "TX"), or null when unknown. */
+export async function lookupCounty(name: string, state: string): Promise<CountyInfo | null> {
+  return (await loadCounties()).get(countyKey(name, state)) ?? null;
+}
+
+/** Counties of a state, alphabetically, as "Sabine County, TX" values with "Sabine County" labels. */
+export async function countyOptions(state: string): Promise<{ value: string; label: string }[]> {
+  const upper = state.toUpperCase();
+  return [...(await loadCounties()).values()]
+    .filter((c) => c.state === upper)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((c) => ({ value: `${c.name} County, ${c.state}`, label: `${c.name} County` }));
+}
+
 /** Great-circle distance in miles. */
 export function distanceMiles(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;

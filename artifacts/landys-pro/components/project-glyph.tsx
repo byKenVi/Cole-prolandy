@@ -1,59 +1,24 @@
-import {
-  Axe,
-  Construction,
-  Cylinder,
-  Drill,
-  Droplets,
-  Fence,
-  Hammer,
-  House,
-  LandPlot,
-  Route,
-  Shovel,
-  Tractor,
-  TreePine,
-  Waves,
-  type LucideIcon,
-} from "lucide-react";
+import Image from "next/image";
 
 /**
- * Line icon for a kind of land work. Callers still pass the historical
- * "/icons/<key>.png" path (or the bare key) produced by lib/project-icons, so
- * the matching rules live in one place; this only decides how a key is drawn.
+ * The 3D icon of a kind of land work. Callers pass the "/icons/<key>.png"
+ * path produced by lib/project-icons (or the bare key, as the icon picker
+ * does). Unknown keys fall back to the neutral 3D fallback icon.
  */
-const GLYPHS: Record<string, LucideIcon> = {
-  excavation: Shovel,
-  "land-clearing": Axe,
-  pond: Waves,
-  fencing: Fence,
-  surveying: LandPlot,
-  "tree-service": TreePine,
-  road: Route,
-  drainage: Droplets,
-  "brush-mowing": Tractor,
-  septic: Cylinder,
-  grading: Construction,
-  "well-drilling": Drill,
-  building: House,
-  fallback: Hammer,
-};
-
-export function glyphKey(srcOrKey: string | null | undefined): string {
-  if (!srcOrKey) return "fallback";
-  const base = srcOrKey.split("/").pop()?.replace(/\.png$/, "") ?? "";
-  return base in GLYPHS ? base : "fallback";
+export function iconPath(srcOrKey: string | null | undefined): string {
+  if (!srcOrKey) return "/icons/fallback.png";
+  return srcOrKey.startsWith("/") ? srcOrKey : `/icons/${srcOrKey}.png`;
 }
 
-export function ProjectGlyph({
-  src,
-  size = 20,
-  strokeWidth = 1.8,
-}: {
-  /** "/icons/pond.png" or "pond". */
-  src: string | null | undefined;
-  size?: number;
-  strokeWidth?: number;
-}) {
-  const Icon = GLYPHS[glyphKey(src)] ?? Hammer;
-  return <Icon size={size} strokeWidth={strokeWidth} aria-hidden />;
+export function ProjectGlyph({ src, size = 24 }: { src: string | null | undefined; size?: number }) {
+  return (
+    <Image
+      src={iconPath(src)}
+      alt=""
+      aria-hidden
+      width={size}
+      height={size}
+      style={{ width: size, height: size, objectFit: "contain", flex: "none" }}
+    />
+  );
 }

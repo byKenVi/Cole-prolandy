@@ -35,11 +35,14 @@ export function OpportunityView({
         <h1 className="pro-ticket-place" style={{ fontSize: 32 }}>
           {summary.cityState ?? summary.place}
         </h1>
-        <p className="pro-ticket-sub">
-          <MapPin size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
-          {summary.zip ? `ZIP ${summary.zip}` : summary.place}
-          {summary.landTypeName ? `, ${summary.landTypeName.toLowerCase()} property` : ""}
-        </p>
+        {(summary.zip || summary.landTypeName) && (
+          <p className="pro-ticket-sub">
+            <MapPin size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
+            {[summary.zip ? `ZIP ${summary.zip}` : null, summary.landTypeName ? `${summary.landTypeName} property` : null]
+              .filter(Boolean)
+              .join(", ")}
+          </p>
+        )}
         <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
           <Chip tone={view.status.tone}>{view.status.label}</Chip>
           {left && (

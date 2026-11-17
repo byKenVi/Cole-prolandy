@@ -15,7 +15,8 @@ Values we accept (codes or labels, case-insensitive):
 | `budget` | `under-5k`, `5k-15k`, `15k-50k`, `50k-plus` (or labels like "Under $5K", "$50K+", or an exact amount like "$7,500") |
 | `timeline` | `asap`, `within-2-weeks`, `within-1-month`, `1-3-months` / "1-3 months", `3-plus-months`, `just-researching` |
 | `urgency` | `emergency`, `high`, `medium`, `low` |
-| `contractorCategoryCode`, `projectTypeCode`, `landTypeCode` | any value from your site; new values are added automatically |
+| `propertyCounty` **or** `propertyZip` | at least one. The current form only asks for the county: send it as chosen ("Sabine County" or "Sabine County, TX"). Requests are then sent to contractors who list that county, have a service ZIP in it, or work within their radius of it |
+| `contractorCategoryCode`, `projectTypeCode`, `landTypeCode` | any value from your site; new values are added automatically. `contractorCategoryCode` is optional: without it, the category is deduced from the project (Pond Building goes to Dirt Work & Excavation, Septic System Installation to Water Well & Septic, and so on) |
 
 **Responses:**
 

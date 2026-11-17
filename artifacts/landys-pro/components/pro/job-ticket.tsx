@@ -38,10 +38,12 @@ export function JobTicket({ view, href }: { view: MatchView; href: string }) {
           {view.direct && open ? <Chip tone="copper">Asked for you</Chip> : null}
         </div>
         <p className="pro-ticket-place">{summary.cityState ?? summary.place}</p>
-        <p className="pro-ticket-sub">
-          <MapPin size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
-          {summary.zip ? `ZIP ${summary.zip}` : summary.place}
-        </p>
+        {summary.zip && (
+          <p className="pro-ticket-sub">
+            <MapPin size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
+            ZIP {summary.zip}
+          </p>
+        )}
       </div>
       <Perforation />
       <div className="pro-ticket-body">

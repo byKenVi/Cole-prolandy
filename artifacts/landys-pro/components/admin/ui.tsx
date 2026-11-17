@@ -201,7 +201,7 @@ export function StatCard({
   );
 }
 
-/** Square tile holding the line icon of a kind of work. */
+/** Square tile holding the 3D icon of a kind of work. */
 export function IconTile({
   src,
   size = 44,
@@ -221,15 +221,15 @@ export function IconTile({
         width: size,
         height: size,
         borderRadius: radius,
-        background: "var(--sage)",
-        color: "var(--sageFg)",
+        background: "var(--card2)",
+        border: "1px solid var(--line)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flex: "none",
       }}
     >
-      <ProjectGlyph src={src} size={imgSize ?? Math.round(size * 0.48)} />
+      <ProjectGlyph src={src} size={imgSize ?? Math.round(size * 0.62)} />
     </span>
   );
 }

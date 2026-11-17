@@ -5,6 +5,11 @@ import {
   LIVE_V3_LAND_TYPE_NAMES,
   LIVE_V3_WORK_TYPE_NAMES,
 } from "@/lib/taxonomy/live-v3";
+import { LANDYS_LAND_TYPES, LANDYS_PROJECTS } from "@/lib/taxonomy/landys-form";
+import { slugifyTaxonomy } from "@/lib/services/taxonomy-registry";
+
+/** AppSetting marking the one-time alignment on the live landys.co form. */
+export const LANDYS_FORM_TAXONOMY_KEY = "taxonomy.landysForm.v1";
 
 /**
  * Idempotent reference-data bootstrap, run once at server start.
@@ -26,6 +31,7 @@ export type BootstrapResult = {
   categoriesInserted: number;
   workTypesInserted: number;
   landTypesInserted: number;
+  landysFormAligned: boolean;
 };
 
 export async function ensureReferenceData(db: PrismaClient): Promise<BootstrapResult> {
@@ -69,11 +75,48 @@ export async function ensureReferenceData(db: PrismaClient): Promise<BootstrapRe
     skipDuplicates: true,
   });
 
+  const landysFormAligned = await alignOnLandysForm(db);
+
   return {
     settingsInserted: settings.count,
     feeTiersInserted,
     categoriesInserted: categories.count,
     workTypesInserted: workTypes.count,
     landTypesInserted: landTypes.count,
+    landysFormAligned,
   };
+}
+
+/**
+ * ONE-TIME: make the catalog match the live landys.co form. The 2026-08 "live
+ * v3" migration archived Homestead, Ranching, Timberland, Farmland,
+ * Development and Hunting, which the site still offers, and the project list
+ * of the site was never loaded. Guarded by an AppSetting so an admin who later
+ * archives one of them is never overridden.
+ */
+async function alignOnLandysForm(db: PrismaClient): Promise<boolean> {
+  const done = await db.appSetting.findUnique({ where: { key: LANDYS_FORM_TAXONOMY_KEY } });
+  if (done) return false;
+
+  for (const name of LANDYS_LAND_TYPES) {
+    const code = slugifyTaxonomy(name);
+    const existing = await db.landType.findFirst({
+      where: { OR: [{ code }, { name: { equals: name, mode: "insensitive" } }] },
+      select: { id: true },
+    });
+    if (existing) {
+      await db.landType.update({
+        where: { id: existing.id },
+        data: { archivedAt: null, isActiveForNewIntake: true },
+      });
+    } else {
+      await db.landType.create({ data: { code, name, isActiveForNewIntake: true } });
+    }
+  }
+  await db.workType.createMany({
+    data: LANDYS_PROJECTS.map((name) => ({ code: slugifyTaxonomy(name), name, isActiveForNewIntake: true })),
+    skipDuplicates: true,
+  });
+  await db.appSetting.create({ data: { key: LANDYS_FORM_TAXONOMY_KEY, value: new Date().toISOString() } });
+  return true;
 }

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Hammer, HardHat, LandPlot } from "lucide-react";
 import { OpportunityDistributionForm } from "@/components/admin/opportunity-distribution-form";
 import { FollowUpSettingsForm } from "@/components/admin/follow-up-settings-form";
 import { NumberSettingsForm } from "@/components/admin/number-settings-form";
@@ -394,19 +393,19 @@ export function SettingsTabs({
                 id: "projects",
                 title: "Projects",
                 body: "The kinds of work homeowners can request.",
-                icon: Hammer,
+                icon: "/admin-icons/dir-projects.png",
               },
               {
                 id: "land",
                 title: "Land types",
                 body: "How the property is used: ranch, timber, homestead.",
-                icon: LandPlot,
+                icon: "/admin-icons/dir-land.png",
               },
               {
                 id: "categories",
                 title: "Contractor categories",
                 body: "The trade each contractor is listed under.",
-                icon: HardHat,
+                icon: "/admin-icons/dir-categories.png",
               },
             ].map((card) => (
               <button
@@ -427,22 +426,14 @@ export function SettingsTabs({
                   boxSizing: "border-box",
                 }}
               >
-                <span
-                  aria-hidden
-                  style={{
-                    width: 40,
-                    height: 40,
-                    flex: "none",
-                    borderRadius: 8,
-                    background: "var(--sage)",
-                    color: "var(--sageFg)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <card.icon size={20} strokeWidth={1.8} />
-                </span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={card.icon}
+                  alt=""
+                  width={40}
+                  height={40}
+                  style={{ width: 40, height: 40, objectFit: "contain", flex: "none" }}
+                />
                 <span style={{ minWidth: 0 }}>
                   <p style={{ ...titleStyle, marginBottom: 6 }}>{card.title}</p>
                   <p style={{ ...descStyle, marginBottom: 0 }}>{card.body}</p>

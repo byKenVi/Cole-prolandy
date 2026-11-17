@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateAcceptToken } from "@/lib/tokens";
 import type { DbClient } from "./types";
 import { getAcceptanceUnlimited, getServiceRadiusMiles } from "./settings";
-import { selectContractorsForZip } from "./service-area";
+import { selectContractorsForLocation } from "./service-area";
 import {
   InvalidStateError,
   LeadExpiredError,
@@ -48,7 +48,7 @@ function availableNow(now: Date): Prisma.ContractorWhereInput {
 /**
  * Distribute a lead to ALL eligible contractors by creating PENDING LeadMatch rows.
  * Live intake: same category (primary or secondary) AND service area covering
- * the property ZIP (contractors without any service area are a fallback).
+ * the property ZIP or county (contractors without any service area are a fallback).
  * Work types from landys.co are informative and do not restrict matching.
  * Legacy intake: project assignment + optional category filter.
  */
@@ -99,7 +99,8 @@ export async function distributeLead(
       },
     });
     const radius = await getServiceRadiusMiles(db);
-    const selection = await selectContractorsForZip(
+    // propertyLocation is "Sabine County, TX" when landys.co only gave a county.
+    const selection = await selectContractorsForLocation(
       rows,
       lead.propertyZip ?? lead.propertyLocation,
       radius,

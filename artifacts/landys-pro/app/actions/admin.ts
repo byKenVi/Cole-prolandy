@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
@@ -22,6 +23,10 @@ import {
 import { cleanCountyList, cleanZipList } from "@/lib/domain/service-area";
 import { availableIntegrationCode } from "@/lib/taxonomy";
 import { assertNoDestructiveBurst } from "@/lib/domain/destructive-guard";
+
+import { BUDGET_BAND_LABELS, normalizeLiveBudgetBand } from "@/lib/taxonomy/live-v3";
+import { MAX_ATTACHMENTS_PER_LEAD } from "@/lib/services/lead-attachments";
+import { putAppObject } from "@/lib/replit-object-storage";
 
 type Result = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -1207,33 +1212,30 @@ export async function syncWixContractors(dryRun = false): Promise<
   }
 }
 
+/** The landys.co "Get Three Estimates" form, entered by an admin (phone or email request). */
 const ManualLeadSchema = z.object({
-  landownerName: z.string().min(2),
-  landownerEmail: z.string().email(),
-  landownerPhone: z.string().min(7),
-  propertyZip: z.string().regex(/^\d{5}(?:-\d{4})?$/, "Enter a valid property ZIP."),
-  contractorCategoryCode: z.string().min(1),
-  workTypeCode: z.string().min(1),
-  landTypeCode: z.string().min(1),
-  timelineCode: z.string().min(1),
-  urgencyCode: z.string().min(1),
-  description: z.string().trim().min(10).max(4000),
-  budgetCents: z.number().int().positive(),
+  propertyCounty: z.string().trim().min(2, "Choose the property county."),
+  landType: z.string().trim().min(1, "Choose a land type."),
+  projectType: z.string().trim().min(2, "Choose a project type."),
+  timeline: z.string().trim().min(1, "Choose when the work should start."),
+  budget: z.string().trim().min(1, "Choose a budget range."),
+  urgency: z.string().trim().min(1, "Choose the urgency."),
+  description: z.string().trim().min(10, "Describe the project in at least 10 characters.").max(4000),
+  firstName: z.string().trim().min(1, "Enter the first name.").max(80),
+  lastName: z.string().trim().min(1, "Enter the last name.").max(80),
+  phone: z.string().trim().min(7, "Enter a valid phone number.").max(40),
+  email: z.string().trim().email("Enter a valid email address."),
 });
 
-export async function createManualLead(input: {
-  landownerName: string;
-  landownerEmail: string;
-  landownerPhone: string;
-  propertyZip: string;
-  contractorCategoryCode: string;
-  workTypeCode: string;
-  landTypeCode: string;
-  timelineCode: string;
-  urgencyCode: string;
-  description: string;
-  budgetCents: number;
-}): Promise<
+export type ManualLeadInput = z.infer<typeof ManualLeadSchema>;
+
+const HOLD_EXPLANATIONS: Record<string, string> = {
+  category_review: "No contractor category matches this project yet. Pick the contractors by hand on the request page.",
+  no_matching_contractor: "No active contractor in this trade covers the county. Pick the contractors by hand on the request page.",
+  routing_error: "Routing failed. Open the request to send it by hand.",
+};
+
+export async function createManualLead(input: ManualLeadInput): Promise<
   Result & {
     leadId?: string;
     recipients?: number;
@@ -1244,44 +1246,89 @@ export async function createManualLead(input: {
   await requireAdmin();
   const parsed = ManualLeadSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0]?.message ?? "Invalid input" };
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Some answers are missing." };
   }
+  const data = parsed.data;
+  const band = normalizeLiveBudgetBand(data.budget);
+  if (!band) return { ok: false, message: "Choose a budget range." };
   try {
-    const nameParts = parsed.data.landownerName.trim().split(/\s+/);
-    const firstName = nameParts.shift() ?? parsed.data.landownerName.trim();
-    const lastName = nameParts.join(" ") || null;
     const res = await createOfficialEstimateRequest({
-      firstName,
-      lastName,
-      email: parsed.data.landownerEmail,
-      phone: parsed.data.landownerPhone,
-      propertyZip: parsed.data.propertyZip,
-      contractorCategoryCode: parsed.data.contractorCategoryCode,
-      landTypeCode: parsed.data.landTypeCode,
-      projectTypeCode: parsed.data.workTypeCode,
-      budgetCents: parsed.data.budgetCents,
-      timelineRaw: parsed.data.timelineCode,
-      urgency: parsed.data.urgencyCode,
-      description: parsed.data.description,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      propertyCounty: data.propertyCounty,
+      landTypeCode: data.landType,
+      projectTypeCode: data.projectType,
+      budget: BUDGET_BAND_LABELS[band],
+      budgetBand: data.budget,
+      timelineRaw: data.timeline,
+      urgency: data.urgency,
+      description: data.description,
       source: "admin_manual",
       routing: { mode: "general" },
     });
     const recipients = await prisma.leadMatch.count({ where: { leadId: res.leadId } });
     revalidatePath("/admin/leads");
     revalidatePath("/admin");
+    const held = res.reviewStatus !== "routed";
     return {
       ok: true,
-      message:
-        res.reviewStatus === "routed"
-          ? `Opportunity created and sent to ${recipients} contractor(s).`
-          : "Opportunity created and held for review.",
+      message: held
+        ? HOLD_EXPLANATIONS[res.blockers[0] ?? ""] ?? "Saved and held for your review."
+        : `Sent to ${recipients} contractor${recipients === 1 ? "" : "s"}.`,
       leadId: res.leadId,
       recipients,
       reviewStatus: res.reviewStatus,
       blockers: res.blockers,
     };
   } catch (e) {
-    return { ok: false, message: e instanceof DomainError ? e.message : "Failed to create opportunity." };
+    return { ok: false, message: e instanceof DomainError ? e.message : "The request could not be created." };
+  }
+}
+
+/** Largest file an admin can attach in one upload (server actions accept 10 MB bodies). */
+const MANUAL_ATTACHMENT_MAX_BYTES = 9 * 1024 * 1024;
+const MANUAL_ATTACHMENT_TYPES = /^(image\/|video\/|application\/pdf$|application\/msword$|application\/vnd\.openxmlformats-officedocument\.|text\/plain$)/;
+
+/** Attach one photo or document to a request (same storage as landys.co photos). */
+export async function uploadLeadAttachment(leadId: string, formData: FormData): Promise<Result> {
+  await requireAdmin();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, message: "Choose a file." };
+  if (file.size > MANUAL_ATTACHMENT_MAX_BYTES) {
+    return { ok: false, message: `${file.name} is larger than 9 MB.` };
+  }
+  const contentType = file.type || "application/octet-stream";
+  if (!MANUAL_ATTACHMENT_TYPES.test(contentType)) {
+    return { ok: false, message: `${file.name}: only photos, videos, PDFs and documents are accepted.` };
+  }
+  const count = await prisma.leadAttachment.count({ where: { leadId, ingestionError: null } });
+  if (count >= MAX_ATTACHMENTS_PER_LEAD) {
+    return { ok: false, message: `A request holds at most ${MAX_ATTACHMENTS_PER_LEAD} files.` };
+  }
+  try {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const checksum = createHash("sha256").update(bytes).digest("hex");
+    const safeName = file.name.replace(/[^\w.-]+/g, "_").slice(-120) || "file";
+    const storageKey = `leads/manual/${leadId}/${checksum.slice(0, 16)}-${safeName}`;
+    await putAppObject({ key: storageKey, bytes, contentType });
+    await prisma.leadAttachment.create({
+      data: {
+        leadId,
+        storageProvider: "app-storage",
+        storageKey,
+        originalFilename: file.name.slice(0, 255),
+        contentType,
+        sizeBytes: bytes.length,
+        checksumSha256: checksum,
+      },
+    });
+    revalidatePath(`/admin/leads/${leadId}`);
+    return { ok: true, message: `${file.name} attached.` };
+  } catch (e) {
+    console.error("[admin] attachment upload failed", { leadId, error: e });
+    return { ok: false, message: `${file.name} could not be uploaded. The request itself is saved.` };
   }
 }
 

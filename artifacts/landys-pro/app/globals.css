@@ -481,7 +481,7 @@ body:has(.admin-theme[data-theme="dark"]) {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 42px;
+  min-height: 44px;
   padding: 0 12px;
   border-radius: 8px;
   text-decoration: none;
@@ -502,13 +502,19 @@ body:has(.admin-theme[data-theme="dark"]) {
 .admin-nav-icon {
   display: flex;
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   align-items: center;
   justify-content: center;
 }
-.admin-navitem[data-active="true"] .admin-nav-icon {
-  color: #2c4a39;
+.admin-nav-icon-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+}
+.admin-navitem[data-active="true"] .admin-nav-icon-img {
+  filter: drop-shadow(0 2px 3px rgba(31, 42, 34, 0.2));
 }
 .admin-nav-count {
   margin-left: auto;
@@ -764,6 +770,15 @@ body:has(.admin-theme[data-theme="dark"]) {
 }
 .settings-team-card:hover {
   box-shadow: 0 4px 16px rgba(47, 74, 60, 0.12) !important;
+}
+
+@media (max-width: 560px) {
+  .manual-form-pair {
+    grid-template-columns: 1fr !important;
+  }
+  .manual-form-segments {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 @media (max-width: 640px) {

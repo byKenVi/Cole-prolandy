@@ -271,13 +271,13 @@ export function LeadsTable({
                   height: 40,
                   borderRadius: 8,
                   background: "var(--card2)",
-                  color: "var(--sageFg)",
+                  border: "1px solid var(--line)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <ProjectGlyph src={row.iconSrc} size={20} />
+                <ProjectGlyph src={row.iconSrc} size={25} />
               </span>
               <div style={{ minWidth: 0 }}>
                 <p style={{ margin: 0, font: "600 15px/1.25 var(--ui)", color: "var(--ink)" }}>{row.title}</p>

@@ -14,10 +14,15 @@ export const EstimateFieldsSchema = z.object({
   lastName: z.string().trim().max(80).optional().nullable(),
   phone: z.string().trim().max(40).optional().nullable(),
   email: z.string().trim().email().max(320),
+  /** One of propertyZip / propertyCounty is required (see hasPropertyLocation). */
   propertyZip: z
     .string()
     .trim()
-    .regex(/^\d{5}(?:-\d{4})?$/, "Please enter a valid property ZIP"),
+    .regex(/^\d{5}(?:-\d{4})?$/, "Please enter a valid property ZIP")
+    .optional()
+    .nullable(),
+  /** landys.co asks for the county only, e.g. "Sabine County" or "Sabine County, TX". */
+  propertyCounty: z.string().trim().min(2).max(120).optional().nullable(),
   contractorCategoryCode: z.string().trim().min(1).max(80).optional().nullable(),
   landTypeCode: z.string().trim().min(1, "Please choose a land type").max(80),
   /// Accepts live work-type code/label or legacy project-type code/label.
@@ -32,7 +37,16 @@ export const EstimateFieldsSchema = z.object({
   description: z.string().trim().min(10, "Please describe the project").max(4000),
 });
 
+export function hasPropertyLocation(value: { propertyZip?: string | null; propertyCounty?: string | null }): boolean {
+  return Boolean(value.propertyZip?.trim() || value.propertyCounty?.trim());
+}
+
 export const OfficialEstimateSchema = EstimateFieldsSchema.extend({
   schemaVersion: z.literal(2),
   company: z.string().optional(),
-}).strict();
+})
+  .strict()
+  .refine(hasPropertyLocation, {
+    path: ["propertyZip"],
+    message: "Please enter the property ZIP or county",
+  });

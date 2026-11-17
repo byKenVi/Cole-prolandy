@@ -80,9 +80,7 @@ function IconPicker({
         tile(
           key,
           value === key,
-          <span style={{ color: "var(--ink)" }}>
-            <ProjectGlyph src={key} size={22} />
-          </span>,
+          <ProjectGlyph src={key} size={32} />,
           ICON_LABELS[key as IconKey],
         ),
       )}
@@ -93,9 +91,7 @@ function IconPicker({
 function IconPreview({ icon }: { icon: string }) {
   if ((ICON_KEYS as readonly string[]).includes(icon)) {
     return (
-      <span style={{ color: "var(--ink)", display: "inline-flex" }}>
-        <ProjectGlyph src={icon} size={20} />
-      </span>
+      <ProjectGlyph src={icon} size={26} />
     );
   }
   return <span style={{ font: "400 11px/1 var(--ui)", color: "var(--ink3)" }}>{icon === ICON_NONE ? "None" : "Auto"}</span>;

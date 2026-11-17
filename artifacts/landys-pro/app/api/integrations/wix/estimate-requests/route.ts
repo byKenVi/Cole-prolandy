@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       phone: payload.phone,
       email: payload.email,
       propertyZip: payload.propertyZip,
+      propertyCounty: payload.propertyCounty,
       contractorCategoryCode: payload.contractorCategoryCode,
       landTypeCode: payload.landTypeCode,
       projectTypeCode: payload.projectTypeCode,

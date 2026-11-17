@@ -28,6 +28,14 @@ describe("Wix estimate contract", () => {
     expect(WixEstimateRequestSchema.safeParse(VALID_REQUEST).success).toBe(true);
   });
 
+  it("accepts the county alone, as the live landys.co form sends it", () => {
+    const { propertyZip: _zip, ...withoutZip } = VALID_REQUEST;
+    expect(
+      WixEstimateRequestSchema.safeParse({ ...withoutZip, propertyCounty: "Sabine County" }).success,
+    ).toBe(true);
+    expect(WixEstimateRequestSchema.safeParse(withoutZip).success).toBe(false);
+  });
+
   it("requires a contractor ID only for direct routing", () => {
     expect(
       WixEstimateRequestSchema.safeParse({
