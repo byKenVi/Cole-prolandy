@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import type { Prisma } from "@prisma/client";
 import { WalletTransactionType } from "@prisma/client";
 import { applyWalletTransactionInTx } from "./wallet";
-import { chargeForLead } from "./leads";
 import { InsufficientBalanceError } from "./errors";
 import { createFakeDb, type FakeDb } from "./__fixtures__/fakeDb";
 import { formatMoney } from "@/lib/money";
@@ -100,35 +99,6 @@ describe("applyWalletTransactionInTx", () => {
         type: WalletTransactionType.TOPUP,
       }),
     ).rejects.toThrow();
-  });
-});
-
-describe("chargeForLead", () => {
-  it("debits the lead price and links the leadMatch", async () => {
-    const db = createFakeDb();
-    const contractorId = seedContractor(db, 20000);
-
-    const res = await chargeForLead(asTx(db), {
-      contractorId,
-      leadMatchId: "lm1",
-      priceCents: 4000,
-    });
-
-    expect(res.newBalanceCents).toBe(16000);
-    expect(db.walletTransaction.rows[0].leadMatchId).toBe("lm1");
-    expect(db.walletTransaction.rows[0].amountCents).toBe(-4000);
-  });
-
-  it("blocks when balance is below the lead price", async () => {
-    const db = createFakeDb();
-    const contractorId = seedContractor(db, 1000);
-    await expect(
-      chargeForLead(asTx(db), {
-        contractorId,
-        leadMatchId: "lm1",
-        priceCents: 4000,
-      }),
-    ).rejects.toBeInstanceOf(InsufficientBalanceError);
   });
 });
 

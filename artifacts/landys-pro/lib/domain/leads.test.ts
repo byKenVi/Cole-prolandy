@@ -21,7 +21,6 @@ import type { PrismaClient } from "@prisma/client";
 import {
   acceptLeadMatch,
   declineLeadMatch,
-  refundLeadMatch,
   expireLeads,
   distributeLead,
 } from "./leads";
@@ -207,34 +206,5 @@ describe("expireLeads", () => {
     await expect(acceptLeadMatch({ leadMatchId: "lm1" })).rejects.toBeInstanceOf(
       LeadExpiredError,
     );
-  });
-});
-
-describe("refundLeadMatch (legacy pay-per-lead only)", () => {
-  it("requires a legacy lead charge to refund", async () => {
-    const db = seedScenario({});
-    seedMatch(db, "lm1", "c1", "tok1");
-    await acceptLeadMatch({ leadMatchId: "lm1" });
-
-    await expect(refundLeadMatch({ leadMatchId: "lm1" })).rejects.toBeInstanceOf(
-      InvalidStateError,
-    );
-  });
-
-  it("refunds when a legacy charge exists", async () => {
-    const db = seedScenario({});
-    seedMatch(db, "lm1", "c1", "tok1");
-    await db.walletTransaction.create({
-      data: {
-        contractorId: "c1",
-        amountCents: -4000,
-        type: WalletTransactionType.LEAD_CHARGE,
-        leadMatchId: "lm1",
-      },
-    });
-    db.leadMatch.rows[0].status = LeadMatchStatus.ACCEPTED;
-
-    const refund = await refundLeadMatch({ leadMatchId: "lm1", reason: "test" });
-    expect(refund.refundedCents).toBe(4000);
   });
 });

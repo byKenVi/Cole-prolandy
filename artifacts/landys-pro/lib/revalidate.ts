@@ -1,14 +1,9 @@
 import { revalidatePath } from "next/cache";
 
-/** Invalidate contractor shell (sidebar wallet) + wallet/home pages. */
+/** Invalidate the contractor frame (navigation counts) and its main pages. */
 export function revalidateContractorShell() {
-  revalidatePath("/wallet", "layout");
-  revalidatePath("/home", "layout");
-  revalidatePath("/leads", "layout");
-  revalidatePath("/profile", "layout");
-}
-
-/** Invalidate admin shell (lead revenue) + key admin pages. */
-export function revalidateAdminShell() {
-  revalidatePath("/admin", "layout");
+  revalidatePath("/dashboard", "layout");
+  revalidatePath("/opportunities");
+  revalidatePath("/jobs");
+  revalidatePath("/fees");
 }

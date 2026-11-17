@@ -32,13 +32,11 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/auth", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("@/lib/revalidate", () => ({
-  revalidateAdminShell: vi.fn(),
   revalidateContractorShell: vi.fn(),
 }));
 vi.mock("@/lib/domain/leads", () => ({ refundLeadMatch: vi.fn() }));
 vi.mock("@/lib/services/recharge", () => ({ chargeContractorSavedCard: vi.fn() }));
 vi.mock("@/lib/services/lead-intake", () => ({
-  createAndDistributeLead: vi.fn(),
   finalizeLeadForRouting: vi.fn(),
 }));
 vi.mock("@/lib/phone", () => ({ normalizePhoneForStorage: vi.fn((v: string) => v) }));

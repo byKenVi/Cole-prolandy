@@ -11,13 +11,10 @@ import {
 import { getStripeWebhookSecret } from "@/lib/integrations/stripe-client";
 
 /**
- * Stripe webhook — the primary path for real top-ups, crediting only after the
- * signature verifies. It is no longer the only one: the post-checkout return
- * also credits, by asking Stripe's API about the session (lib/services/
- * topup-verify.ts), because a webhook that never arrives left contractors paid
- * and un-credited. Both go through creditTopUp and dedupe on the payment
- * intent, so whichever lands second is recorded as a duplicate.
- * Neither path ever trusts a figure supplied by the browser.
+ * Stripe webhook: marks success fees paid once the signature verifies, and
+ * still records legacy wallet events for historical accounts. Each event is
+ * processed once (deduplicated on the event and payment intent ids).
+ * It never trusts a figure supplied by the browser.
  * This route stays OUTSIDE Clerk auth (see middleware public routes), exactly
  * like the tokenized SMS accept flow.
  *

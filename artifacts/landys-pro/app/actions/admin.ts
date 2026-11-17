@@ -4,8 +4,6 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { refundLeadMatch } from "@/lib/domain/leads";
-import { chargeContractorSavedCard } from "@/lib/services/recharge";
 import {
   assignLeadToContractors,
   createOfficialEstimateRequest,
@@ -16,7 +14,6 @@ import { requireAdmin } from "@/lib/auth";
 import { DomainError } from "@/lib/domain/errors";
 import { normalizePhoneForStorage } from "@/lib/phone";
 import { ICON_KEYS, ICON_AUTO, ICON_NONE } from "@/lib/project-icons";
-import { revalidateAdminShell, revalidateContractorShell } from "@/lib/revalidate";
 import {
   cancelScheduledInvitations,
   processInvitationQueue,
@@ -27,51 +24,6 @@ import { availableIntegrationCode } from "@/lib/taxonomy";
 import { assertNoDestructiveBurst } from "@/lib/domain/destructive-guard";
 
 type Result = { ok: true; message?: string } | { ok: false; message: string };
-
-// ── Pricing matrix ──
-export async function updatePriceTier(
-  id: string,
-  priceCents: number,
-  maxBudgetCents?: number | null,
-): Promise<Result> {
-  await requireAdmin();
-  if (!Number.isInteger(priceCents) || priceCents < 0) {
-    return { ok: false, message: "Price must be a positive whole number of cents." };
-  }
-  const before = await prisma.priceTier.findUnique({ where: { id } });
-  if (!before) return { ok: false, message: "Price tier not found." };
-
-  if (maxBudgetCents != null && before.tier === 3) {
-    return { ok: false, message: "Tier 3 does not use a max budget threshold." };
-  }
-  if (maxBudgetCents != null && (!Number.isInteger(maxBudgetCents) || maxBudgetCents < 0)) {
-    return { ok: false, message: "Max budget must be a non-negative whole number of cents." };
-  }
-
-  await prisma.priceTier.update({
-    where: { id },
-    data: {
-      priceCents,
-      ...(maxBudgetCents !== undefined ? { maxBudgetCents } : {}),
-    },
-  });
-  await prisma.auditLog.create({
-    data: {
-      actorType: "admin",
-      action: "PRICE_TIER_UPDATED",
-      targetType: "PriceTier",
-      targetId: id,
-      metadata: {
-        from: before.priceCents,
-        to: priceCents,
-        maxBudgetCentsFrom: before.maxBudgetCents,
-        maxBudgetCentsTo: maxBudgetCents ?? before.maxBudgetCents,
-      },
-    },
-  });
-  revalidatePath("/admin/pricing");
-  return { ok: true, message: "Saved" };
-}
 
 // ── Settings ──
 const SettingSchema = z.discriminatedUnion("key", [
@@ -244,53 +196,6 @@ export async function resolveMismatchAction(
       message: e instanceof DomainError ? e.message : "Could not resolve mismatch.",
     };
   }
-}
-
-// ── Lead restitution (restore charge to contractor wallet) ──
-
-export async function refundLead(leadMatchId: string, reason: string): Promise<Result> {
-  const admin = await requireAdmin();
-  try {
-    await assertNoDestructiveBurst({ actorId: admin.email, action: "LEAD_REFUNDED" });
-    const res = await refundLeadMatch({ leadMatchId, reason, actorId: admin.email });
-    revalidatePath("/admin/leads");
-    revalidatePath("/admin/contractors");
-    revalidateAdminShell();
-    revalidateContractorShell();
-    return { ok: true, message: `Restored ${res.refundedCents} cents to wallet` };
-  } catch (e) {
-    return { ok: false, message: e instanceof DomainError ? e.message : "Restore failed." };
-  }
-}
-
-// ── Charge the contractor's SAVED card & top up their wallet (off-session) ──
-
-export async function chargeSavedCardTopUp(input: {
-  contractorId: string;
-  amountCents: number;
-  reason: string;
-}): Promise<Result> {
-  const admin = await requireAdmin();
-  if (!input.reason?.trim()) {
-    return { ok: false, message: "A reason is required." };
-  }
-  const res = await chargeContractorSavedCard({
-    contractorId: input.contractorId,
-    amountCents: input.amountCents,
-    actor: { type: "admin", id: admin.email, reason: input.reason },
-  });
-  if (!res.ok) {
-    return { ok: false, message: res.message };
-  }
-  revalidatePath(`/admin/contractors/${input.contractorId}`);
-  revalidateAdminShell();
-  revalidateContractorShell();
-  return {
-    ok: true,
-    message: res.mocked
-      ? `Saved card charged. ${res.message}`
-      : "Payment submitted — the wallet credits once the card payment confirms.",
-  };
 }
 
 // ── Contractor soft-deactivate / hard-delete ──
@@ -626,7 +531,6 @@ export async function createContractorType(
     return project;
   });
   revalidatePath("/admin/settings");
-  revalidatePath("/admin/pricing");
   revalidatePath("/admin/leads/new");
   return { ok: true, message: "Project added", id: created.id };
 }
@@ -668,7 +572,6 @@ export async function updateContractorType(id: string, name: string, icon?: stri
     },
   });
   revalidatePath("/admin/settings");
-  revalidatePath("/admin/pricing");
   revalidatePath("/admin/leads/new");
   return { ok: true, message: "Project saved" };
 }
@@ -710,7 +613,6 @@ export async function setProjectArchived(id: string, archived: boolean): Promise
     }),
   ]);
   revalidatePath("/admin/settings");
-  revalidatePath("/admin/pricing");
   revalidatePath("/estimate");
   return { ok: true, message: archived ? "Project archived" : "Project activated" };
 }

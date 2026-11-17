@@ -1,11 +1,10 @@
 import type { Prisma } from "@prisma/client";
-import { LeadMatchStatus, LeadStatus, WalletTransactionType } from "@prisma/client";
+import { LeadMatchStatus, LeadStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { generateAcceptToken } from "@/lib/tokens";
 import type { DbClient } from "./types";
 import { getAcceptanceUnlimited, getServiceRadiusMiles } from "./settings";
 import { selectContractorsForZip } from "./service-area";
-import { applyWalletTransactionInTx } from "./wallet";
 import {
   InvalidStateError,
   LeadExpiredError,
@@ -151,19 +150,6 @@ export async function distributeLead(
   }
 
   return { leadId, matches, usedFallback };
-}
-
-/** @deprecated Legacy pay-per-lead charge — inactive in success-fee model. */
-export async function chargeForLead(
-  tx: Prisma.TransactionClient,
-  params: { contractorId: string; leadMatchId: string; priceCents: number },
-) {
-  return applyWalletTransactionInTx(tx, {
-    contractorId: params.contractorId,
-    amountCents: -Math.abs(params.priceCents),
-    type: WalletTransactionType.LEAD_CHARGE,
-    leadMatchId: params.leadMatchId,
-  });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -390,75 +376,6 @@ export async function declineLeadMatch(
     });
 
     return { status: "declined", leadMatchId: match.id };
-  });
-}
-
-// ─────────────────────────────────────────────────────────────
-// Refund (admin — legacy pay-per-lead only)
-// ─────────────────────────────────────────────────────────────
-
-export async function refundLeadMatch(params: {
-  leadMatchId: string;
-  reason?: string;
-  actorId?: string | null;
-}): Promise<{ refundedCents: number; newBalanceCents: number }> {
-  return prisma.$transaction(async (tx) => {
-    const match = await tx.leadMatch.findUnique({
-      where: { id: params.leadMatchId },
-      include: { lead: true, walletTransactions: true },
-    });
-    if (!match) throw new NotFoundError("LeadMatch");
-    if (match.status !== LeadMatchStatus.ACCEPTED) {
-      throw new InvalidStateError("Only accepted leads can be refunded.");
-    }
-
-    const charge = match.walletTransactions.find(
-      (t) => t.type === WalletTransactionType.LEAD_CHARGE,
-    );
-    if (!charge) {
-      throw new InvalidStateError("No legacy lead charge exists for this match.");
-    }
-
-    const alreadyRefunded = match.walletTransactions.some(
-      (t) => t.type === WalletTransactionType.REFUND,
-    );
-    if (alreadyRefunded) {
-      throw new InvalidStateError("This lead charge was already refunded.");
-    }
-
-    const refundCents = Math.abs(charge.amountCents);
-
-    let res;
-    try {
-      res = await applyWalletTransactionInTx(tx, {
-        contractorId: match.contractorId,
-        amountCents: refundCents,
-        type: WalletTransactionType.REFUND,
-        leadMatchId: match.id,
-        note: params.reason ?? "Lead charge refunded",
-      });
-    } catch (e) {
-      if (
-        typeof e === "object" &&
-        e !== null &&
-        "code" in e &&
-        (e as { code?: string }).code === "P2002"
-      ) {
-        throw new InvalidStateError("This lead charge was already refunded.");
-      }
-      throw e;
-    }
-
-    await writeAudit(tx, {
-      actorType: "admin",
-      actorId: params.actorId ?? null,
-      action: "LEAD_REFUNDED",
-      targetType: "LeadMatch",
-      targetId: match.id,
-      metadata: { refundCents, reason: params.reason ?? null },
-    });
-
-    return { refundedCents: refundCents, newBalanceCents: res.newBalanceCents };
   });
 }
 

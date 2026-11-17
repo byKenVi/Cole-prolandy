@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { parseBudgetToCents, resolveBudgetCents } from "./budget";
-import { resolveTierFromBudget } from "./tier-resolution";
 
 describe("budget normalization", () => {
   it("parses unambiguous currency strings", () => {
@@ -27,16 +26,5 @@ describe("budget normalization", () => {
       budgetCents: 1500000,
       budgetRaw: "$15,000",
     });
-  });
-});
-
-describe("tier resolution boundaries", () => {
-  const thresholds = { tier1MaxBudgetCents: 500000, tier2MaxBudgetCents: 1500000 };
-
-  it("assigns tiers at exact boundaries", () => {
-    expect(resolveTierFromBudget(500000, thresholds)).toBe(1);
-    expect(resolveTierFromBudget(500001, thresholds)).toBe(2);
-    expect(resolveTierFromBudget(1500000, thresholds)).toBe(2);
-    expect(resolveTierFromBudget(1500001, thresholds)).toBe(3);
   });
 });

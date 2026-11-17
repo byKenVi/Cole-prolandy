@@ -14,7 +14,6 @@ import { resolveTierForBudgetBand } from "@/lib/domain/tier-resolution";
 import { REVIEW_BLOCKERS } from "@/lib/taxonomy/live-v3";
 import { resolveTaxonomyInputs } from "@/lib/services/live-taxonomy-resolution";
 import { ensureCategory, ensureLandType, ensureWorkType } from "@/lib/services/taxonomy-registry";
-import { resolvePrice } from "@/lib/domain/pricing";
 import { getLeadExpiryHours, getMaxLeadPurchases } from "@/lib/domain/settings";
 import { DomainError, InvalidStateError, NotFoundError } from "@/lib/domain/errors";
 import type { DbClient } from "@/lib/domain/types";
@@ -33,19 +32,6 @@ import { resolveWixContractorExternalId } from "@/lib/integrations/wix/contracto
  *  - budget is informative only and never blocks routing;
  *  - anything that prevents routing holds the lead for admin review AND alerts admins.
  */
-
-export type LeadIntakeInput = {
-  landownerName: string;
-  landownerEmail: string;
-  landownerPhone: string;
-  propertyLocation: string;
-  description?: string | null;
-  projectTypeId: string;
-  tier: number;
-  landTypeId?: string | null;
-  source?: string;
-  budgetCents?: number | null;
-};
 
 export type LeadIntakeResult = {
   leadId: string;
@@ -130,73 +116,6 @@ function runAfterResponse(task: () => Promise<unknown>, label: string) {
   } catch {
     void run();
   }
-}
-
-/** Legacy admin/manual path with explicit tier (historical land projects). */
-export async function createAndDistributeLead(
-  input: LeadIntakeInput,
-): Promise<LeadIntakeResult> {
-  const projectType = await prisma.projectType.findFirst({
-    where: { id: input.projectTypeId, archivedAt: null },
-    select: { id: true, name: true, contractorTypeId: true },
-  });
-  if (!projectType) throw new NotFoundError("Active project type");
-
-  if (input.landTypeId) {
-    const landType = await prisma.landType.findFirst({
-      where: { id: input.landTypeId, archivedAt: null },
-      select: { id: true },
-    });
-    if (!landType) throw new NotFoundError("Active land type");
-  }
-
-  const priceCents = await resolvePrice(prisma, {
-    contractorTypeId: projectType.contractorTypeId,
-    projectTypeId: projectType.id,
-    tier: input.tier,
-  });
-  const [expiryHours, maxPurchases] = await Promise.all([
-    getLeadExpiryHours(prisma),
-    getMaxLeadPurchases(prisma),
-  ]);
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + expiryHours * 3600 * 1000);
-
-  const lead = await prisma.lead.create({
-    data: {
-      landownerName: input.landownerName,
-      landownerEmail: input.landownerEmail,
-      landownerPhone: input.landownerPhone,
-      propertyLocation: input.propertyLocation,
-      description: clean(input.description),
-      projectTypeId: projectType.id,
-      landTypeId: input.landTypeId ?? null,
-      budgetCents: input.budgetCents ?? null,
-      tier: input.tier,
-      priceCents,
-      maxPurchases,
-      status: LeadStatus.NEW,
-      reviewStatus: LeadReviewStatus.ROUTED,
-      tierReviewRequired: false,
-      budgetReviewRequired: false,
-      contractorReviewRequired: false,
-      routingMode: LeadRoutingMode.GENERAL,
-      routedAt: now,
-      source: input.source ?? "wix_form",
-      expiresAt,
-    },
-  });
-
-  const { matches } = await distributeLead(prisma, lead.id);
-  await notifyContractorsOfNewLead(lead.id, matches.map((m) => m.id));
-  await writeLeadAudit("LEAD_CREATED", lead.id, {
-    source: lead.source,
-    recipients: matches.length,
-    priceCents,
-    compatibilityPath: true,
-  });
-
-  return { leadId: lead.id, priceCents, recipients: matches.length };
 }
 
 export async function createOfficialEstimateRequest(
