@@ -8,33 +8,42 @@
 */
 :root {
   /* Brand greens (primary) */
-  --color-primary: #2f4a3c;
-  --color-primary-hover: #263c31;
-  --color-primary-soft: #e7ede8;
+  --color-primary: #2c4a39;
+  --color-primary-hover: #22392c;
+  --color-primary-soft: #e3ebe2;
 
-  /* Accent (action / go) */
-  --color-accent: #c6733b;
-  --color-accent-hover: #ae6231;
+  /* Accent: brass, for focus and small brand marks only */
+  --color-accent: #8a5f22;
+  --color-accent-hover: #6f4b19;
 
   /* Warm neutrals (surfaces & text) — sepia paper system */
-  --color-bg: #fefbf6;
+  --color-bg: #f1f2ec;
   --color-surface: #ffffff;
-  --color-border: #e5ddcd;
-  --color-text: #3a332c;
-  --color-text-muted: #6b6254; /* WCAG AA on cream (was #8a7f6d) */
+  --color-border: #dadcd2;
+  --color-text: #1f2a22;
+  --color-text-muted: #56615a;
 
   /* Semantic */
-  --color-success: #3f7d52;
-  --color-warning: #c99a2e;
-  --color-danger: #b23b3b;
-  --color-success-soft: #e6f0e9;
-  --color-warning-soft: #f7efd8;
-  --color-danger-soft: #f5e3e3;
+  --color-success: #2e6b45;
+  --color-warning: #8a5a00;
+  --color-danger: #a7372b;
+  --color-success-soft: #e3eee5;
+  --color-warning-soft: #f6ebd2;
+  --color-danger-soft: #f6e2de;
 
   /* Type */
-  --font-sans: var(--nf-rubik), "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: var(--nf-rubik), "Rubik", var(--nf-fraunces), "Fraunces", sans-serif;
-  --font-script: var(--nf-caveat), "Caveat", var(--nf-fraunces), "Fraunces", cursive;
+  /* next/font hashes family names, so every rule goes through these. */
+  --ui: var(--nf-ui), "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --head: var(--nf-head), "Barlow Semi Condensed", var(--nf-ui), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--ui);
+  --font-display: var(--head);
+  --font-script: var(--nf-great-vibes), "Great Vibes", cursive;
+  /* Legacy names still referenced by a few stylesheets. */
+  --nf-inter: var(--nf-ui);
+  --nf-rubik: var(--nf-ui);
+  --nf-fraunces: var(--nf-head);
+  --nf-jetbrains: var(--nf-ui);
+  --nf-caveat: var(--nf-great-vibes);
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -140,17 +149,15 @@
 }
 
 @layer utilities {
-  .font-display {
-    font-family: var(--font-display);
+  .font-display,
+  .font-head {
+    font-family: var(--head);
   }
   .font-script {
     font-family: var(--font-script);
   }
-  .font-fraunces {
-    font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
-  }
   .font-inter {
-    font-family: var(--nf-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--ui);
   }
   .font-vibes {
     font-family: var(--nf-great-vibes), "Great Vibes", cursive;
@@ -198,81 +205,93 @@ textarea:focus-visible,
 */
 .admin-theme,
 body:has(.admin-theme) {
-  --bg: #fefbf6;
-  --surface: #fbf6ec;
+  /* Limestone page, white panels, pine ink. Panels are separated by a rule,
+     not by shadows. "gold" is the historical name of the action colour: it is
+     the forest green of the sidebar now. */
+  --bg: #f1f2ec;
+  --surface: #f7f8f3;
   --card: #ffffff;
-  --card2: #faf4e9;
-  --sage: #e7ede8;
-  --sageFg: #2f5340;
-  --ink: #3a352d;
-  --ink2: #6b6459;
-  --ink3: #a79e8d;
-  --line: #ebe3d4;
-  --line2: #f1eadd;
+  --card2: #f4f5ef;
+  --sage: #e3ebe2;
+  --sageFg: #2c4a39;
+  --ink: #1f2a22;
+  --ink2: #4f5b53;
+  --ink3: #6b756d;
+  --line: #dadcd2;
+  --line2: #e8eae2;
   --field: #ffffff;
-  --fieldLine: #e0d6c4;
-  --gold: #c0803c;
-  --goldStrong: #a56a2b;
-  --goldSoft: #f4ead3;
-  --goldSoftFg: #8a6b2e;
-  --chipBg: #efe7d8;
-  --chipFg: #5a4e3e;
-  --danger: #b23b3b;
-  --dangerBg: #f5e3e3;
-  --dangerLine: #e7d6d2;
-  --pos: #2f5340;
-  --posBg: #e7ede8;
-  --track: #ebe3d4;
-  /* Sidebar / hero green gradient (matches the reimagined model). */
-  --green: #263b2e;
-  --green2: #1b2a21;
-  --greenFg: #8fa592;
-  --shadow: 0 1px 2px rgba(58, 53, 45, 0.05);
-  --shadowSm: 0 4px 14px rgba(58, 53, 45, 0.07);
-  --shadowMd: 0 8px 22px rgba(58, 53, 45, 0.08);
-  --shadowLg: 0 20px 50px rgba(58, 53, 45, 0.12);
+  --fieldLine: #cfd3c7;
+  --gold: #2c4a39;
+  --goldStrong: #22392c;
+  --goldSoft: #e3ebe2;
+  --goldSoftFg: #2c4a39;
+  --brass: #8a5f22;
+  --warn: #8a5a00;
+  --warnBg: #f6ebd2;
+  --chipBg: #eceee7;
+  --chipFg: #3f4a42;
+  --danger: #a7372b;
+  --dangerBg: #f6e2de;
+  --dangerLine: #ebcfc9;
+  --pos: #2e6b45;
+  --posBg: #e3eee5;
+  --track: #e2e4dc;
+  --green: #22392c;
+  --green2: #22392c;
+  --greenFg: #a9bbae;
+  --shadow: none;
+  --shadowSm: none;
+  --shadowMd: 0 8px 24px rgba(31, 42, 34, 0.1);
+  --shadowLg: 0 18px 48px rgba(31, 42, 34, 0.16);
   /* Type roles used across the admin design. */
-  --display: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
-  --mono: var(--nf-jetbrains), "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: var(--head);
+  --mono: var(--ui);
 }
 
 .admin-theme[data-theme="dark"],
 body:has(.admin-theme[data-theme="dark"]) {
-  --bg: #17140f;
-  --surface: #211d17;
-  --card: #28241c;
-  --card2: #312b22;
-  --sage: #243029;
+  --bg: #131a15;
+  --surface: #18201a;
+  --card: #1c251f;
+  --card2: #232d26;
+  --sage: #24342a;
   --sageFg: #a9c6b0;
-  --ink: #f1e7d6;
-  --ink2: #beb4a2;
-  --ink3: #8a8175;
-  --line: #38332a;
-  --line2: #312c24;
-  --field: #312b22;
-  --fieldLine: #48412f;
-  --goldSoft: #3a3220;
-  --goldSoftFg: #e0a95c;
-  --chipBg: #3a3327;
-  --chipFg: #d8cbb2;
-  --danger: #e28c8c;
-  --dangerBg: #3a2622;
-  --dangerLine: #4c332e;
+  --ink: #e9ede6;
+  --ink2: #b3bdb5;
+  --ink3: #8b968e;
+  --line: #2f3a32;
+  --line2: #27312a;
+  --field: #232d26;
+  --fieldLine: #3a463d;
+  --gold: #3f6b52;
+  --goldStrong: #4c7d61;
+  --goldSoft: #24342a;
+  --goldSoftFg: #b7d3be;
+  --brass: #d6a95e;
+  --warn: #e6c072;
+  --warnBg: #33291a;
+  --chipBg: #27312a;
+  --chipFg: #c9d2cb;
+  --danger: #e59a8f;
+  --dangerBg: #3a2420;
+  --dangerLine: #4c302b;
   --pos: #a9c6b0;
-  --posBg: #243029;
-  --track: #38332a;
-  --green: #1c2c22;
-  --green2: #141f18;
-  --greenFg: #8fa592;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadowSm: 0 2px 12px rgba(0, 0, 0, 0.42);
-  --shadowMd: 0 10px 26px rgba(0, 0, 0, 0.35);
+  --posBg: #24342a;
+  --track: #2f3a32;
+  --green: #0f1511;
+  --green2: #0f1511;
+  --greenFg: #8b968e;
+  --shadow: none;
+  --shadowSm: none;
+  --shadowMd: 0 10px 26px rgba(0, 0, 0, 0.4);
   --shadowLg: 0 22px 54px rgba(0, 0, 0, 0.5);
 }
 
 .admin-theme {
   background: var(--bg);
   color: var(--ink);
+  font-family: var(--ui);
+  font-variant-numeric: tabular-nums;
   transition:
     background 0.35s ease,
     color 0.35s ease;
@@ -283,7 +302,7 @@ body:has(.admin-theme[data-theme="dark"]) {
   transition: border-color 0.15s ease;
 }
 .admin-theme .a-lift:hover {
-  border-color: #d9ccb4;
+  border-color: var(--fieldLine);
 }
 .admin-theme .a-row {
   transition: background 0.15s ease;
@@ -324,7 +343,7 @@ body:has(.admin-theme[data-theme="dark"]) {
   outline: none;
   background: none;
   color: var(--ink);
-  font-family: var(--nf-inter), "Inter", sans-serif;
+  font-family: var(--ui);
   font-size: 14px;
   font-weight: 400;
   line-height: 1;
@@ -394,11 +413,11 @@ body:has(.admin-theme[data-theme="dark"]) {
   width: 264px;
   flex: none;
   z-index: 50;
-  background: linear-gradient(178deg, var(--green), var(--green2));
-  color: #efe7d8;
+  background: var(--green);
+  color: #e9ede6;
   display: flex;
   flex-direction: column;
-  padding: 26px 18px 18px;
+  padding: 24px 14px 16px;
   position: sticky;
   top: 0;
   align-self: flex-start;
@@ -435,16 +454,16 @@ body:has(.admin-theme[data-theme="dark"]) {
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.05);
-  color: #d9d0bf;
+  border: 0;
+  background: transparent;
+  color: #a9bbae;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .admin-collapse-btn:hover,
 .admin-drawer-close:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #f6eedf;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 .admin-drawer-close {
   display: none;
@@ -454,47 +473,52 @@ body:has(.admin-theme[data-theme="dark"]) {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 30px;
+  gap: 2px;
+  margin-top: 28px;
 }
 .admin-navitem {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 13px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 8px;
   text-decoration: none;
-  border-left: 3px solid transparent;
-  color: #b4aa98;
-  font: 500 15px/1 var(--nf-inter), "Inter";
+  color: #b9c6bc;
+  font: 500 15px/1 var(--ui);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .admin-navitem:hover {
-  background: rgba(224, 169, 92, 0.09);
-  color: #f6eedf;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
 }
 .admin-navitem[data-active="true"] {
-  border-left-color: #e3ab5e;
-  background: rgba(224, 169, 92, 0.14);
-  color: #f6eedf;
+  background: #f1f2ec;
+  color: #1f2a22;
   font-weight: 600;
 }
 .admin-nav-icon {
   display: flex;
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   align-items: center;
   justify-content: center;
 }
-.admin-nav-icon-img {
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
-  image-rendering: -webkit-optimize-contrast;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+.admin-navitem[data-active="true"] .admin-nav-icon {
+  color: #2c4a39;
+}
+.admin-nav-count {
+  margin-left: auto;
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #d6a95e;
+  color: #1f2a22;
+  font: 600 12px/1.3 var(--ui);
+  text-align: center;
 }
 .admin-nav-label {
   white-space: nowrap;
@@ -502,14 +526,14 @@ body:has(.admin-theme[data-theme="dark"]) {
 
 .admin-wallet-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 16px;
-  padding: 15px 16px;
-  margin-bottom: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 12px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.admin-wallet-card:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 .admin-user {
   position: relative;
@@ -591,7 +615,9 @@ body:has(.admin-theme[data-theme="dark"]) {
     gap: 0;
     padding-left: 0;
     padding-right: 0;
-    border-left-width: 0;
+  }
+  .admin-shell-root[data-collapsed="true"] .admin-nav-count {
+    display: none;
   }
   .admin-shell-root[data-collapsed="true"] .admin-wallet-card,
   .admin-shell-root[data-collapsed="true"] .admin-user {
@@ -704,10 +730,33 @@ body:has(.admin-theme[data-theme="dark"]) {
   /* Phone: stack tiers */
 }
 
+/* ── Key figures: one ruled strip, not a row of floating cards ─────────── */
+/* The 1px gap shows the container background as hairlines between cells,
+   whatever the number of columns at the current width. */
+.admin-stat-grid {
+  gap: 1px !important;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.admin-stat-grid > * {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--card) !important;
+}
+.admin-stat-grid > a:hover {
+  background: var(--card2) !important;
+}
+
 /* ── Responsive grids (stat cards & tuned grids stack down) ─────────────── */
 @media (max-width: 720px) {
   .admin-stat-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .admin-stat-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 .settings-team-card {
@@ -718,6 +767,12 @@ body:has(.admin-theme[data-theme="dark"]) {
 }
 
 @media (max-width: 640px) {
+  .admin-todo {
+    flex-wrap: wrap;
+  }
+  .admin-todo > :last-child:not(:nth-child(2)) {
+    margin-left: 34px;
+  }
   .admin-grid-stack {
     grid-template-columns: 1fr !important;
   }

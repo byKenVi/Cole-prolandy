@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZES = [10, 20, 50];
 
-type StatusTab = "all" | "new" | "active" | "accepted" | "closed";
+type StatusTab = "all" | "review" | "new" | "active" | "accepted" | "closed";
 
 function parseSort(raw: string | undefined): "date" | "value" {
   return raw === "value" ? "value" : "date";
@@ -27,14 +27,29 @@ function parseDir(raw: string | undefined): "asc" | "desc" {
 }
 
 function parseStatus(raw: string | undefined): StatusTab {
-  if (raw === "new" || raw === "active" || raw === "accepted" || raw === "closed" || raw === "all") {
+  if (
+    raw === "review" ||
+    raw === "new" ||
+    raw === "active" ||
+    raw === "accepted" ||
+    raw === "closed" ||
+    raw === "all"
+  ) {
     return raw;
   }
   return "all";
 }
 
+/** Open requests held for an admin decision (not sent to anyone yet). */
+const REVIEW_WHERE: Prisma.LeadWhereInput = {
+  reviewStatus: "PENDING_REVIEW",
+  status: { in: ["NEW", "DISTRIBUTED"] },
+};
+
 function statusWhere(tab: StatusTab): Prisma.LeadWhereInput {
   switch (tab) {
+    case "review":
+      return REVIEW_WHERE;
     case "new":
       return { status: "NEW" };
     case "active":
@@ -74,6 +89,7 @@ export default async function AdminLeads({
 
   const [
     totalCount,
+    reviewCount,
     newCount,
     activeCount,
     acceptedCount,
@@ -82,6 +98,7 @@ export default async function AdminLeads({
     filteredCount,
   ] = await Promise.all([
     prisma.lead.count(),
+    prisma.lead.count({ where: REVIEW_WHERE }),
     prisma.lead.count({ where: { status: "NEW" } }),
     prisma.lead.count({ where: { status: "DISTRIBUTED" } }),
     prisma.lead.count({
@@ -132,7 +149,7 @@ export default async function AdminLeads({
     accepted: l.acceptedCount,
     sent: formatDate(l.createdAt),
     sentAtIso: l.createdAt.toISOString(),
-    price: l.budgetCents == null ? "—" : formatMoney(l.budgetCents),
+    price: l.budgetCents == null ? "No budget" : formatMoney(l.budgetCents),
     priceCents: l.budgetCents,
     iconSrc: iconSrcFor({
       icon: leadCategoryIcon(l),
@@ -155,10 +172,9 @@ export default async function AdminLeads({
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker="Opportunities"
-        title="Leads"
-        subtitle="Estimate requests from Landys.co — matching, acceptance, and status."
-        action={<GoldButtonLink href="/admin/leads/new">Create opportunity</GoldButtonLink>}
+        title="Requests"
+        subtitle="Estimate requests from landys.co and the ones you enter by hand: who received them, who accepted, where they stand."
+        action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
       />
 
       <div
@@ -171,12 +187,12 @@ export default async function AdminLeads({
         }}
       >
         <StatCard label="Total requests" value={String(totalCount)} />
-        <StatCard label="Active / distributed" value={String(activeCount)} valueColor="var(--sageFg)" />
-        <StatCard label="With acceptances" value={String(acceptedCount)} />
+        <StatCard label="Sent to contractors" value={String(activeCount)} />
+        <StatCard label="Accepted by a contractor" value={String(acceptedCount)} />
         <StatCard
-          label="Est. pipeline value"
+          label="Open project value"
           value={formatMoney(pipelineValue)}
-          sub="Sum of estimated project values on open requests"
+          sub="Sum of the budgets on open requests"
         />
       </div>
 
@@ -189,6 +205,7 @@ export default async function AdminLeads({
           initialStatus={statusTab}
           statusCounts={{
             all: totalCount,
+            review: reviewCount,
             new: newCount,
             active: activeCount,
             accepted: acceptedCount,

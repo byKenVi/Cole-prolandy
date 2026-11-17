@@ -28,11 +28,11 @@ function fixture(overrides: Partial<MatchView> = {}): MatchView {
     summary: {
       categoryName: "Roofing",
       workTypeName: "Repair",
-      title: "Roofing - Repair",
+      title: "Roofing, repair",
       cityState: "Hemphill, TX",
       place: "Hemphill, TX 75948",
       zip: "75948",
-      budgetLabel: "$5,000 - $15,000",
+      budgetLabel: "$5,000 to $15,000",
       timelineLabel: "Within 2 weeks",
       urgencyLabel: "High",
       landTypeName: "Residential",

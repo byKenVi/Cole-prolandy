@@ -17,7 +17,7 @@ const TIMELINES: TaxonomyOption[] = [
   { code: "asap", name: "As soon as possible" },
   { code: "within-2-weeks", name: "Within 2 weeks" },
   { code: "within-1-month", name: "Within 1 month" },
-  { code: "1-3-months", name: "1–3 months" },
+  { code: "1-3-months", name: "1 to 3 months" },
   { code: "3-plus-months", name: "3+ months" },
   { code: "just-researching", name: "Just researching" },
 ];
@@ -46,7 +46,7 @@ const EMPTY = {
 const LABEL: React.CSSProperties = {
   display: "block",
   marginBottom: 8,
-  font: "500 14px/1.3 Rubik, sans-serif",
+  font: "500 14px/1.3 var(--ui)",
   letterSpacing: "0",
   color: "var(--ink2)",
 };
@@ -59,12 +59,12 @@ const FIELD: React.CSSProperties = {
   border: "1px solid var(--line)",
   background: "var(--field)",
   color: "var(--ink)",
-  font: "500 15px/1.3 'Inter'",
+  font: "500 15px/1.3 var(--ui)",
 };
 
 const HINT: React.CSSProperties = {
   margin: "8px 0 0",
-  font: "400 13px/1.4 'Inter'",
+  font: "400 13px/1.4 var(--ui)",
   color: "var(--ink3)",
 };
 
@@ -191,7 +191,7 @@ export function ManualLeadForm({
         <p style={{ margin: 0, font: "600 26px/1.2 var(--display)", color: "var(--ink)" }}>
           Opportunity created
         </p>
-        <p style={{ margin: 0, maxWidth: 480, font: "400 15px/1.5 'Inter'", color: "var(--ink2)" }}>
+        <p style={{ margin: 0, maxWidth: 480, font: "400 15px/1.5 var(--ui)", color: "var(--ink2)" }}>
           {routed
             ? `Distributed to ${done.recipients} contractor${done.recipients === 1 ? "" : "s"}.`
             : "Saved for admin review because one or more routing details need attention."}
@@ -229,7 +229,7 @@ export function ManualLeadForm({
             style={{
               padding: "6px 10px",
               borderRadius: 999,
-              font: "600 12px/1 'Inter'",
+              font: "600 12px/1 var(--ui)",
               background: i === step ? "var(--goldSoft)" : "var(--card2)",
               color: i === step ? "var(--goldSoftFg)" : "var(--ink3)",
               border: i === step ? "1px solid var(--gold)" : "1px solid var(--line)",
@@ -241,7 +241,7 @@ export function ManualLeadForm({
       </div>
 
       {step === 0 && (
-        <Section kicker="01 · Landowner" title="Who needs the work?" subtitle="Contact contractors receive only after they accept.">
+        <Section kicker="Step 1 of 4" title="Who needs the work?" subtitle="Contact contractors receive only after they accept.">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name" htmlFor="landowner-name">
               <Input id="landowner-name" style={FIELD} value={form.landownerName} onChange={(event) => set("landownerName", event.target.value)} autoComplete="name" placeholder="Jane Landowner" />
@@ -260,7 +260,7 @@ export function ManualLeadForm({
       )}
 
       {step === 1 && (
-        <Section kicker="02 · Project" title="What kind of work?" subtitle="Current taxonomy used for matching.">
+        <Section kicker="Step 2 of 4" title="What kind of work?" subtitle="Current taxonomy used for matching.">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Land type" htmlFor="land-type">
               <TaxonomySelect id="land-type" value={form.landTypeCode} placeholder="Choose land type…" options={landTypes} onChange={(value) => set("landTypeCode", value)} />
@@ -278,7 +278,7 @@ export function ManualLeadForm({
       )}
 
       {step === 2 && (
-        <Section kicker="03 · Project details" title="Budget and scope" subtitle="The landowner's submitted budget is an estimate, not a final contract value.">
+        <Section kicker="Step 3 of 4" title="Budget and scope" subtitle="The landowner's submitted budget is an estimate, not a final contract value.">
           <div className="flex flex-col gap-4">
             <Field label="Project description" htmlFor="project-description">
               <Textarea id="project-description" rows={4} value={form.description} onChange={(event) => set("description", event.target.value)} placeholder="What needs to be done, site conditions, timing notes…" style={{ ...FIELD, height: "auto", minHeight: 112, padding: "12px 14px", resize: "vertical", lineHeight: 1.45 }} />
@@ -303,11 +303,11 @@ export function ManualLeadForm({
       )}
 
       {step === 3 && (
-        <Section kicker="04 · Review" title="Ready to distribute?" subtitle="Creates a free opportunity. Landy's earns only after the contractor is paid by the landowner.">
+        <Section kicker="Step 4 of 4" title="Ready to distribute?" subtitle="Creates a free opportunity. Landy's earns only after the contractor is paid by the landowner.">
           <div className="grid gap-3 rounded-[14px] border p-4" style={{ borderColor: "var(--line)", background: "var(--card2)" }}>
-            <p style={{ margin: 0, font: "600 15px/1.4 'Inter'", color: "var(--ink)" }}>{form.landownerName} · {form.propertyZip}</p>
-            <p style={{ margin: 0, color: "var(--ink2)" }}>{form.landownerPhone} · {form.landownerEmail}</p>
-            <p style={{ margin: 0, color: "var(--ink)" }}>{workName} · {catName} · {landName}</p>
+            <p style={{ margin: 0, font: "600 15px/1.4 var(--ui)", color: "var(--ink)" }}>{form.landownerName}, ZIP {form.propertyZip}</p>
+            <p style={{ margin: 0, color: "var(--ink2)" }}>{form.landownerPhone}, {form.landownerEmail}</p>
+            <p style={{ margin: 0, color: "var(--ink)" }}>{workName}, {catName}, {landName}</p>
             <p style={{ margin: 0, color: "var(--ink2)" }}>Estimated budget ${form.budgetDollars}</p>
             <p style={{ margin: 0, color: "var(--ink2)", whiteSpace: "pre-wrap" }}>{form.description}</p>
           </div>
@@ -347,9 +347,9 @@ function Section({ kicker, title, subtitle, children }: { kicker: string; title:
   return (
     <section className="flex flex-col gap-[18px]">
       <div>
-        <p style={{ margin: "0 0 6px", font: "500 14px/1.35 Rubik, sans-serif", color: "var(--goldStrong)" }}>{kicker}</p>
+        <p style={{ margin: "0 0 6px", font: "500 14px/1.35 var(--ui)", color: "var(--ink3)" }}>{kicker}</p>
         <h2 style={{ margin: 0, font: "600 22px/1.2 var(--display)", color: "var(--ink)" }}>{title}</h2>
-        <p style={{ margin: "8px 0 0", font: "400 14px/1.45 'Inter'", color: "var(--ink2)" }}>{subtitle}</p>
+        <p style={{ margin: "8px 0 0", font: "400 14px/1.45 var(--ui)", color: "var(--ink2)" }}>{subtitle}</p>
       </div>
       {children}
     </section>

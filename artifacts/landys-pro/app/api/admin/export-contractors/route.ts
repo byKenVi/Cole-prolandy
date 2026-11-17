@@ -39,6 +39,9 @@ export async function GET(req: NextRequest) {
     ...(filter === "deactivated"
       ? { deactivatedAt: { not: null } }
       : { deactivatedAt: null }),
+    ...(filter === "no-area"
+      ? { serviceZipCodes: { isEmpty: true }, serviceCounties: { isEmpty: true } }
+      : {}),
   };
 
   const contractors = await prisma.contractor.findMany({

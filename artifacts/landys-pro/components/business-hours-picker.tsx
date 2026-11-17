@@ -16,7 +16,7 @@ const TIMES = timeOptions();
 
 /**
  * Day toggles + open/close time selects. Emits a formatted string suitable for
- * Contractor.businessHours (e.g. "Mon–Fri 7:00 AM – 6:00 PM").
+ * Contractor.businessHours (e.g. "Mon to Fri, 7:00 AM to 6:00 PM").
  */
 export function BusinessHoursPicker({
   value,
@@ -73,8 +73,8 @@ export function BusinessHoursPicker({
                 className={cn(
                   "min-w-[48px] rounded-[12px] border px-3 py-2.5 text-sm font-semibold transition-colors",
                   on
-                    ? "border-[#C0803C] bg-[#C0803C] text-white"
-                    : "border-border bg-surface text-text-muted hover:border-[#C0803C]/60 hover:text-text",
+                    ? "border-[#2C4A39] bg-[#2C4A39] text-white"
+                    : "border-border bg-surface text-text-muted hover:border-[#2C4A39]/60 hover:text-text",
                 )}
               >
                 <span className="sm:hidden">{d.short}</span>

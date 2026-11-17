@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { ProjectGlyph } from "@/components/project-glyph";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ChipStyle } from "@/lib/admin-display";
 
@@ -22,13 +22,13 @@ export type LeadRow = {
   filter: "new" | "active" | "accepted" | "closed" | "other";
 };
 
-type StatusTab = "all" | "new" | "active" | "accepted" | "closed";
+type StatusTab = "all" | "review" | "new" | "active" | "accepted" | "closed";
 type SortKey = "date" | "value";
 type SortDir = "desc" | "asc";
 
 const GRID = "52px minmax(200px,2.2fr) minmax(150px,1.4fr) 88px 88px 110px 100px 108px";
 const HEAD_CELL: React.CSSProperties = {
-  font: "500 13px/1.3 Rubik, sans-serif",
+  font: "500 13px/1.3 var(--ui)",
   letterSpacing: "0",
   color: "var(--ink2)",
 };
@@ -95,7 +95,7 @@ export function LeadsTable({
   const segStyle = (active: boolean): React.CSSProperties => ({
     cursor: "pointer",
     border: "none",
-    font: "600 13px/1 'Inter'",
+    font: "600 13px/1 var(--ui)",
     padding: "9px 14px",
     borderRadius: 9,
     background: active ? "var(--card)" : "transparent",
@@ -105,10 +105,11 @@ export function LeadsTable({
 
   const tabs: { key: StatusTab; label: string }[] = [
     { key: "all", label: "All" },
+    { key: "review", label: "To review" },
     { key: "new", label: "New" },
-    { key: "active", label: "Active" },
+    { key: "active", label: "Sent" },
     { key: "accepted", label: "Accepted" },
-    { key: "closed", label: "Expired / Closed" },
+    { key: "closed", label: "Expired or closed" },
   ];
 
   function SortButton({ label, sortKey, align }: { label: string; sortKey: SortKey; align?: "right" }) {
@@ -172,7 +173,7 @@ export function LeadsTable({
             >
               {t.label}{" "}
               <span style={{ opacity: 0.55 }}>
-                {statusCounts?.[t.key] ?? (t.key === "all" ? total : "—")}
+                {statusCounts?.[t.key] ?? (t.key === "all" ? total : "")}
               </span>
             </button>
           ))}
@@ -212,9 +213,9 @@ export function LeadsTable({
             className="a-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search job, trade or location…"
+            placeholder="Search by project, trade or place"
             aria-label="Search leads"
-            style={{ font: "400 14px/1 'Inter'", width: "100%" }}
+            style={{ font: "400 14px/1 var(--ui)", width: "100%" }}
           />
         </div>
       </div>
@@ -223,8 +224,7 @@ export function LeadsTable({
         style={{
           background: "var(--card)",
           border: "1px solid var(--line)",
-          borderRadius: 18,
-          boxShadow: "var(--shadow)",
+          borderRadius: 12,
           overflowX: "auto",
         }}
       >
@@ -267,36 +267,36 @@ export function LeadsTable({
             >
               <span
                 style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 8,
                   background: "var(--card2)",
-                  border: "1px solid var(--line)",
+                  color: "var(--sageFg)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Image src={row.iconSrc || "/icons/fallback.png"} alt="" width={25} height={25} style={{ objectFit: "contain" }} />
+                <ProjectGlyph src={row.iconSrc} size={20} />
               </span>
               <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>
-                <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
+                <p style={{ margin: 0, font: "600 15px/1.25 var(--ui)", color: "var(--ink)" }}>{row.title}</p>
+                <p style={{ margin: "3px 0 0", font: "400 12px/1 var(--ui)", color: "var(--ink3)" }}>
                   {row.category}
                 </p>
               </div>
-              <p style={{ margin: 0, font: "500 13px/1.3 'Inter'", color: "var(--ink2)", minWidth: 0 }}>
+              <p style={{ margin: 0, font: "500 13px/1.3 var(--ui)", color: "var(--ink2)", minWidth: 0 }}>
                 {row.place}
               </p>
-              <span style={{ font: "600 14px/1 'Inter'", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ font: "600 14px/1 var(--ui)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
                 {row.recipients}
               </span>
-              <span style={{ font: "600 14px/1 'Inter'", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ font: "600 14px/1 var(--ui)", color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>
                 {row.accepted}
               </span>
               <span
                 style={{
-                  font: "500 11px/1 'Inter'",
+                  font: "500 11px/1 var(--ui)",
                   color: row.status.fg,
                   background: row.status.bg,
                   padding: "6px 11px",
@@ -310,7 +310,7 @@ export function LeadsTable({
                 <span style={{ width: 6, height: 6, borderRadius: 999, background: row.status.fg }} />
                 {row.status.label}
               </span>
-              <span style={{ font: "400 13px/1.3 'Inter'", color: "var(--ink2)" }}>{row.sent}</span>
+              <span style={{ font: "400 13px/1.3 var(--ui)", color: "var(--ink2)" }}>{row.sent}</span>
               <span
                 style={{
                   font: "600 16px/1 var(--display)",
@@ -341,16 +341,16 @@ export function LeadsTable({
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                <p style={{ margin: 0, font: "600 15px/1.25 'Inter'", color: "var(--ink)" }}>{row.title}</p>
+                <p style={{ margin: 0, font: "600 15px/1.25 var(--ui)", color: "var(--ink)" }}>{row.title}</p>
                 <span style={{ font: "600 15px/1 var(--display)", color: "var(--ink)" }}>{row.price}</span>
               </div>
-              <p style={{ margin: 0, font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
-                {row.place} · {row.recipients} matched · {row.accepted} accepted · {row.sent}
+              <p style={{ margin: 0, font: "400 12px/1.3 var(--ui)", color: "var(--ink3)" }}>
+                {row.place}, {row.accepted} of {row.recipients} accepted, {row.sent}
               </p>
               <span
                 style={{
                   alignSelf: "flex-start",
-                  font: "500 11px/1 'Inter'",
+                  font: "500 11px/1 var(--ui)",
                   color: row.status.fg,
                   background: row.status.bg,
                   padding: "6px 11px",
@@ -383,11 +383,10 @@ export function LeadsTable({
               background: "var(--card2)",
             }}
           >
-            <span style={{ font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
+            <span style={{ font: "400 13px/1 var(--ui)", color: "var(--ink3)" }}>
               Showing {shown.length}
-              {pageCount != null ? ` of ${pageCount} on this page` : ""}
-              {" · "}
-              {total} request{total === 1 ? "" : "s"} total
+              {pageCount != null ? ` of ${pageCount} on this page` : ""}, {total} request
+              {total === 1 ? "" : "s"} in total
             </span>
           </div>
         )}

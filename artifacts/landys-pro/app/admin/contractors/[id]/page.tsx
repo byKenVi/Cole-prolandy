@@ -90,9 +90,10 @@ export default async function ContractorDetail({
             {contractor.deactivatedAt && <Badge variant="danger">Deactivated</Badge>}
           </div>
           <p className="text-sm" style={{ color: "var(--ink2)" }}>
-            {contractor.contractorCategory?.name ?? "No contractor category"} ·{" "}
-            {assignedProjects.map((p) => p.name).join(" · ")} · {contractor.email} ·{" "}
-            {contractor.phone}
+            {contractor.contractorCategory?.name ?? "No contractor category"}
+            {assignedProjects.length > 0 ? `: ${assignedProjects.map((p) => p.name).join(", ")}` : ""}
+            <br />
+            {contractor.email}, {contractor.phone}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -154,8 +155,8 @@ export default async function ContractorDetail({
           ) : (
             <span className="font-medium text-text-muted">None on file</span>
           )}
-          {" · "}
-          Used for success-fee payments when due.
+          {". "}
+          Used to pay success fees when they are due.
         </p>
       </Card>
 

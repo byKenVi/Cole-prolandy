@@ -19,19 +19,19 @@ const labelStyle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 600,
   marginBottom: 6,
-  color: "var(--ink, #3A352D)",
+  color: "var(--ink, #1F2A22)",
 };
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
   minHeight: 44,
   padding: "10px 12px",
-  border: "1px solid var(--line, #EBE3D4)",
+  border: "1px solid var(--line, #DADCD2)",
   borderRadius: 10,
   /* 16px keeps iOS Safari from zooming the viewport when the field is focused. */
   fontSize: 16,
-  color: "var(--ink, #3A352D)",
-  background: "var(--surface, #FBF6EC)",
+  color: "var(--ink, #1F2A22)",
+  background: "var(--surface, #F7F8F3)",
   outline: "none",
   boxSizing: "border-box",
 };
@@ -138,7 +138,7 @@ export function InviteAdminModal({
                 margin: "0 0 8px",
                 fontSize: 13,
                 fontWeight: 600,
-                color: "var(--ink, #3A352D)",
+                color: "var(--ink, #1F2A22)",
               }}
             >
               Role
@@ -156,8 +156,8 @@ export function InviteAdminModal({
                       minWidth: 0,
                       padding: "12px 12px 12px 34px",
                       borderRadius: 12,
-                      border: `2px solid ${selected ? ACCENT : "var(--line, #EBE3D4)"}`,
-                      background: selected ? ACCENT_SOFT : "var(--surface, #FBF6EC)",
+                      border: `2px solid ${selected ? ACCENT : "var(--line, #DADCD2)"}`,
+                      background: selected ? ACCENT_SOFT : "var(--surface, #F7F8F3)",
                       cursor: pending ? "not-allowed" : "pointer",
                       display: "block",
                       userSelect: "none",
@@ -188,7 +188,7 @@ export function InviteAdminModal({
                         margin: 0,
                         fontSize: 13,
                         fontWeight: 700,
-                        color: selected ? ACCENT : "var(--ink, #3A352D)",
+                        color: selected ? ACCENT : "var(--ink, #1F2A22)",
                       }}
                     >
                       {r === "OWNER" ? "Owner" : "Admin"}

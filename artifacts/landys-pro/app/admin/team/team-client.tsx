@@ -91,7 +91,7 @@ const cardStyle: React.CSSProperties = {
 
 const thStyle: React.CSSProperties = {
   padding: "10px 16px",
-  font: "500 13px/1.3 Rubik, sans-serif",
+  font: "500 13px/1.3 var(--ui)",
   letterSpacing: "0",
   color: "var(--ink2)",
   textAlign: "left",
@@ -139,7 +139,7 @@ function StatusBadge({ status }: { status: "active" | "disabled" | "pending" | "
 
 function RoleBadge({ role }: { role: "OWNER" | "ADMIN" }) {
   return role === "OWNER" ? (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: "#C0803C", whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: "#2C4A39", whiteSpace: "nowrap" }}>
       <Crown style={{ width: 13, height: 13 }} /> Owner
     </span>
   ) : (
@@ -213,7 +213,7 @@ function ActionMenu({
           overflowY: "auto",
           /* Literal fallbacks: the portal target sits outside `.admin-theme`. */
           background: "var(--card, #ffffff)",
-          border: "1px solid var(--line, #EBE3D4)",
+          border: "1px solid var(--line, #DADCD2)",
           borderRadius: 12,
           boxShadow: "0 12px 34px rgba(58,53,45,0.20)",
           padding: "4px 0",
@@ -441,11 +441,11 @@ function MenuItem({
         cursor: "pointer",
         fontSize: 13.5,
         whiteSpace: "nowrap",
-        color: danger ? "#9A3B2E" : "var(--ink, #3A352D)",
+        color: danger ? "#9A3B2E" : "var(--ink, #1F2A22)",
         textAlign: "left",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = danger ? "#F9EEEB" : "#FBF6EC";
+        e.currentTarget.style.background = danger ? "#F9EEEB" : "#F7F8F3";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "none";
@@ -536,7 +536,7 @@ export function TeamPageClient({
       >
         <div style={{ minWidth: 0 }}>
           <h1
-            className="font-fraunces admin-page-title"
+            className="font-head admin-page-title"
             style={{ fontWeight: 600, letterSpacing: "-.01em", margin: "0 0 4px", color: "var(--ink)" }}
           >
             Team
@@ -587,7 +587,7 @@ export function TeamPageClient({
                     {formatDate(m.invitedAt)}
                   </td>
                   <td suppressHydrationWarning style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13, whiteSpace: "nowrap" }}>
-                    {m.lastLoginAt ? formatDate(m.lastLoginAt) : "—"}
+                    {m.lastLoginAt ? formatDate(m.lastLoginAt) : "Never"}
                   </td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>
                     <MemberActions member={m} onDone={refresh} />
@@ -606,7 +606,7 @@ export function TeamPageClient({
               email={m.email}
               role={m.role}
               status={m.status}
-              meta={`Invited ${formatDate(m.invitedAt)} · Last login ${m.lastLoginAt ? formatDate(m.lastLoginAt) : "—"}`}
+              meta={`Invited ${formatDate(m.invitedAt)}. Last login: ${m.lastLoginAt ? formatDate(m.lastLoginAt) : "never"}.`}
               actions={<MemberActions member={m} onDone={refresh} />}
             />
           ))}
@@ -674,7 +674,7 @@ export function TeamPageClient({
                   email={inv.email}
                   role={inv.role}
                   status={expired ? "expired" : "pending"}
-                  meta={`Invited ${formatDate(inv.invitedAt)} · Expires ${formatDate(inv.expiresAt)}`}
+                  meta={`Invited ${formatDate(inv.invitedAt)}. Expires ${formatDate(inv.expiresAt)}.`}
                   actions={<InviteActions invite={inv} onDone={refresh} />}
                 />
               );

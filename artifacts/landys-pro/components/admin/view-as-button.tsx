@@ -19,7 +19,7 @@ export function ViewAsButton({ contractorId }: { contractorId: string }) {
         background: "var(--field)",
         border: "1px solid var(--fieldLine)",
         borderRadius: 10,
-        font: "600 12px/1 'Inter'",
+        font: "600 12px/1 var(--ui)",
         color: "var(--ink)",
         cursor: pending ? "wait" : "pointer",
         opacity: pending ? 0.7 : 1,

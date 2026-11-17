@@ -323,7 +323,7 @@ export function ContractorForm({
               onChange={(e) => setIsPro(e.target.checked)}
             />
             <span className="flex flex-col gap-0.5">
-              <span className="text-base text-text">Pro plan — flag only</span>
+              <span className="text-base text-text">Pro plan (label only)</span>
               <span className="text-sm" style={{ color: "var(--ink2)" }}>
                 Does not yet affect lead distribution or billing.
               </span>
@@ -382,7 +382,7 @@ function StepIndicator({ steps, current }: { steps: readonly string[]; current: 
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              font: "600 13px/1 'Inter'",
+              font: "600 13px/1 var(--ui)",
               background: i <= current ? "var(--gold)" : "var(--field)",
               color: i <= current ? "#fff" : "var(--ink3)",
               border: i <= current ? "none" : "1px solid var(--fieldLine)",
@@ -393,7 +393,7 @@ function StepIndicator({ steps, current }: { steps: readonly string[]; current: 
           <span
             className="hidden sm:inline"
             style={{
-              font: "600 13px/1 'Inter'",
+              font: "600 13px/1 var(--ui)",
               color: i === current ? "var(--ink)" : "var(--ink3)",
             }}
           >
@@ -411,8 +411,8 @@ function StepIndicator({ steps, current }: { steps: readonly string[]; current: 
 function StepTitle({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
-      <h2 style={{ margin: 0, font: "600 22px/1.2 'Inter'", color: "var(--ink)" }}>{title}</h2>
-      <p style={{ margin: "8px 0 0", font: "400 15px/1.45 'Inter'", color: "var(--ink2)" }}>{subtitle}</p>
+      <h2 style={{ margin: 0, font: "600 22px/1.2 var(--ui)", color: "var(--ink)" }}>{title}</h2>
+      <p style={{ margin: "8px 0 0", font: "400 15px/1.45 var(--ui)", color: "var(--ink2)" }}>{subtitle}</p>
     </div>
   );
 }

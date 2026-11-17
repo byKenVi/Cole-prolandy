@@ -34,8 +34,8 @@ const STATUS_STYLE: Record<string, { bg: string; fg: string; text: string }> = {
   SKIPPED: { bg: "var(--chipBg)", fg: "var(--ink3)", text: "Not sent" },
 };
 
-const cell: React.CSSProperties = { padding: "12px 14px", font: "400 14px/1.4 'Inter'", verticalAlign: "top" };
-const head: React.CSSProperties = { ...cell, font: "500 13px/1.3 Rubik, sans-serif", color: "var(--ink2)", textAlign: "left" };
+const cell: React.CSSProperties = { padding: "12px 14px", font: "400 14px/1.4 var(--ui)", verticalAlign: "top" };
+const head: React.CSSProperties = { ...cell, font: "500 13px/1.3 var(--ui)", color: "var(--ink2)", textAlign: "left" };
 
 export default async function MessagesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   await requireAdmin();
@@ -125,7 +125,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
                           <summary style={{ cursor: "pointer", color: "var(--ink2)" }}>
                             {row.subject ?? row.body.slice(0, 80)}
                           </summary>
-                          <pre style={{ whiteSpace: "pre-wrap", font: "400 13px/1.45 'Inter'", margin: "8px 0 0", color: "var(--ink)" }}>
+                          <pre style={{ whiteSpace: "pre-wrap", font: "400 13px/1.45 var(--ui)", margin: "8px 0 0", color: "var(--ink)" }}>
                             {row.body}
                           </pre>
                         </details>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { SystemHealth } from "@/components/admin/system-health";
-import { ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { expireLeads } from "@/lib/domain/leads";
 import {
@@ -77,7 +76,7 @@ function buildPaidSeries(
 
   // All-time: daily when history is short, monthly when it stretches.
   if (withPaidAt.length === 0) {
-    return [{ label: "—", revenueCents: 0 }];
+    return [{ label: "", revenueCents: 0 }];
   }
 
   const earliest = withPaidAt.reduce(
@@ -121,7 +120,7 @@ function buildPaidSeries(
     });
     cursor.setMonth(cursor.getMonth() + 1);
   }
-  return series.length > 0 ? series : [{ label: "—", revenueCents: 0 }];
+  return series.length > 0 ? series : [{ label: "", revenueCents: 0 }];
 }
 
 export default async function AdminDashboard({
@@ -248,126 +247,59 @@ export default async function AdminDashboard({
 
   const series = buildPaidSeries(paidInRange, range, now);
   const revenueInRange = series.reduce((s, p) => s + p.revenueCents, 0);
-  const mid = Math.floor(series.length / 2);
-  const firstHalf = series.slice(0, mid).reduce((s, p) => s + p.revenueCents, 0);
-  const secondHalf = series.slice(mid).reduce((s, p) => s + p.revenueCents, 0);
-  const trendPct =
-    firstHalf > 0 ? Math.round(((secondHalf - firstHalf) / firstHalf) * 100) : null;
 
-  const dateStr = now.toLocaleDateString(undefined, {
-    month: "short",
+  // Landy's runs in Texas: the heading uses Central time, not the server's.
+  const today = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
     day: "numeric",
-    year: "numeric",
+    timeZone: "America/Chicago",
   });
 
   const metrics = [
-    {
-      label: "Open requests",
-      value: openRequests,
-      href: "/admin/leads",
-      hint: "New & distributed",
-      accent: "var(--gold)",
-    },
-    {
-      label: "Won jobs",
-      value: wonJobs,
-      href: "/admin/fees",
-      hint: "Reported won",
-      accent: "var(--green)",
-    },
-    {
-      label: "Fees due",
-      value: feesDue,
-      href: "/admin/fees?tab=due",
-      hint: "Owed to Landy's",
-      accent: "var(--danger)",
-    },
+    { label: "Open requests", value: String(openRequests), href: "/admin/leads", hint: "New or sent, not closed yet" },
+    { label: "Won jobs", value: String(wonJobs), href: "/admin/fees", hint: "Reported by contractors" },
+    { label: "Fees due", value: String(feesDue), href: "/admin/fees?tab=due", hint: "Owed to Landy's" },
     {
       label: "Fees collected",
       value: formatMoney(feesCollectedCents),
       href: "/admin/fees?tab=paid",
-      hint: "All-time paid",
-      accent: "var(--sageFg)",
+      hint: "All time",
     },
   ];
 
   return (
-    <div className="admin-fade-up">
+    <div>
       <PageHeader
-        title={greeting()}
-        subtitle={`${dateStr}. Open requests, fees, confirmations, and won jobs.`}
-        titleSize={36}
+        title={today}
+        subtitle={`${greeting()}. Here is what is waiting and how the business is doing.`}
+        titleSize={34}
         action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
       />
       <SystemHealth />
 
       <div
         className="admin-stat-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-          gap: 12,
-          marginBottom: 18,
-        }}
+        style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 16 }}
       >
         {metrics.map((m) => (
-            <Link
-              key={m.label}
-              href={m.href}
-              className="a-lift"
-              style={{
-                textDecoration: "none",
-                background: "var(--card)",
-                border: "1px solid var(--line)",
-                borderLeft: `4px solid ${m.accent ?? "var(--gold)"}`,
-                borderRadius: 16,
-                padding: "14px 16px",
-                boxShadow: "var(--shadowSm)",
-                display: "block",
-              }}
-            >
-            <p
-              style={{
-                margin: "0 0 8px",
-                font: "500 13px/1.3 Rubik, sans-serif",
-                letterSpacing: "0",
-                color: "var(--ink2)",
-              }}
-            >
-              {m.label}
-            </p>
-            <p
-              style={{
-                margin: "0 0 4px",
-                font: "600 24px/1 var(--display)",
-                color: "var(--ink)",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {m.value}
-            </p>
-            <p style={{ margin: 0, font: "500 12px/1.2 'Inter'", color: "var(--ink2)" }}>{m.hint}</p>
+          <Link key={m.label} href={m.href} style={{ textDecoration: "none", display: "block", padding: "16px 20px" }}>
+            <p style={{ margin: 0, font: "500 14px/1.3 var(--ui)", color: "var(--ink2)" }}>{m.label}</p>
+            <p style={{ margin: "8px 0 0", font: "700 30px/1 var(--head)", color: "var(--ink)" }}>{m.value}</p>
+            <p style={{ margin: "6px 0 0", font: "400 13px/1.3 var(--ui)", color: "var(--ink3)" }}>{m.hint}</p>
           </Link>
         ))}
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <RevenueHero
-          value={formatMoney(revenueInRange)}
-          trend={trendPct}
-          series={series}
-          range={range}
-        />
+        <RevenueHero value={formatMoney(revenueInRange)} paidCount={paidInRange.length} series={series} range={range} />
       </div>
 
-      <div
-        className="admin-grid-stack"
-        style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 16 }}
-      >
-        <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
-          <SectionHead title="Opportunities needing attention" href="/admin/leads" />
+      <div className="admin-grid-stack" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 16 }}>
+        <Panel style={{ overflow: "hidden" }}>
+          <SectionHead title="Open requests" note="Oldest first" href="/admin/leads" />
           {opportunitiesAttention.length === 0 ? (
-            <EmptyBlock text="No open estimate requests need attention." />
+            <EmptyBlock text="No open request. New ones from landys.co show up here." />
           ) : (
             opportunitiesAttention.map((lead) => {
               const chip = leadStatusChip(lead.status);
@@ -376,7 +308,6 @@ export default async function AdminDashboard({
                 category: leadCategoryLabel(lead),
                 project: leadScopeLabel(lead),
               });
-              const est = lead.budgetCents;
               return (
                 <div
                   key={lead.id}
@@ -384,50 +315,45 @@ export default async function AdminDashboard({
                   style={{
                     position: "relative",
                     display: "grid",
-                    gridTemplateColumns: "44px minmax(0,1fr) auto auto",
+                    gridTemplateColumns: "40px minmax(0,1fr) auto",
                     alignItems: "center",
                     gap: 14,
-                    padding: "13px 22px",
+                    padding: "12px 20px",
                     borderBottom: "1px solid var(--line2)",
                   }}
                 >
                   <RowLink href={`/admin/leads/${lead.id}`} label={`Open ${leadScopeLabel(lead)}`} />
-                  <IconTile src={src} />
+                  <IconTile src={src} size={40} />
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
+                    <p style={{ margin: 0, font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>
                       {leadScopeLabel(lead)}
                     </p>
-                    <p style={{ margin: "2px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
-                      {lead.propertyLocation} · {lead._count.matches} matched · {lead.acceptedCount}{" "}
-                      accepted · {formatDate(lead.createdAt)}
-                    </p>
+                    <Meta
+                      items={[
+                        lead.propertyLocation,
+                        `${lead.acceptedCount} of ${lead._count.matches} accepted`,
+                        formatDate(lead.createdAt),
+                      ]}
+                    />
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <Chip bg={chip.bg} fg={chip.fg}>
                       {chip.label}
                     </Chip>
-                    <p
-                      style={{
-                        margin: "6px 0 0",
-                        font: "600 14px/1 var(--display)",
-                        color: "var(--ink)",
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      {est != null ? formatMoney(est) : "—"}
+                    <p style={{ margin: "6px 0 0", font: "600 15px/1 var(--head)", color: "var(--ink)" }}>
+                      {lead.budgetCents != null ? formatMoney(lead.budgetCents) : "No budget"}
                     </p>
                   </div>
-                  <ChevronRight size={16} color="var(--ink3)" aria-hidden />
                 </div>
               );
             })
           )}
         </Panel>
 
-        <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
-          <SectionHead title="Fees requiring action" href="/admin/fees" />
+        <Panel style={{ overflow: "hidden" }}>
+          <SectionHead title="Fees to follow up" href="/admin/fees" />
           {feesAttention.length === 0 ? (
-            <EmptyBlock text="No fees need attention right now." />
+            <EmptyBlock text="No fee is due. Fees appear here once a contractor reports a won job." />
           ) : (
             feesAttention.map((fee) => {
               const awaiting = fee.status === "AWAITING_CONTRACTOR_PAYMENT";
@@ -435,45 +361,33 @@ export default async function AdminDashboard({
                 <div
                   key={fee.id}
                   className="a-row"
-                  style={{
-                    position: "relative",
-                    padding: "14px 22px",
-                    borderBottom: "1px solid var(--line2)",
-                    cursor: "pointer",
-                  }}
+                  style={{ position: "relative", padding: "12px 20px", borderBottom: "1px solid var(--line2)" }}
                 >
-                  <RowLink href={`/admin/fees/${fee.leadMatchId}`} label={`Open fee for ${leadScopeLabel(fee.leadMatch.lead)}`} />
+                  <RowLink
+                    href={`/admin/fees/${fee.leadMatchId}`}
+                    label={`Open fee for ${leadScopeLabel(fee.leadMatch.lead)}`}
+                  />
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
-                        {leadScopeLabel(fee.leadMatch.lead)}
+                      <p style={{ margin: 0, font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>
+                        {fee.leadMatch.contractor.name}
                       </p>
-                      <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
-                        {fee.leadMatch.contractor.name} · {fee.leadMatch.lead.propertyLocation}
-                      </p>
+                      <Meta items={[leadScopeLabel(fee.leadMatch.lead), fee.leadMatch.lead.propertyLocation]} />
                     </div>
                     <div style={{ textAlign: "right", flex: "none" }}>
-                      <p
-                        style={{
-                          margin: 0,
-                          font: "600 15px/1 var(--display)",
-                          color: "var(--ink)",
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
+                      <p style={{ margin: 0, font: "600 16px/1 var(--head)", color: "var(--ink)" }}>
                         {formatMoney(fee.feeAmountCents)}
                       </p>
                       <p
                         style={{
-                          margin: "4px 0 0",
-                          font: "600 11px/1 'Inter'",
-                          color: awaiting ? "var(--goldSoftFg)" : "var(--danger)",
+                          margin: "5px 0 0",
+                          font: "500 13px/1 var(--ui)",
+                          color: awaiting ? "var(--ink2)" : "var(--danger)",
                         }}
                       >
-                        {awaiting ? "Contractor awaiting payment" : "Due"}
+                        {awaiting ? "Waiting on the homeowner" : "Due"}
                       </p>
                     </div>
-                    <ChevronRight size={16} color="var(--ink3)" aria-hidden />
                   </div>
                 </div>
               );
@@ -482,25 +396,17 @@ export default async function AdminDashboard({
         </Panel>
       </div>
 
-      <div
-        className="admin-grid-stack"
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
-      >
-        <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
-          <SectionHead title="Pending confirmations & mismatches" href="/admin/confirmations" />
+      <div className="admin-grid-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <Panel style={{ overflow: "hidden" }}>
+          <SectionHead title="Homeowner confirmations" href="/admin/confirmations" />
           {pendingConfirmations.length === 0 ? (
-            <EmptyBlock text="No pending confirmations or mismatches." />
+            <EmptyBlock text="No confirmation pending and no mismatch to review." />
           ) : (
             pendingConfirmations.map((row) => (
               <div
                 key={row.id}
                 className="a-row"
-                style={{
-                  position: "relative",
-                  padding: "14px 22px",
-                  borderBottom: "1px solid var(--line2)",
-                  cursor: "pointer",
-                }}
+                style={{ position: "relative", padding: "12px 20px", borderBottom: "1px solid var(--line2)" }}
               >
                 <RowLink
                   href={`/admin/leads/${row.lead.id}`}
@@ -508,46 +414,37 @@ export default async function AdminDashboard({
                 />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                   <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
-                  {leadScopeLabel(row.lead)}
-                </p>
-                <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
-                  {row.lead.landownerName ?? "Landowner"} · {row.lead.propertyLocation}
-                </p>
-                <p
-                  style={{
-                    margin: "8px 0 0",
-                    font: "600 12px/1 'Inter'",
-                    color: row.mismatchFlagged ? "var(--danger)" : "var(--ink2)",
-                  }}
-                >
-                  {row.mismatchFlagged
-                    ? "Mismatch — needs review"
-                    : "Waiting for landowner response."}
-                </p>
+                    <p style={{ margin: 0, font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>
+                      {row.lead.landownerName ?? "Homeowner"}
+                    </p>
+                    <Meta items={[leadScopeLabel(row.lead), row.lead.propertyLocation]} />
                   </div>
-                  <ChevronRight size={16} color="var(--ink3)" aria-hidden />
+                  <p
+                    style={{
+                      margin: 0,
+                      flex: "none",
+                      font: "500 13px/1.2 var(--ui)",
+                      color: row.mismatchFlagged ? "var(--danger)" : "var(--ink2)",
+                    }}
+                  >
+                    {row.mismatchFlagged ? "Answers do not match" : "No answer yet"}
+                  </p>
                 </div>
               </div>
             ))
           )}
         </Panel>
 
-        <Panel style={{ borderRadius: 18, boxShadow: "var(--shadowSm)", overflow: "hidden" }}>
+        <Panel style={{ overflow: "hidden" }}>
           <SectionHead title="Recent won jobs" href="/admin/fees" />
           {recentWon.length === 0 ? (
-            <EmptyBlock text="No won jobs yet." />
+            <EmptyBlock text="No won job yet. They appear when a contractor reports one." />
           ) : (
             recentWon.map((m) => (
               <div
                 key={m.id}
                 className="a-row"
-                style={{
-                  position: "relative",
-                  padding: "14px 22px",
-                  borderBottom: "1px solid var(--line2)",
-                  cursor: "pointer",
-                }}
+                style={{ position: "relative", padding: "12px 20px", borderBottom: "1px solid var(--line2)" }}
               >
                 <RowLink
                   href={m.successFee ? `/admin/fees/${m.successFee.leadMatchId}` : `/admin/leads/${m.lead.id}`}
@@ -555,40 +452,34 @@ export default async function AdminDashboard({
                 />
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
-                      {leadScopeLabel(m.lead)}
-                    </p>
-                    <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                    <p style={{ margin: 0, font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>
                       {m.contractor.name}
-                      {m.outcomeReportedAt ? ` · ${formatDate(m.outcomeReportedAt)}` : ""}
                     </p>
+                    <Meta
+                      items={[
+                        leadScopeLabel(m.lead),
+                        m.outcomeReportedAt ? formatDate(m.outcomeReportedAt) : null,
+                      ]}
+                    />
                   </div>
                   <div style={{ textAlign: "right", flex: "none" }}>
                     {m.successFee ? (
                       <>
-                        <p
-                          style={{
-                            margin: 0,
-                            font: "600 14px/1 var(--display)",
-                            color: "var(--ink)",
-                            fontVariantNumeric: "tabular-nums",
-                          }}
-                        >
+                        <p style={{ margin: 0, font: "600 16px/1 var(--head)", color: "var(--ink)" }}>
                           {formatMoney(m.successFee.feeAmountCents)}
                         </p>
-                        <p style={{ margin: "4px 0 0", font: "500 11px/1 'Inter'", color: "var(--ink3)" }}>
+                        <p style={{ margin: "5px 0 0", font: "500 13px/1 var(--ui)", color: "var(--ink2)" }}>
                           {m.successFee.status === "PAID"
-                            ? "Paid"
+                            ? "Fee paid"
                             : m.successFee.status === "DUE"
-                              ? "Due"
-                              : "Awaiting"}
+                              ? "Fee due"
+                              : "Waiting on the homeowner"}
                         </p>
                       </>
                     ) : (
-                      <p style={{ margin: 0, font: "500 12px/1 'Inter'", color: "var(--ink3)" }}>—</p>
+                      <p style={{ margin: 0, font: "500 13px/1 var(--ui)", color: "var(--ink3)" }}>No fee yet</p>
                     )}
                   </div>
-                  <ChevronRight size={16} color="var(--ink3)" aria-hidden />
                 </div>
               </div>
             ))
@@ -599,33 +490,50 @@ export default async function AdminDashboard({
   );
 }
 
-function SectionHead({ title, href }: { title: string; href: string }) {
+function SectionHead({ title, note, href }: { title: string; note?: string; href: string }) {
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "center",
+        alignItems: "baseline",
         justifyContent: "space-between",
-        padding: "16px 22px",
+        gap: 12,
+        padding: "14px 20px",
         borderBottom: "1px solid var(--line)",
       }}
     >
-      <p style={{ margin: 0, font: "600 15px/1 'Inter'", color: "var(--ink)" }}>{title}</p>
-      <Link
-        href={href}
-        className="a-linkgold"
-        style={{ font: "600 13px/1 'Inter'", color: "var(--gold)", textDecoration: "none" }}
-      >
+      <h2 style={{ margin: 0, font: "600 17px/1.2 var(--head)", color: "var(--ink)" }}>
+        {title}
+        {note && <span style={{ marginLeft: 8, font: "400 13px/1 var(--ui)", color: "var(--ink3)" }}>{note}</span>}
+      </h2>
+      <Link href={href} className="a-linkgold" style={{ font: "600 14px/1 var(--ui)", color: "var(--gold)" }}>
         View all
       </Link>
     </div>
   );
 }
 
-function EmptyBlock({ text }: { text: string }) {
+/** Secondary line under a row title: separate facts, spaced, no dot separators. */
+function Meta({ items }: { items: (string | null | undefined)[] }) {
   return (
-    <p style={{ padding: "28px 22px", margin: 0, color: "var(--ink3)", fontSize: 14, lineHeight: 1.5 }}>
-      {text}
+    <p
+      style={{
+        margin: "3px 0 0",
+        display: "flex",
+        flexWrap: "wrap",
+        columnGap: 14,
+        rowGap: 2,
+        font: "400 13px/1.35 var(--ui)",
+        color: "var(--ink3)",
+      }}
+    >
+      {items.filter(Boolean).map((item, i) => (
+        <span key={i}>{item}</span>
+      ))}
     </p>
   );
+}
+
+function EmptyBlock({ text }: { text: string }) {
+  return <p style={{ padding: "24px 20px", margin: 0, color: "var(--ink2)", fontSize: 14, lineHeight: 1.5 }}>{text}</p>;
 }

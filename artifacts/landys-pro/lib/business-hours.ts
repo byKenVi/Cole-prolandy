@@ -83,7 +83,7 @@ function formatDayRange(days: DayKey[]): string {
     }
     const a = order[start]!;
     const b = order[prev]!;
-    ranges.push(start === prev ? dayLabel(a) : `${dayLabel(a)}–${dayLabel(b)}`);
+    ranges.push(start === prev ? dayLabel(a) : `${dayLabel(a)} to ${dayLabel(b)}`);
     if (cur !== undefined) {
       start = cur;
       prev = cur;
@@ -95,7 +95,7 @@ function formatDayRange(days: DayKey[]): string {
 export function formatBusinessHours(v: BusinessHoursValue): string {
   if (v.days.length === 0) return "";
   const days = formatDayRange(v.days);
-  return `${days} ${formatClock(v.open)} – ${formatClock(v.close)}`;
+  return `${days}, ${formatClock(v.open)} to ${formatClock(v.close)}`;
 }
 
 export function defaultBusinessHours(): BusinessHoursValue {
@@ -111,7 +111,12 @@ export function parseBusinessHours(raw: string | null | undefined): BusinessHour
   const fallback = defaultBusinessHours();
   if (!raw?.trim()) return { ...fallback, days: [] };
 
-  const text = raw.trim().toLowerCase().replace(/–|—/g, "-");
+  // Older values used dashes ("Mon–Fri 7am–6pm"); current ones use "to".
+  const text = raw
+    .trim()
+    .toLowerCase()
+    .replace(/–|—/g, "-")
+    .replace(/\s+to\s+/g, "-");
 
   // Days: "mon-fri" or "mon, wed, fri"
   const dayPart = text.split(/\s+\d/)[0] ?? text;

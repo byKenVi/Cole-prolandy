@@ -39,14 +39,14 @@ export function SignOutLink({
     variant === "pro"
       ? "pro-btn pro-btn--secondary"
       : variant === "admin"
-      ? "flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
+      ? "flex w-full items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1F2EC]"
       : variant === "adminIcon"
-        ? "inline-flex h-11 w-11 items-center justify-center rounded-full text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
+        ? "inline-flex h-11 w-11 items-center justify-center rounded-full text-[#B9D0BC] transition-colors hover:bg-white/10 hover:text-[#F1F2EC]"
         : variant === "sidebarIcon"
-          ? "inline-flex h-11 w-11 flex-none items-center justify-center rounded-full text-[#9A9084] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]"
+          ? "inline-flex h-11 w-11 flex-none items-center justify-center rounded-full text-[#9A9084] transition-colors hover:bg-white/10 hover:text-[#F1F2EC]"
           : variant === "icon"
-            ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E3DAC9] bg-white text-[#5C5142] transition-colors hover:bg-[#F5EEDF]"
-            : "flex w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[13px] font-semibold text-[#C8BFAE] transition-colors hover:bg-white/10 hover:text-[#F1E7D6]";
+            ? "inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E3DAC9] bg-white text-[#5C5142] transition-colors hover:bg-[#EEF0E9]"
+            : "flex w-full items-center justify-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[13px] font-semibold text-[#C8BFAE] transition-colors hover:bg-white/10 hover:text-[#F1F2EC]";
 
   return (
     <SignOutButton redirectUrl="/">

@@ -35,7 +35,7 @@ export function ResolveMismatchButton({ confirmationId }: { confirmationId: stri
           borderRadius: 10,
           border: "1px solid var(--line)",
           background: "var(--card)",
-          font: "600 13px/1 'Inter'",
+          font: "600 13px/1 var(--ui)",
           color: "var(--ink)",
           cursor: "pointer",
           boxShadow: "0 1px 2px rgba(58,53,45,.08)",
@@ -60,7 +60,7 @@ export function ResolveMismatchButton({ confirmationId }: { confirmationId: stri
         background: "var(--card2)",
       }}
     >
-      <p style={{ margin: 0, font: "500 12px/1.35 'Inter'", color: "var(--ink3)" }}>
+      <p style={{ margin: 0, font: "500 12px/1.35 var(--ui)", color: "var(--ink3)" }}>
         Clears the mismatch flag. Optional note for your records.
       </p>
       <input
@@ -75,7 +75,7 @@ export function ResolveMismatchButton({ confirmationId }: { confirmationId: stri
           borderRadius: 8,
           border: "1px solid var(--fieldLine)",
           background: "var(--field)",
-          font: "400 13px/1 'Inter'",
+          font: "400 13px/1 var(--ui)",
           color: "var(--ink)",
         }}
       />
@@ -89,7 +89,7 @@ export function ResolveMismatchButton({ confirmationId }: { confirmationId: stri
             borderRadius: 8,
             border: "1px solid var(--line)",
             background: "transparent",
-            font: "500 12px/1 'Inter'",
+            font: "500 12px/1 var(--ui)",
             color: "var(--ink2)",
             cursor: "pointer",
           }}
@@ -108,7 +108,7 @@ export function ResolveMismatchButton({ confirmationId }: { confirmationId: stri
             border: "none",
             background: "var(--gold)",
             color: "#fff",
-            font: "600 12px/1 'Inter'",
+            font: "600 12px/1 var(--ui)",
             cursor: pending ? "default" : "pointer",
           }}
         >
@@ -116,7 +116,7 @@ export function ResolveMismatchButton({ confirmationId }: { confirmationId: stri
         </button>
       </div>
       {error && (
-        <span style={{ font: "500 11px/1.3 'Inter'", color: "var(--danger)" }}>{error}</span>
+        <span style={{ font: "500 11px/1.3 var(--ui)", color: "var(--danger)" }}>{error}</span>
       )}
     </div>
   );

@@ -48,7 +48,7 @@ export default async function EditContractorPage({
       </Link>
 
       <header>
-        <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
+        <h1 className="font-head text-3xl font-semibold" style={{ color: "var(--ink)" }}>
           Edit {contractor.name}
         </h1>
         <p className="text-sm" style={{ color: "var(--ink2)" }}>

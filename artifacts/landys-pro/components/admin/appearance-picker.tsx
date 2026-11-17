@@ -21,7 +21,7 @@ export function AppearancePicker() {
           padding: 16,
           borderRadius: 14,
           border: `2px solid ${theme === "light" ? "var(--gold)" : "var(--line)"}`,
-          background: "#FBF6EC",
+          background: "#F7F8F3",
           textAlign: "left",
         }}
       >
@@ -30,12 +30,12 @@ export function AppearancePicker() {
             display: "block",
             height: 34,
             borderRadius: 8,
-            background: "linear-gradient(#fff,#FEFBF6)",
+            background: "linear-gradient(#fff,#F1F2EC)",
             border: "1px solid #E9E1D2",
             marginBottom: 11,
           }}
         />
-        <span style={{ font: "600 13px/1 'Inter'", color: "#3A352D" }}>Light</span>
+        <span style={{ font: "600 13px/1 var(--ui)", color: "#1F2A22" }}>Light</span>
       </button>
       <button
         type="button"
@@ -60,7 +60,7 @@ export function AppearancePicker() {
             marginBottom: 11,
           }}
         />
-        <span style={{ font: "600 13px/1 'Inter'", color: "#F1E7D6" }}>Dark</span>
+        <span style={{ font: "600 13px/1 var(--ui)", color: "#F1F2EC" }}>Dark</span>
       </button>
     </div>
   );

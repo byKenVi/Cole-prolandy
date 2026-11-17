@@ -24,7 +24,7 @@ const rowBtn: React.CSSProperties = {
   background: "var(--field)",
   border: "1px solid var(--fieldLine)",
   borderRadius: 10,
-  font: "600 12px/1 'Inter'",
+  font: "600 12px/1 var(--ui)",
   color: "var(--ink)",
   cursor: "pointer",
 };

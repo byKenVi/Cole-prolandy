@@ -102,7 +102,7 @@ export async function buildLeadSummary(lead: LeadForSummary): Promise<LeadSummar
   const categoryName =
     lead.contractorCategory?.name ?? lead.projectType?.contractorType?.name ?? "General";
   const workTypeName = lead.workType?.name ?? lead.projectType?.name ?? null;
-  const title = workTypeName && workTypeName !== categoryName ? `${categoryName} - ${workTypeName}` : categoryName;
+  const title = workTypeName && workTypeName !== categoryName ? `${categoryName}, ${workTypeName.toLowerCase()}` : categoryName;
   const cityState = info ? `${info.city}, ${info.state}` : null;
   const name = landownerDisplayName(lead);
   return {
@@ -153,5 +153,5 @@ export function feeRateLabelFor(
   }
   const min = Math.min(...rates);
   const max = Math.max(...rates);
-  return min === max ? `${pct(min)}%` : `${pct(min)}-${pct(max)}%`;
+  return min === max ? `${pct(min)}%` : `${pct(min)}% to ${pct(max)}%`;
 }

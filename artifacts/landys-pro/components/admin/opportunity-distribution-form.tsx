@@ -6,7 +6,7 @@ import { hoursToHuman } from "@/lib/hours-human";
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  font: "600 14px/1.2 'Inter'",
+  font: "600 14px/1.2 var(--ui)",
   color: "var(--ink)",
   marginBottom: 6,
 };
@@ -18,11 +18,11 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 11,
   background: "var(--field)",
   color: "var(--ink)",
-  fontFamily: "Inter",
+  fontFamily: "var(--ui)",
   fontSize: 15,
 };
 const hintStyle: React.CSSProperties = {
-  font: "400 13px/1.45 'Inter'",
+  font: "400 13px/1.45 var(--ui)",
   color: "var(--ink3)",
 };
 
@@ -97,7 +97,7 @@ export function OpportunityDistributionForm({
             style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--gold)", flex: "none" }}
           />
           <span>
-            <span style={{ display: "block", font: "600 15px/1.3 'Inter'", color: "var(--ink)" }}>
+            <span style={{ display: "block", font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>
               Unlimited acceptances
             </span>
             <span style={{ ...hintStyle, display: "block", marginTop: 4 }}>
@@ -134,8 +134,8 @@ export function OpportunityDistributionForm({
           Opportunity expiry
         </label>
         <p style={{ ...hintStyle, margin: "0 0 10px" }}>
-          After this many hours, contractors can no longer accept — unless the acceptance cap was
-          hit first.
+          After this many hours, contractors can no longer accept the request, unless the
+          acceptance cap was reached first.
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 220 }}>
           <input
@@ -154,7 +154,7 @@ export function OpportunityDistributionForm({
       </div>
 
       {message && (
-        <p style={{ margin: 0, font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>{message}</p>
+        <p style={{ margin: 0, font: "500 13px/1.4 var(--ui)", color: "var(--danger)" }}>{message}</p>
       )}
 
       <button
@@ -168,7 +168,7 @@ export function OpportunityDistributionForm({
           color: "#fff",
           border: "none",
           borderRadius: 12,
-          font: "600 16px/1 'Inter'",
+          font: "600 16px/1 var(--ui)",
           cursor: pending ? "default" : "pointer",
           boxShadow: "0 8px 18px rgba(192,128,60,.28)",
         }}

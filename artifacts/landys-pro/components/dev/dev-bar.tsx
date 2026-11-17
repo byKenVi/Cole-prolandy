@@ -19,7 +19,7 @@ export async function DevBar() {
     // DB not reachable yet (e.g. before migrate/seed) — render a minimal bar.
     return (
       <div className="w-full bg-primary px-4 py-2 text-center text-xs text-white/90">
-        Dev mode · database not connected yet — run migrations + seed
+        Dev mode: the database is not connected yet. Run the migrations and the seed.
       </div>
     );
   }

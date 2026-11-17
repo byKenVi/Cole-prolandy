@@ -13,7 +13,7 @@ import { getOptionalStringSetting } from "@/lib/domain/settings";
 
 export const dynamic = "force-dynamic";
 
-const AVATAR_BG = ["#5A5142", "#2F4A3C", "#7A5A2E", "#4A4557", "#6B4A3A"];
+const AVATAR_BG = ["#5A5142", "#2C4A39", "#7A5A2E", "#4A4557", "#6B4A3A"];
 
 function initials(name: string): string {
   return (
@@ -44,6 +44,10 @@ export default async function AdminContractors({
   }
   if (filter === "deactivated") where.deactivatedAt = { not: null };
   else where.deactivatedAt = null;
+  if (filter === "no-area") {
+    where.serviceZipCodes = { isEmpty: true };
+    where.serviceCounties = { isEmpty: true };
+  }
 
   const [filteredCount, totalCount, proCount, activeCount, lastSuccessAt, lastAttemptAt, lastResultRaw] =
     await Promise.all([
@@ -96,15 +100,9 @@ export default async function AdminContractors({
 
   return (
     <div className="admin-fade-up">
-      <WixContractorSyncPanel
-        lastSuccessAt={lastSuccessAt}
-        lastAttemptAt={lastAttemptAt}
-        lastResult={lastResult}
-      />
       <PageHeader
-        kicker="Network"
         title="Contractors"
-        subtitle="Contractors who receive and accept land-service opportunities."
+        subtitle="The pros who receive requests. Most come from the landys.co directory."
         action={
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <a
@@ -119,7 +117,7 @@ export default async function AdminContractors({
                 background: "var(--card)",
                 border: "1px solid var(--line)",
                 borderRadius: 10,
-                font: "600 13px/1 'Inter'",
+                font: "600 13px/1 var(--ui)",
                 color: "var(--ink2)",
                 textDecoration: "none",
                 transition: "background 0.15s",
@@ -133,14 +131,19 @@ export default async function AdminContractors({
           </div>
         }
       />
+      <WixContractorSyncPanel
+        lastSuccessAt={lastSuccessAt}
+        lastAttemptAt={lastAttemptAt}
+        lastResult={lastResult}
+      />
 
       <div
         className="admin-stat-grid"
         style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}
       >
         <StatCard label="Total contractors" value={String(totalCount)} />
-        <StatCard label="On Pro plan" value={String(proCount)} valueColor="var(--sageFg)" />
-        <StatCard label="Active" value={String(activeCount)} valueColor="var(--sageFg)" />
+        <StatCard label="Active" value={String(activeCount)} />
+        <StatCard label="On the Pro plan" value={String(proCount)} />
       </div>
 
       <ContractorFilters q={q ?? ""} filter={filter ?? ""} />
@@ -149,14 +152,15 @@ export default async function AdminContractors({
         style={{
           background: "var(--card)",
           border: "1px solid var(--line)",
-          borderRadius: 18,
-          boxShadow: "var(--shadow)",
+          borderRadius: 12,
           overflowX: "auto",
         }}
       >
         {contractors.length === 0 ? (
           <p style={{ padding: "28px 24px", color: "var(--ink3)", fontSize: 14, textAlign: "center" }}>
-            No contractors found.
+            {filter === "no-area"
+              ? "Every active contractor has a service area."
+              : "No contractor matches this view."}
           </p>
         ) : (
           contractors.map((c, i) => (
@@ -182,11 +186,11 @@ export default async function AdminContractors({
                     height: 44,
                     borderRadius: 999,
                     background: AVATAR_BG[i % AVATAR_BG.length],
-                    color: "#F1E7D6",
+                    color: "#F1F2EC",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    font: "600 14px/1 'Inter'",
+                    font: "600 14px/1 var(--ui)",
                     flex: "none",
                   }}
                 >
@@ -194,7 +198,7 @@ export default async function AdminContractors({
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-                    <span style={{ font: "600 15px/1.2 'Inter'", color: "var(--ink)" }}>
+                    <span style={{ font: "600 15px/1.2 var(--ui)", color: "var(--ink)" }}>
                       {c.name}
                     </span>
                     {c.isPro ? (
@@ -217,9 +221,9 @@ export default async function AdminContractors({
                       </Chip>
                     )}
                   </div>
-                  <p style={{ margin: "5px 0 0", font: "400 13px/1 'Inter'", color: "var(--ink2)" }}>
-                    {c.contractorCategory?.name ?? "No category"} · {c.contractorType?.name ?? "No type"} ·{" "}
-                    <span style={{ color: "var(--ink3)" }}>{c.email}</span>
+                  <p style={{ margin: "5px 0 0", font: "400 13px/1 var(--ui)", color: "var(--ink2)" }}>
+                    {c.contractorCategory?.name ?? "No category"}, {c.contractorType?.name ?? "no type"}
+                    <span style={{ color: "var(--ink3)", marginLeft: 14 }}>{c.email}</span>
                   </p>
                 </div>
               </div>

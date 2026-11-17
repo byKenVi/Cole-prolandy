@@ -45,7 +45,7 @@ export function NumberSettingsForm({ fields, submitLabel }: { fields: NumberSett
     <form onSubmit={save} style={{ display: "grid", gap: 16, marginTop: 18 }}>
       {fields.map((field) => (
         <label key={field.key} style={{ display: "grid", gap: 6 }}>
-          <span style={{ font: "600 14px/1.3 Rubik, sans-serif", color: "var(--ink)" }}>{field.label}</span>
+          <span style={{ font: "600 14px/1.3 var(--ui)", color: "var(--ink)" }}>{field.label}</span>
           <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <input
               type="number"
@@ -74,12 +74,12 @@ export function NumberSettingsForm({ fields, submitLabel }: { fields: NumberSett
         <button
           type="submit"
           disabled={pending}
-          style={{ height: 44, padding: "0 18px", borderRadius: 10, border: 0, background: "var(--gold)", color: "#fff", font: "600 14px/1 Rubik, sans-serif" }}
+          style={{ height: 44, padding: "0 18px", borderRadius: 10, border: 0, background: "var(--gold)", color: "#fff", font: "600 14px/1 var(--ui)" }}
         >
           {pending ? "Saving..." : submitLabel}
         </button>
         {message && (
-          <span role="status" style={{ font: "500 14px/1.3 Rubik, sans-serif", color: message.ok ? "var(--pos)" : "var(--danger)" }}>
+          <span role="status" style={{ font: "500 14px/1.3 var(--ui)", color: message.ok ? "var(--pos)" : "var(--danger)" }}>
             {message.text}
           </span>
         )}

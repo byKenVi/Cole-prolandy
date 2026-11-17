@@ -36,7 +36,7 @@ export default async function EditLeadPage({ params }: { params: Promise<{ id: s
       </Link>
 
       <header>
-        <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
+        <h1 className="font-head text-3xl font-semibold" style={{ color: "var(--ink)" }}>
           Edit lead
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>

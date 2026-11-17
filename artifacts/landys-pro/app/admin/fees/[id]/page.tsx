@@ -51,7 +51,7 @@ export default async function AdminFeeDetail({
       <PageHeader
         kicker="Success fees"
         title={leadScopeLabel(fee.leadMatch.lead)}
-        subtitle={`${fee.leadMatch.contractor.name} · ${fee.leadMatch.lead.propertyLocation}`}
+        subtitle={`${fee.leadMatch.contractor.name}, ${fee.leadMatch.lead.propertyLocation}`}
         action={
           fee.status === "DUE" ? <MarkFeePaidButton leadMatchId={fee.leadMatchId} prominent /> : undefined
         }
@@ -71,7 +71,7 @@ export default async function AdminFeeDetail({
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: 16,
-            font: "400 14px/1.4 'Inter'",
+            font: "400 14px/1.4 var(--ui)",
           }}
         >
           <div>
@@ -83,7 +83,7 @@ export default async function AdminFeeDetail({
           </div>
           <div>
             <dt style={{ color: "var(--ink3)", fontSize: 11, marginBottom: 4 }}>Landowner</dt>
-            <dd style={{ margin: 0, fontWeight: 600 }}>{fee.leadMatch.lead.landownerName ?? "—"}</dd>
+            <dd style={{ margin: 0, fontWeight: 600 }}>{fee.leadMatch.lead.landownerName ?? "No name given"}</dd>
             <dd style={{ margin: "2px 0 0", color: "var(--ink3)" }}>{fee.leadMatch.lead.landownerEmail}</dd>
           </div>
           <div>
@@ -101,7 +101,7 @@ export default async function AdminFeeDetail({
           <div>
             <dt style={{ color: "var(--ink3)", fontSize: 11, marginBottom: 4 }}>Due / paid</dt>
             <dd style={{ margin: 0 }}>
-              {fee.paidAt ? `Paid ${formatDate(fee.paidAt)}` : fee.dueAt ? `Due ${formatDate(fee.dueAt)}` : "—"}
+              {fee.paidAt ? `Paid ${formatDate(fee.paidAt)}` : fee.dueAt ? `Due ${formatDate(fee.dueAt)}` : "Not due yet"}
             </dd>
           </div>
           <div>
@@ -113,12 +113,12 @@ export default async function AdminFeeDetail({
                   ? "Check"
                   : fee.paymentMethod === "offline"
                     ? "Other offline"
-                    : fee.paymentMethod ?? "—"}
+                    : fee.paymentMethod ?? "Not paid yet"}
             </dd>
           </div>
           <div>
             <dt style={{ color: "var(--ink3)", fontSize: 11, marginBottom: 4 }}>Reference</dt>
-            <dd style={{ margin: 0 }}>{fee.manualPaymentNote ?? fee.paidByAdminId ?? "—"}</dd>
+            <dd style={{ margin: 0 }}>{fee.manualPaymentNote ?? fee.paidByAdminId ?? "None"}</dd>
           </div>
         </dl>
         <div style={{ marginTop: 22, display: "flex", gap: 14 }}>

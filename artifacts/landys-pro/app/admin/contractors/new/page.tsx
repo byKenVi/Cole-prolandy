@@ -29,7 +29,7 @@ export default async function NewContractorPage() {
       </Link>
 
       <header>
-        <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
+        <h1 className="font-head text-3xl font-semibold" style={{ color: "var(--ink)" }}>
           New contractor
         </h1>
         <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>

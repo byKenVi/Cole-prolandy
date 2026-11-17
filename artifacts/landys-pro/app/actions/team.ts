@@ -32,13 +32,13 @@ function deliveryFeedback(
   }
   if (result.note === "existing-account") {
     return {
-      message: `${email} already has an account. They get admin access the next time they sign in — no email needed.`,
+      message: `${email} already has an account. They get admin access the next time they sign in. No email needed.`,
       severity: "warning",
     };
   }
   if (result.note === "dev-no-email") {
     return {
-      message: `Invitation created. No email in dev mode — accept it at ${result.inviteUrl}`,
+      message: `Invitation created. No email in dev mode, accept it at ${result.inviteUrl}`,
       severity: "warning",
     };
   }

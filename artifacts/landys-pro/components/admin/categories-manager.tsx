@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { ProjectGlyph } from "@/components/project-glyph";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import {
   createContractorType,
@@ -14,7 +14,6 @@ import {
   ICON_LABELS,
   ICON_AUTO,
   ICON_NONE,
-  iconSrcForKey,
   type IconKey,
 } from "@/lib/project-icons";
 
@@ -65,7 +64,7 @@ function IconPicker({
         outline: selected ? "2px solid color-mix(in srgb,var(--gold) 40%,transparent)" : "none",
         background: selected ? "var(--goldSoft)" : "var(--field)",
         cursor: disabled ? "default" : "pointer",
-        font: "500 10px/1 'Inter'",
+        font: "500 10px/1 var(--ui)",
         color: "var(--ink3)",
       }}
     >
@@ -81,14 +80,9 @@ function IconPicker({
         tile(
           key,
           value === key,
-          <Image
-            src={iconSrcForKey(key as IconKey)}
-            alt=""
-            aria-hidden
-            width={40}
-            height={40}
-            style={{ height: 32, width: 32, objectFit: "contain" }}
-          />,
+          <span style={{ color: "var(--ink)" }}>
+            <ProjectGlyph src={key} size={22} />
+          </span>,
           ICON_LABELS[key as IconKey],
         ),
       )}
@@ -99,17 +93,12 @@ function IconPicker({
 function IconPreview({ icon }: { icon: string }) {
   if ((ICON_KEYS as readonly string[]).includes(icon)) {
     return (
-      <Image
-        src={iconSrcForKey(icon as IconKey)}
-        alt=""
-        aria-hidden
-        width={32}
-        height={32}
-        style={{ height: 26, width: 26, objectFit: "contain" }}
-      />
+      <span style={{ color: "var(--ink)", display: "inline-flex" }}>
+        <ProjectGlyph src={icon} size={20} />
+      </span>
     );
   }
-  return <span style={{ font: "400 11px/1 'Inter'", color: "var(--ink3)" }}>{icon === ICON_NONE ? "None" : "Auto"}</span>;
+  return <span style={{ font: "400 11px/1 var(--ui)", color: "var(--ink3)" }}>{icon === ICON_NONE ? "None" : "Auto"}</span>;
 }
 
 const smallBtn: React.CSSProperties = {
@@ -118,7 +107,7 @@ const smallBtn: React.CSSProperties = {
   background: "var(--field)",
   border: "1px solid var(--fieldLine)",
   borderRadius: 10,
-  font: "600 12px/1 'Inter'",
+  font: "600 12px/1 var(--ui)",
   color: "var(--ink)",
   cursor: "pointer",
 };
@@ -130,7 +119,7 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 10,
   background: "var(--field)",
   color: "var(--ink)",
-  font: "500 14px/1 'Inter'",
+  font: "500 14px/1 var(--ui)",
 };
 
 export function CategoriesManager({ categories }: { categories: Category[] }) {
@@ -185,7 +174,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
             borderRadius: 10,
             background: "var(--dangerBg)",
             padding: 12,
-            font: "500 13px/1.4 'Inter'",
+            font: "500 13px/1.4 var(--ui)",
             color: "var(--danger)",
           }}
         >
@@ -204,7 +193,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
           background: "var(--card2)",
         }}
       >
-        <p style={{ margin: 0, font: "600 13px/1 'Inter'", color: "var(--ink)" }}>Add project</p>
+        <p style={{ margin: 0, font: "600 13px/1 var(--ui)", color: "var(--ink)" }}>Add project</p>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <input
             value={newName}
@@ -232,7 +221,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
               color: "#fff",
               border: "none",
               borderRadius: 10,
-              font: "600 13px/1 'Inter'",
+              font: "600 13px/1 var(--ui)",
               cursor: "pointer",
               opacity: pending || newName.trim().length < 2 ? 0.6 : 1,
             }}
@@ -241,7 +230,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
           </button>
         </div>
         <div>
-          <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>Icon</p>
+          <p style={{ margin: "0 0 6px", font: "600 12px/1 var(--ui)", color: "var(--ink3)" }}>Icon</p>
           <IconPicker value={newIcon} onChange={setNewIcon} disabled={pending} />
         </div>
       </div>
@@ -270,7 +259,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
             border: "none",
             outline: "none",
             background: "transparent",
-            font: "500 14px/1 'Inter'",
+            font: "500 14px/1 var(--ui)",
             color: "var(--ink)",
           }}
         />
@@ -305,7 +294,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
                   </button>
                 </div>
                 <div>
-                  <p style={{ margin: "0 0 6px", font: "600 12px/1 'Inter'", color: "var(--ink3)" }}>
+                  <p style={{ margin: "0 0 6px", font: "600 12px/1 var(--ui)", color: "var(--ink3)" }}>
                     Icon
                   </p>
                   <IconPicker value={editIcon} onChange={setEditIcon} disabled={pending} />
@@ -338,13 +327,13 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
                     <IconPreview icon={normalizeIcon(c.icon)} />
                   </span>
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, font: "600 14px/1.2 'Inter'", color: "var(--ink)" }}>
+                    <p style={{ margin: 0, font: "600 14px/1.2 var(--ui)", color: "var(--ink)" }}>
                       {c.name}
-                      {c.archived ? " · Archived" : ""}
+                      {c.archived ? " (archived)" : ""}
                     </p>
-                    <p style={{ margin: "3px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                      {c.code} · {c.contractors} contractor{c.contractors === 1 ? "" : "s"}
-                      {typeof c.leads === "number" ? ` · ${c.leads} request${c.leads === 1 ? "" : "s"}` : ""}
+                    <p style={{ margin: "3px 0 0", font: "400 12px/1 var(--ui)", color: "var(--ink3)" }}>
+                      {c.contractors} contractor{c.contractors === 1 ? "" : "s"}
+                      {typeof c.leads === "number" ? `, ${c.leads} request${c.leads === 1 ? "" : "s"}` : ""}
                     </p>
                   </div>
                 </div>
@@ -377,7 +366,7 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
           </div>
         ))}
         {pageItems.length === 0 && (
-          <p style={{ padding: "13px 16px", font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
+          <p style={{ padding: "13px 16px", font: "400 13px/1 var(--ui)", color: "var(--ink3)" }}>
             {query.trim() ? `No projects match “${query.trim()}”.` : "No projects yet."}
           </p>
         )}
@@ -393,8 +382,8 @@ export function CategoriesManager({ categories }: { categories: Category[] }) {
               background: "var(--card2)",
             }}
           >
-            <p style={{ margin: 0, font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-              Page {safePage} of {totalPages} · {filtered.length} total
+            <p style={{ margin: 0, font: "400 12px/1 var(--ui)", color: "var(--ink3)" }}>
+              Page {safePage} of {totalPages}, {filtered.length} in total
             </p>
             <div style={{ display: "flex", gap: 6 }}>
               <button

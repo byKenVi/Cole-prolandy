@@ -83,7 +83,7 @@ const VARIANTS: Record<ToastVariant, { bg: string; border: string; fg: string; I
   success: { bg: "#E7F0E9", border: "#BED6C6", fg: "#2F6B4A", Icon: CheckCircle2 },
   warning: { bg: "#F4EAD3", border: "#DFCBA0", fg: "#8A6B2E", Icon: AlertTriangle },
   error: { bg: "#F6E4E1", border: "#E4BFB8", fg: "#9A3B2E", Icon: AlertTriangle },
-  info: { bg: "#FFFDF9", border: "#EBE3D4", fg: "#3A352D", Icon: Info },
+  info: { bg: "#FFFDF9", border: "#DADCD2", fg: "#1F2A22", Icon: Info },
 };
 
 function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {

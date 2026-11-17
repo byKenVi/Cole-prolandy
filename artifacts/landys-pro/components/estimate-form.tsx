@@ -130,7 +130,7 @@ export function EstimateForm({
     return (
       <Card className="flex flex-col items-center gap-4 p-8 text-center">
         <CheckCircle2 className="h-12 w-12 text-success" aria-hidden />
-        <p className="font-fraunces text-2xl font-semibold text-text">Request received</p>
+        <p className="font-head text-2xl font-semibold text-text">Request received</p>
         <p className="max-w-sm font-inter text-base text-text-muted">
           Your project is safely queued for review. We&apos;ll route it after pricing is confirmed.
         </p>
@@ -310,7 +310,7 @@ export function EstimateForm({
                   id="budget"
                   value={form.budget}
                   onChange={(event) => set("budget", event.target.value)}
-                  placeholder="e.g. $10,000–$20,000"
+                  placeholder="For example $10,000 to $20,000"
                   required
                 />
               </Field>
@@ -398,7 +398,7 @@ function Step({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="font-fraunces text-2xl font-semibold text-text">{title}</h2>
+        <h2 className="font-head text-2xl font-semibold text-text">{title}</h2>
         <p className="mt-1 font-inter text-sm text-text-muted">{subtitle}</p>
       </div>
       {children}

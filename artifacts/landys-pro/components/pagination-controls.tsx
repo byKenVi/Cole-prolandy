@@ -59,7 +59,7 @@ export function PaginationControls({
       aria-label="Pagination"
       className={cn(
         "flex flex-wrap items-center justify-between gap-3",
-        !isAdmin && "border-t border-[#EBE3D4] px-1 py-4",
+        !isAdmin && "border-t border-[#DADCD2] px-1 py-4",
         className,
       )}
       style={
@@ -79,12 +79,11 @@ export function PaginationControls({
     >
       <p
         className={cn(!isAdmin && "text-[13px] text-[#8A7E68]")}
-        style={isAdmin ? { margin: 0, font: "400 13px/1 'Inter'", color: "var(--ink3)" } : undefined}
+        style={isAdmin ? { margin: 0, font: "400 13px/1 var(--ui)", color: "var(--ink3)" } : undefined}
       >
         Page {page} of {totalPages}
-        <span className={cn(!isAdmin && "text-[#A79E8D]")} style={isAdmin ? { color: "var(--ink3)" } : undefined}>
-          {" "}
-          · {totalCount} total
+        <span className={cn(!isAdmin && "text-[#6B756D]")} style={isAdmin ? { color: "var(--ink3)" } : undefined}>
+          , {totalCount} in total
         </span>
       </p>
 
@@ -144,7 +143,7 @@ function PageLink({
     height: 44,
     padding: "0 14px",
     borderRadius: 10,
-    font: "600 13px/1 'Inter'",
+    font: "600 13px/1 var(--ui)",
     textDecoration: "none",
     border: "1px solid var(--line)",
     background: disabled ? "var(--card2)" : "var(--card)",
@@ -189,7 +188,7 @@ function PageSizeLinks({
   return (
     <div
       className={cn("flex items-center gap-1", !isAdmin && "text-[12px] text-[#8A7E68]")}
-      style={isAdmin ? { font: "400 12px/1 'Inter'", color: "var(--ink3)" } : undefined}
+      style={isAdmin ? { font: "400 12px/1 var(--ui)", color: "var(--ink3)" } : undefined}
       role="group"
       aria-label="Results per page"
     >
@@ -216,7 +215,7 @@ function PageSizeLinks({
                       color: "var(--goldSoftFg)",
                       borderRadius: 8,
                       padding: "0 10px",
-                      font: "600 12px/40px 'Inter'",
+                      font: "600 12px/40px var(--ui)",
                     }
                   : undefined
               }
@@ -240,7 +239,7 @@ function PageSizeLinks({
                     color: "var(--ink2)",
                     borderRadius: 8,
                     padding: "0 10px",
-                    font: "500 12px/40px 'Inter'",
+                    font: "500 12px/40px var(--ui)",
                     textDecoration: "none",
                   }
                 : undefined

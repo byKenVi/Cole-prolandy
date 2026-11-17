@@ -22,7 +22,7 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid var(--fieldLine)",
   background: "var(--field)",
   padding: "0 12px",
-  font: "500 14px/1 'Inter'",
+  font: "500 14px/1 var(--ui)",
   color: "var(--ink)",
 };
 
@@ -32,7 +32,7 @@ const smallBtn: React.CSSProperties = {
   border: "1px solid var(--fieldLine)",
   background: "var(--field)",
   padding: "0 12px",
-  font: "600 13px/1 'Inter'",
+  font: "600 13px/1 var(--ui)",
   color: "var(--ink)",
   cursor: "pointer",
 };
@@ -67,7 +67,7 @@ export function LandTypesManager({ landTypes }: { landTypes: LandTypeRow[] }) {
             borderRadius: 10,
             background: "var(--dangerBg)",
             padding: 12,
-            font: "500 13px/1.4 'Inter'",
+            font: "500 13px/1.4 var(--ui)",
             color: "var(--danger)",
           }}
         >
@@ -105,12 +105,12 @@ export function LandTypesManager({ landTypes }: { landTypes: LandTypeRow[] }) {
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ margin: 0, font: "600 14px/1.2 'Inter'", color: "var(--ink)" }}>
+                  <p style={{ margin: 0, font: "600 14px/1.2 var(--ui)", color: "var(--ink)" }}>
                     {lt.name}
-                    {lt.archived ? " · Archived" : ""}
+                    {lt.archived ? " (archived)" : ""}
                   </p>
-                  <p style={{ margin: "4px 0 0", font: "400 12px/1 'Inter'", color: "var(--ink3)" }}>
-                    {lt.code} · {lt.leads} lead{lt.leads === 1 ? "" : "s"}
+                  <p style={{ margin: "4px 0 0", font: "400 12px/1 var(--ui)", color: "var(--ink3)" }}>
+                    {lt.leads} request{lt.leads === 1 ? "" : "s"}
                   </p>
                 </div>
                 <button
@@ -137,7 +137,7 @@ export function LandTypesManager({ landTypes }: { landTypes: LandTypeRow[] }) {
           </div>
         ))}
         {landTypes.length === 0 && (
-          <p style={{ margin: 0, padding: 16, font: "400 13px/1.4 'Inter'", color: "var(--ink3)" }}>
+          <p style={{ margin: 0, padding: 16, font: "400 13px/1.4 var(--ui)", color: "var(--ink3)" }}>
             No land types yet.
           </p>
         )}

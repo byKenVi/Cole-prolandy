@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { Hammer, HardHat, LandPlot } from "lucide-react";
 import { OpportunityDistributionForm } from "@/components/admin/opportunity-distribution-form";
 import { FollowUpSettingsForm } from "@/components/admin/follow-up-settings-form";
 import { NumberSettingsForm } from "@/components/admin/number-settings-form";
@@ -47,7 +48,7 @@ const settingsStack: React.CSSProperties = {
 };
 const titleStyle: React.CSSProperties = {
   margin: "0 0 4px",
-  font: "600 17px/1 'Inter'",
+  font: "600 17px/1 var(--ui)",
   color: "var(--ink)",
 };
 const descStyle: React.CSSProperties = {
@@ -165,9 +166,8 @@ export function SettingsTabs({
   return (
     <div className="admin-fade-up">
       <PageHeader
-        kicker="Admin"
         title="Settings"
-        subtitle="Product rules for distribution, success fees, and follow-ups — plus a few workspace basics."
+        subtitle="How requests are sent out, what fees contractors pay, when follow-ups go out, and the lists behind the forms."
       />
 
       <div
@@ -202,7 +202,7 @@ export function SettingsTabs({
                 border: "none",
                 borderRadius: 10,
                 cursor: "pointer",
-                font: selected ? "600 13px/1 'Inter'" : "500 13px/1 'Inter'",
+                font: selected ? "600 13px/1 var(--ui)" : "500 13px/1 var(--ui)",
                 color: selected ? "var(--ink)" : "var(--ink2)",
                 background: selected ? "var(--card2)" : "transparent",
                 boxShadow: selected ? "inset 0 0 0 1px var(--line)" : "none",
@@ -281,8 +281,8 @@ export function SettingsTabs({
               <div style={{ minWidth: 0 }}>
                 <p style={titleStyle}>Directories</p>
                 <p style={{ ...descStyle, marginBottom: 0 }}>
-                  Projects, land types, and contractor categories — names used across leads, not
-                  fee rules.
+                  The lists of projects, land types and contractor categories used in requests.
+                  They do not set any fee.
                 </p>
               </div>
               <svg
@@ -335,8 +335,8 @@ export function SettingsTabs({
         <Panel style={settingsPanel}>
           <p style={titleStyle}>Success fee tiers</p>
           <p style={descStyle}>
-            SMALL / MEDIUM / LARGE bands by final contract value. Defaults: under $10k → 5%,
-            $10k–$24,999 → 4%, $25k+ → 3%.
+            Three bands by final contract value. Defaults: 5% up to $9,999, 4% from $10,000 to
+            $24,999, 3% from $25,000.
           </p>
           <SuccessFeeTiersForm tiers={successFeeTiers} />
         </Panel>
@@ -392,21 +392,21 @@ export function SettingsTabs({
             {[
               {
                 id: "projects",
-                title: "Projects / Services",
-                body: "Jobs landowners request.",
-                icon: "/admin-icons/dir-projects.png",
+                title: "Projects",
+                body: "The kinds of work homeowners can request.",
+                icon: Hammer,
               },
               {
                 id: "land",
                 title: "Land types",
-                body: "Property classifications.",
-                icon: "/admin-icons/dir-land.png",
+                body: "How the property is used: ranch, timber, homestead.",
+                icon: LandPlot,
               },
               {
                 id: "categories",
                 title: "Contractor categories",
-                body: "One business category per contractor.",
-                icon: "/admin-icons/dir-categories.png",
+                body: "The trade each contractor is listed under.",
+                icon: HardHat,
               },
             ].map((card) => (
               <button
@@ -415,12 +415,11 @@ export function SettingsTabs({
                 onClick={() => setTab("directories", card.id)}
                 style={{
                   textAlign: "left",
-                  padding: "18px 20px",
-                  borderRadius: 16,
+                  padding: "16px 18px",
+                  borderRadius: 12,
                   border: directory === card.id ? "1px solid var(--gold)" : "1px solid var(--line)",
                   background: directory === card.id ? "var(--goldSoft)" : "var(--card)",
                   cursor: "pointer",
-                  boxShadow: "var(--shadow)",
                   display: "flex",
                   gap: 14,
                   alignItems: "flex-start",
@@ -428,14 +427,22 @@ export function SettingsTabs({
                   boxSizing: "border-box",
                 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={card.icon}
-                  alt=""
-                  width={40}
-                  height={40}
-                  style={{ width: 40, height: 40, objectFit: "contain", flex: "none" }}
-                />
+                <span
+                  aria-hidden
+                  style={{
+                    width: 40,
+                    height: 40,
+                    flex: "none",
+                    borderRadius: 8,
+                    background: "var(--sage)",
+                    color: "var(--sageFg)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <card.icon size={20} strokeWidth={1.8} />
+                </span>
                 <span style={{ minWidth: 0 }}>
                   <p style={{ ...titleStyle, marginBottom: 6 }}>{card.title}</p>
                   <p style={{ ...descStyle, marginBottom: 0 }}>{card.body}</p>
@@ -464,9 +471,9 @@ export function SettingsTabs({
           )}
           {directory === "projects" && (
             <Panel style={settingsPanel}>
-              <p style={titleStyle}>Projects / Services</p>
+              <p style={titleStyle}>Projects</p>
               <p style={{ ...descStyle, marginBottom: 18 }}>
-                Jobs landowners request. Success fee rates live under Success fee tiers — not here.
+                The kinds of work homeowners can request. Fee rates are set in Success fee tiers.
               </p>
               <CategoriesManager categories={projects} />
             </Panel>

@@ -58,7 +58,7 @@ export function MarkFeePaidButton({
           color: "#fff",
           border: "none",
           borderRadius: 10,
-          font: prominent ? "600 13px/1.2 'Inter'" : "600 13px/1 'Inter'",
+          font: prominent ? "600 13px/1.2 var(--ui)" : "600 13px/1 var(--ui)",
           cursor: "pointer",
           whiteSpace: "nowrap",
         }}
@@ -76,10 +76,10 @@ export function MarkFeePaidButton({
             <p style={{ margin: 0, font: "600 20px/1.2 var(--display)", color: "var(--ink)" }}>
               Record offline payment
             </p>
-            <p style={{ margin: "8px 0 18px", font: "400 14px/1.45 'Inter'", color: "var(--ink2)" }}>
+            <p style={{ margin: "8px 0 18px", font: "400 14px/1.45 var(--ui)", color: "var(--ink2)" }}>
               Use this when the contractor paid Landy&apos;s by check or another offline method.
             </p>
-            <label style={{ display: "block", font: "600 12px/1 'Inter'", color: "var(--ink3)", marginBottom: 6 }}>
+            <label style={{ display: "block", font: "600 12px/1 var(--ui)", color: "var(--ink3)", marginBottom: 6 }}>
               Payment date
             </label>
             <input
@@ -99,7 +99,7 @@ export function MarkFeePaidButton({
                 color: "var(--ink)",
               }}
             />
-            <label style={{ display: "block", font: "600 12px/1 'Inter'", color: "var(--ink3)", marginBottom: 6 }}>
+            <label style={{ display: "block", font: "600 12px/1 var(--ui)", color: "var(--ink3)", marginBottom: 6 }}>
               Method
             </label>
             <select
@@ -119,7 +119,7 @@ export function MarkFeePaidButton({
               <option value="check">Check</option>
               <option value="offline">Other offline</option>
             </select>
-            <label style={{ display: "block", font: "600 12px/1 'Inter'", color: "var(--ink3)", marginBottom: 6 }}>
+            <label style={{ display: "block", font: "600 12px/1 var(--ui)", color: "var(--ink3)", marginBottom: 6 }}>
               Reference / note (optional)
             </label>
             <input
@@ -138,7 +138,7 @@ export function MarkFeePaidButton({
               }}
             />
             {error && (
-              <p style={{ margin: "0 0 12px", font: "500 13px/1.3 'Inter'", color: "var(--danger)" }}>{error}</p>
+              <p style={{ margin: "0 0 12px", font: "500 13px/1.3 var(--ui)", color: "var(--danger)" }}>{error}</p>
             )}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button
@@ -151,7 +151,7 @@ export function MarkFeePaidButton({
                   border: "1px solid var(--line)",
                   background: "transparent",
                   color: "var(--ink2)",
-                  font: "600 13px/1 'Inter'",
+                  font: "600 13px/1 var(--ui)",
                 }}
               >
                 Cancel
@@ -167,7 +167,7 @@ export function MarkFeePaidButton({
                   borderRadius: 10,
                   background: "var(--gold)",
                   color: "#fff",
-                  font: "600 13px/1 'Inter'",
+                  font: "600 13px/1 var(--ui)",
                   opacity: pending ? 0.7 : 1,
                 }}
               >

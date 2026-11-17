@@ -1,18 +1,18 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { BriefcaseBusiness, House, Inbox, Receipt, UserRound } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 export type NavCounts = { requests: number; feesDue: number };
 
 const ITEMS = [
-  { href: "/dashboard", label: "Home", longLabel: "Home", icon: "/nav-icons/nav-home.png", count: null },
-  { href: "/opportunities", label: "Requests", longLabel: "Job requests", icon: "/nav-icons/nav-leads.png", count: "requests" },
-  { href: "/jobs", label: "My jobs", longLabel: "My jobs", icon: "/nav-icons/nav-jobs.png", count: null },
-  { href: "/fees", label: "Fees", longLabel: "Fees to pay", icon: "/nav-icons/nav-wallet.png", count: "feesDue" },
-  { href: "/profile", label: "Account", longLabel: "My account", icon: "/nav-icons/nav-profile.png", count: null },
+  { href: "/dashboard", label: "Home", longLabel: "Home", icon: House, count: null },
+  { href: "/opportunities", label: "Requests", longLabel: "Job requests", icon: Inbox, count: "requests" },
+  { href: "/jobs", label: "My jobs", longLabel: "My jobs", icon: BriefcaseBusiness, count: null },
+  { href: "/fees", label: "Fees", longLabel: "Fees to pay", icon: Receipt, count: "feesDue" },
+  { href: "/profile", label: "Account", longLabel: "My account", icon: UserRound, count: null },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -37,7 +37,7 @@ export function ProTabs({ counts }: { counts: NavCounts }) {
         const count = item.count ? counts[item.count] : 0;
         return (
           <Link key={item.href} href={item.href} className="pro-tab" aria-current={active ? "page" : undefined}>
-            <Image src={item.icon} alt="" width={28} height={28} aria-hidden />
+            <item.icon size={26} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
             <span>{item.label}</span>
             <CountBadge value={count} label={`${count} waiting`} />
           </Link>
@@ -62,7 +62,7 @@ export function ProSidebarNav({ counts, footer, top }: { counts: NavCounts; foot
             className="pro-sidebar-link"
             aria-current={active ? "page" : undefined}
           >
-            <Image src={item.icon} alt="" width={26} height={26} aria-hidden />
+            <item.icon size={22} strokeWidth={1.9} aria-hidden />
             <span>{item.longLabel}</span>
             <CountBadge value={count} label={`${count} waiting`} />
           </Link>

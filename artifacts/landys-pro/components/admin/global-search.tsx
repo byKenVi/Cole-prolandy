@@ -112,7 +112,7 @@ export function AdminGlobalSearch() {
             if (hits.length > 0) setOpen(true);
           }}
           onKeyDown={onKeyDown}
-          placeholder="Search leads, contractors, trades…"
+          placeholder="Search requests, contractors, trades"
           className="a-input"
           role="combobox"
           aria-expanded={open}
@@ -158,7 +158,7 @@ export function AdminGlobalSearch() {
           }}
         >
           {hits.length === 0 && pending ? (
-            <li style={{ padding: "12px 14px", font: "400 13px/1 'Inter'", color: "var(--ink3)" }}>
+            <li style={{ padding: "12px 14px", font: "400 13px/1 var(--ui)", color: "var(--ink3)" }}>
               Searching…
             </li>
           ) : (
@@ -182,17 +182,17 @@ export function AdminGlobalSearch() {
                     style={{
                       display: "inline-block",
                       marginBottom: 3,
-                      font: "500 12px/1.3 Rubik, sans-serif",
+                      font: "500 12px/1.3 var(--ui)",
                       letterSpacing: "0",
                       color: "var(--ink2)",
                     }}
                   >
                     {hit.kind}
                   </span>
-                  <span style={{ display: "block", font: "600 14px/1.25 'Inter'", color: "var(--ink)" }}>
+                  <span style={{ display: "block", font: "600 14px/1.25 var(--ui)", color: "var(--ink)" }}>
                     {hit.title}
                   </span>
-                  <span style={{ display: "block", marginTop: 2, font: "400 12px/1.3 'Inter'", color: "var(--ink2)" }}>
+                  <span style={{ display: "block", marginTop: 2, font: "400 12px/1.3 var(--ui)", color: "var(--ink2)" }}>
                     {hit.subtitle}
                   </span>
                 </button>

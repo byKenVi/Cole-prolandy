@@ -38,7 +38,7 @@ export default async function EstimatePage({
             <BrandLogo className="h-9" priority />
           </div>
           <div className="mb-8 text-center">
-            <p className="font-fraunces text-3xl font-semibold text-primary">
+            <p className="font-head text-3xl font-semibold text-primary">
               Get land work done right
             </p>
             <p className="mt-3 font-inter text-base text-text-muted">

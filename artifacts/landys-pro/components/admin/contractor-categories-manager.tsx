@@ -24,7 +24,7 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid var(--fieldLine)",
   background: "var(--field)",
   padding: "0 12px",
-  font: "500 14px/1 'Inter'",
+  font: "500 14px/1 var(--ui)",
   color: "var(--ink)",
 };
 
@@ -34,7 +34,7 @@ const buttonStyle: React.CSSProperties = {
   border: "1px solid var(--fieldLine)",
   background: "var(--field)",
   padding: "0 12px",
-  font: "600 13px/1 'Inter'",
+  font: "600 13px/1 var(--ui)",
   color: "var(--ink)",
   cursor: "pointer",
 };
@@ -109,10 +109,10 @@ export function ContractorCategoriesManager({
                 <div className="min-w-0 flex-1">
                   <p className="m-0 text-[14px] font-semibold text-[var(--ink)]">
                     {category.name}
-                    {category.archived ? " · Archived" : ""}
+                    {category.archived ? " (archived)" : ""}
                   </p>
-                  <p className="mt-1 font-mono text-[11px] text-[var(--ink3)]">
-                    {category.code} · {category.contractors} contractors · {category.leads} leads
+                  <p className="mt-1 text-[13px] text-[var(--ink3)]">
+                    {category.contractors} contractors, {category.leads} requests
                   </p>
                 </div>
                 <button

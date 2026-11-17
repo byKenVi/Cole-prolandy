@@ -20,20 +20,20 @@ type ConfirmationTab = "pending" | "confirmed" | "mismatches";
 const thStyle: React.CSSProperties = {
   padding: "12px 18px",
   textAlign: "left",
-  font: "500 13px/1.3 Rubik, sans-serif",
+  font: "500 13px/1.3 var(--ui)",
   letterSpacing: "0",
   color: "var(--ink2)",
 };
 
 const tdStyle: React.CSSProperties = {
   padding: "14px 18px",
-  font: "400 14px/1.35 'Inter'",
+  font: "400 14px/1.35 var(--ui)",
   verticalAlign: "top",
 };
 
 const fieldLabel: React.CSSProperties = {
   display: "block",
-  font: "500 13px/1.3 Rubik, sans-serif",
+  font: "500 13px/1.3 var(--ui)",
   letterSpacing: "0",
   color: "var(--ink2)",
   marginBottom: 4,
@@ -120,7 +120,7 @@ function humanMismatchReason(params: {
 function tabHint(tab: ConfirmationTab): string {
   switch (tab) {
     case "pending":
-      return "Waiting on the landowner — no response yet.";
+      return "The homeowner has not answered yet.";
     case "confirmed":
       return "Landowner answered, and it lines up with contractor claims.";
     case "mismatches":
@@ -234,7 +234,7 @@ export default async function AdminConfirmationsPage({
           background: "var(--card)",
         }}
       >
-        <p style={{ margin: 0, font: "500 14px/1.5 'Inter'", color: "var(--ink2)" }}>
+        <p style={{ margin: 0, font: "500 14px/1.5 var(--ui)", color: "var(--ink2)" }}>
           Contractors report outcomes. Landowners confirm payment.{" "}
           <span style={{ color: "var(--ink)", fontWeight: 600 }}>When those disagree, you review here.</span>
         </p>
@@ -270,7 +270,7 @@ export default async function AdminConfirmationsPage({
       <p
         style={{
           margin: "-6px 0 16px",
-          font: "400 13px/1.45 'Inter'",
+          font: "400 13px/1.45 var(--ui)",
           color: "var(--ink3)",
           maxWidth: 560,
         }}
@@ -356,7 +356,7 @@ export default async function AdminConfirmationsPage({
                       </td>
                       <td style={{ ...tdStyle, color: "var(--ink2)" }}>
                         <span style={{ fontWeight: 600, color: "var(--ink)" }}>
-                          {row.lead.landownerName ?? "—"}
+                          {row.lead.landownerName ?? "No name given"}
                         </span>
                         <br />
                         <span style={{ fontSize: 12, color: "var(--ink3)" }}>
@@ -365,7 +365,7 @@ export default async function AdminConfirmationsPage({
                       </td>
                       <td style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>
                         {row.lead.matches.length === 0
-                          ? "—"
+                          ? "None"
                           : row.lead.matches.map((m) => (
                               <div key={m.id} style={{ marginBottom: 2 }}>
                                 {m.contractor.name}
@@ -374,7 +374,7 @@ export default async function AdminConfirmationsPage({
                       </td>
                       <td style={{ ...tdStyle, color: "var(--ink2)", fontSize: 13 }}>
                         {lines.length === 0 ? (
-                          "—"
+                          "No claim yet"
                         ) : (
                           lines.map((line) => (
                             <div key={line.id} style={{ marginBottom: 3 }}>
@@ -411,7 +411,7 @@ export default async function AdminConfirmationsPage({
                               borderRadius: 10,
                               background: row.mismatchFlagged ? "var(--dangerBg)" : "var(--card2)",
                               color: row.mismatchFlagged ? "var(--danger)" : "var(--ink2)",
-                              font: "500 13px/1.45 'Inter'",
+                              font: "500 13px/1.45 var(--ui)",
                             }}
                           >
                             {mismatchText}
@@ -468,14 +468,14 @@ export default async function AdminConfirmationsPage({
                           href={`/admin/leads/${row.leadId}`}
                           style={{
                             margin: 0,
-                            font: "600 15px/1.3 'Inter'",
+                            font: "600 15px/1.3 var(--ui)",
                             color: "var(--ink)",
                             textDecoration: "none",
                           }}
                         >
                           {project}
                         </Link>
-                        <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                        <p style={{ margin: "3px 0 0", font: "400 12px/1.3 var(--ui)", color: "var(--ink3)" }}>
                           {row.lead.propertyLocation}
                         </p>
                       </div>
@@ -486,19 +486,19 @@ export default async function AdminConfirmationsPage({
 
                     <div>
                       <span style={fieldLabel}>Landowner</span>
-                      <p style={{ margin: 0, font: "500 14px/1.35 'Inter'", color: "var(--ink)" }}>
-                        {row.lead.landownerName ?? "—"}
+                      <p style={{ margin: 0, font: "500 14px/1.35 var(--ui)", color: "var(--ink)" }}>
+                        {row.lead.landownerName ?? "No name given"}
                       </p>
-                      <p style={{ margin: "2px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                      <p style={{ margin: "2px 0 0", font: "400 12px/1.3 var(--ui)", color: "var(--ink3)" }}>
                         {row.lead.landownerEmail}
                       </p>
                     </div>
 
                     <div>
                       <span style={fieldLabel}>Contractors connected</span>
-                      <p style={{ margin: 0, font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>
+                      <p style={{ margin: 0, font: "400 13px/1.4 var(--ui)", color: "var(--ink2)" }}>
                         {row.lead.matches.length === 0
-                          ? "—"
+                          ? "None"
                           : row.lead.matches.map((m) => m.contractor.name).join(", ")}
                       </p>
                     </div>
@@ -506,10 +506,10 @@ export default async function AdminConfirmationsPage({
                     <div>
                       <span style={fieldLabel}>Contractor claim</span>
                       {lines.length === 0 ? (
-                        <p style={{ margin: 0, color: "var(--ink3)" }}>—</p>
+                        <p style={{ margin: 0, color: "var(--ink3)" }}>No claim yet</p>
                       ) : (
                         lines.map((line) => (
-                          <p key={line.id} style={{ margin: "0 0 2px", font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>
+                          <p key={line.id} style={{ margin: "0 0 2px", font: "400 13px/1.4 var(--ui)", color: "var(--ink2)" }}>
                             {line.name}:{" "}
                             <strong
                               style={{
@@ -530,7 +530,7 @@ export default async function AdminConfirmationsPage({
 
                     <div>
                       <span style={fieldLabel}>Landowner confirmation</span>
-                      <p style={{ margin: 0, font: "600 14px/1.35 'Inter'", color: "var(--ink)" }}>
+                      <p style={{ margin: 0, font: "600 14px/1.35 var(--ui)", color: "var(--ink)" }}>
                         {confirmation}
                       </p>
                       {row.respondedAt && (
@@ -548,7 +548,7 @@ export default async function AdminConfirmationsPage({
                           borderRadius: 10,
                           background: row.mismatchFlagged ? "var(--dangerBg)" : "var(--card2)",
                           color: row.mismatchFlagged ? "var(--danger)" : "var(--ink2)",
-                          font: "500 13px/1.45 'Inter'",
+                          font: "500 13px/1.45 var(--ui)",
                         }}
                       >
                         {mismatchText}

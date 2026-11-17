@@ -13,7 +13,7 @@ describe("business-hours", () => {
         open: "07:00",
         close: "18:00",
       }),
-    ).toBe("Mon–Fri 7:00 AM – 6:00 PM");
+    ).toBe("Mon to Fri, 7:00 AM to 6:00 PM");
   });
 
   it("formats non-consecutive days", () => {
@@ -23,7 +23,7 @@ describe("business-hours", () => {
         open: "08:00",
         close: "17:00",
       }),
-    ).toBe("Mon, Wed, Fri 8:00 AM – 5:00 PM");
+    ).toBe("Mon, Wed, Fri, 8:00 AM to 5:00 PM");
   });
 
   it("parses Mon–Fri 7am–6pm style strings", () => {
@@ -31,6 +31,17 @@ describe("business-hours", () => {
     expect(v.days).toEqual(["mon", "tue", "wed", "thu", "fri"]);
     expect(v.open).toBe("07:00");
     expect(v.close).toBe("18:00");
+  });
+
+  it("reads back its own format", () => {
+    const samples = [
+      { days: ["mon", "tue", "wed", "thu", "fri"], open: "07:00", close: "18:00" },
+      { days: ["mon", "wed", "fri"], open: "08:30", close: "17:00" },
+    ] as const;
+    for (const sample of samples) {
+      const value = { ...sample, days: [...sample.days] };
+      expect(parseBusinessHours(formatBusinessHours(value))).toEqual(value);
+    }
   });
 
   it("formatClock handles noon/midnight edges", () => {

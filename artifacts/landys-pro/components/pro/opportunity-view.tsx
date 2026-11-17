@@ -38,7 +38,7 @@ export function OpportunityView({
         <p className="pro-ticket-sub">
           <MapPin size={16} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
           {summary.zip ? `ZIP ${summary.zip}` : summary.place}
-          {summary.landTypeName ? ` - ${summary.landTypeName} property` : ""}
+          {summary.landTypeName ? `, ${summary.landTypeName.toLowerCase()} property` : ""}
         </p>
         <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
           <Chip tone={view.status.tone}>{view.status.label}</Chip>

@@ -92,7 +92,7 @@ export function newLeadMessages(params: {
     : `Up to ${params.maxAccepts} pros can accept this request. The first ${params.maxAccepts} to accept get the homeowner's name, phone and email.`;
 
   const content: EmailContent = {
-    preheader: `${summary.title} near ${where(summary)}${summary.budgetLabel ? ` - ${summary.budgetLabel}` : ""}`,
+    preheader: `${summary.title} near ${where(summary)}${summary.budgetLabel ? `, ${summary.budgetLabel}` : ""}`,
     heading: params.direct ? "A homeowner asked you for an estimate" : "New job request near you",
     intro: [
       `Hi ${params.contractorName},`,
@@ -223,7 +223,7 @@ export function feeDueMessages(params: {
       `Congratulations on the ${summary.title} job in ${where(summary)}. Since the homeowner has paid you, Landy's success fee is now due.`,
     ],
     details: [
-      { label: "Job", value: `${summary.title} - ${summary.place}` },
+      { label: "Job", value: `${summary.title}, ${summary.place}` },
       { label: "Homeowner", value: summary.landownerName },
       { label: "Final job price", value: formatMoney(params.finalValueCents) },
       { label: "Landy's fee", value: `${amount} (${params.ratePercentLabel})` },
@@ -236,7 +236,7 @@ export function feeDueMessages(params: {
       "Something is wrong with this amount? Reply to this email before paying and we will fix it.",
     ],
   };
-  return { sms, email: email(content, `${prefix}Landy's success fee due: ${amount} - ${summary.title}`) };
+  return { sms, email: email(content, `${prefix}Landy's success fee due: ${amount} for ${summary.title}`) };
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 11,
   background: "var(--field)",
   color: "var(--ink)",
-  fontFamily: "Inter",
+  fontFamily: "var(--ui)",
   fontSize: 15,
 };
 
@@ -118,11 +118,11 @@ export function FollowUpSettingsForm({
             >
               {String(i + 1).padStart(2, "0")}
             </span>
-            <label htmlFor={row.id} style={{ font: "600 15px/1.3 'Inter'", color: "var(--ink)" }}>
+            <label htmlFor={row.id} style={{ font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>
               {row.title}
             </label>
           </div>
-          <p style={{ margin: "0 0 14px", font: "400 13px/1.45 'Inter'", color: "var(--ink3)" }}>
+          <p style={{ margin: "0 0 14px", font: "400 13px/1.45 var(--ui)", color: "var(--ink3)" }}>
             {row.plain}
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 320 }}>
@@ -134,12 +134,12 @@ export function FollowUpSettingsForm({
               onChange={(e) => row.setValue(e.target.value)}
               style={inputStyle}
             />
-            <span style={{ font: "500 13px/1.3 'Inter'", color: "var(--ink2)", flex: "none", whiteSpace: "nowrap" }}>
+            <span style={{ font: "500 13px/1.3 var(--ui)", color: "var(--ink2)", flex: "none", whiteSpace: "nowrap" }}>
               {row.unit}
             </span>
           </div>
           {hoursToHuman(Number(row.value)) && (
-            <p style={{ margin: "8px 0 0", font: "500 13px/1.3 'Inter'", color: "var(--goldSoftFg)" }}>
+            <p style={{ margin: "8px 0 0", font: "500 13px/1.3 var(--ui)", color: "var(--goldSoftFg)" }}>
               {hoursToHuman(Number(row.value))}
             </p>
           )}
@@ -147,7 +147,7 @@ export function FollowUpSettingsForm({
       ))}
 
       {message && (
-        <p style={{ margin: 0, font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>{message}</p>
+        <p style={{ margin: 0, font: "500 13px/1.4 var(--ui)", color: "var(--danger)" }}>{message}</p>
       )}
 
       <button
@@ -162,7 +162,7 @@ export function FollowUpSettingsForm({
           color: "#fff",
           border: "none",
           borderRadius: 12,
-          font: "600 16px/1 'Inter'",
+          font: "600 16px/1 var(--ui)",
           cursor: pending ? "default" : "pointer",
           boxShadow: "0 8px 18px rgba(192,128,60,.28)",
         }}

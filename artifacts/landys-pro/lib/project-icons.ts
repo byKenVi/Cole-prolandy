@@ -1,15 +1,16 @@
 /**
- * Maps a contractor category / project type to its 3D icon.
+ * Maps a contractor category / project type to an icon key.
  *
  * Categories are admin-editable, so we match on keywords (case-insensitive)
  * against the combined category + project-type name rather than an exact slug.
- * Always returns a 3D PNG so icon boxes are never empty.
+ * The value keeps the historical "/icons/<key>.png" shape; components/project-glyph
+ * draws each key as a line icon, so boxes are never empty.
  */
 const FALLBACK_ICON = "/icons/fallback.png";
 
 const ICON_RULES: { keywords: string[]; src: string }[] = [
   { keywords: ["excavation", "dirt", "dig", "trench", "utility"], src: "/icons/excavation.png" },
-  { keywords: ["land clearing", "clearing", "mulch", "brush hog"], src: "/icons/land-clearing.png" },
+  { keywords: ["land clearing", "clearing", "demolition", "debris"], src: "/icons/land-clearing.png" },
   { keywords: ["pond", "dam", "levee", "dredg", "water", "lake"], src: "/icons/pond.png" },
   { keywords: ["fenc", "gate", "gated"], src: "/icons/fencing.png" },
   { keywords: ["survey", "boundary", "plat", "topograph"], src: "/icons/surveying.png" },
@@ -17,15 +18,32 @@ const ICON_RULES: { keywords: string[]; src: string }[] = [
   { keywords: ["road", "driveway", "gravel"], src: "/icons/road.png" },
   { keywords: ["drain", "culvert", "french", "irrigation"], src: "/icons/drainage.png" },
   {
-    keywords: ["brush", "mow", "pasture", "forestry", "hogging", "timber", "logging", "maintenance"],
+    keywords: ["brush", "mow", "pasture", "forestry", "hogging", "timber", "logging", "mulch"],
     src: "/icons/brush-mowing.png",
   },
   { keywords: ["septic", "perc"], src: "/icons/septic.png" },
+  { keywords: ["grad", "pad ", "level", "retaining", "site prep"], src: "/icons/grading.png" },
   {
-    keywords: ["grad", "pad ", "level", "cabin", "barndo", "retaining", "general", "new build", "construction"],
-    src: "/icons/grading.png",
+    keywords: [
+      "home",
+      "house",
+      "barndo",
+      "barn",
+      "cabin",
+      "shop",
+      "metal building",
+      "builder",
+      "remodel",
+      "addition",
+      "entrance",
+      "general",
+      "new build",
+      "construction",
+    ],
+    src: "/icons/building.png",
   },
   { keywords: ["well", "drill", "pump"], src: "/icons/well-drilling.png" },
+  { keywords: ["hauling", "material"], src: "/icons/road.png" },
 ];
 
 export function projectIconSrc(...parts: (string | null | undefined)[]): string {
@@ -54,6 +72,7 @@ export const ICON_KEYS = [
   "septic",
   "grading",
   "well-drilling",
+  "building",
 ] as const;
 
 export type IconKey = (typeof ICON_KEYS)[number];
@@ -72,6 +91,7 @@ export const ICON_LABELS: Record<IconKey, string> = {
   septic: "Septic",
   grading: "Grading",
   "well-drilling": "Well Drilling",
+  building: "Building",
 };
 
 /** Sentinel values stored in `ContractorType.icon` that are NOT icon keys. */
@@ -82,13 +102,13 @@ function isIconKey(value: string): value is IconKey {
   return (ICON_KEYS as readonly string[]).includes(value);
 }
 
-/** The `/public/icons` path for a given icon key. */
+/** The historical "/icons/<key>.png" reference for a key (drawn by ProjectGlyph). */
 export function iconSrcForKey(key: IconKey): string {
   return `/icons/${key}.png`;
 }
 
 /**
- * Resolves the 3D icon for a category, honouring an admin's explicit choice.
+ * Resolves the icon for a category, honouring an admin's explicit choice.
  *
  * Precedence:
  *   1. explicit icon key (admin-assigned) → that icon

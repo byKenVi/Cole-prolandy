@@ -38,24 +38,24 @@ export function TestMessageForm() {
       onSubmit={send}
       style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end", padding: 16, border: "1px solid var(--line)", borderRadius: 14, background: "var(--card)", marginBottom: 16 }}
     >
-      <div style={{ flexBasis: "100%", font: "600 15px/1.3 Rubik, sans-serif", color: "var(--ink)" }}>Send a test message</div>
-      <label style={{ display: "grid", gap: 4, font: "500 12px/1.2 Rubik, sans-serif", color: "var(--ink2)" }}>
+      <div style={{ flexBasis: "100%", font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>Send a test message</div>
+      <label style={{ display: "grid", gap: 4, font: "500 12px/1.2 var(--ui)", color: "var(--ink2)" }}>
         Email
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={input} />
       </label>
-      <label style={{ display: "grid", gap: 4, font: "500 12px/1.2 Rubik, sans-serif", color: "var(--ink2)" }}>
+      <label style={{ display: "grid", gap: 4, font: "500 12px/1.2 var(--ui)", color: "var(--ink2)" }}>
         Mobile
         <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(512) 555-0100" style={input} />
       </label>
       <button
         type="submit"
         disabled={pending}
-        style={{ height: 44, padding: "0 18px", borderRadius: 10, border: 0, background: "var(--gold)", color: "#fff", font: "600 14px/1 Rubik, sans-serif" }}
+        style={{ height: 44, padding: "0 18px", borderRadius: 10, border: 0, background: "var(--gold)", color: "#fff", font: "600 14px/1 var(--ui)" }}
       >
         {pending ? "Sending..." : "Send test"}
       </button>
       {result && (
-        <p role="status" style={{ flexBasis: "100%", margin: 0, font: "500 14px/1.45 Rubik, sans-serif", color: result.ok ? "var(--pos)" : "var(--danger)" }}>
+        <p role="status" style={{ flexBasis: "100%", margin: 0, font: "500 14px/1.45 var(--ui)", color: result.ok ? "var(--pos)" : "var(--danger)" }}>
           {result.message}
         </p>
       )}

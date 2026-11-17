@@ -63,7 +63,7 @@ function InvitePageInner() {
           onClick={() => router.push(signedIn ? "/admin" : "/sign-in")}
           style={{ width: "100%", marginTop: 8 }}
         >
-          {signedIn ? "Go to dashboard →" : "Sign in →"}
+          {signedIn ? "Go to dashboard" : "Sign in"}
         </Button>
       </InviteCard>
     );
@@ -74,7 +74,7 @@ function InvitePageInner() {
       <InviteCard icon={<CheckCircle2 style={{ color: "#2F6B4A" }} />} title="You're in!">
         <p style={bodyStyle}>Your invitation was accepted. Sign in to access the admin dashboard.</p>
         <Button variant="accent" onClick={() => router.push("/admin")} style={{ width: "100%", marginTop: 16 }}>
-          Go to dashboard →
+          Go to dashboard
         </Button>
       </InviteCard>
     );
@@ -82,7 +82,7 @@ function InvitePageInner() {
 
   if (state.status === "error") {
     return (
-      <InviteCard icon={<AlertTriangle style={{ color: "#C0803C" }} />} title="Something went wrong">
+      <InviteCard icon={<AlertTriangle style={{ color: "#2C4A39" }} />} title="Something went wrong">
         <p style={bodyStyle}>{state.message}</p>
         <Button variant="ghost" onClick={() => router.push("/sign-in")} style={{ width: "100%", marginTop: 16 }}>
           Sign in instead
@@ -116,7 +116,7 @@ function InvitePageInner() {
           onClick={() => router.push(`/sign-up?redirect_url=${returnTo}`)}
           style={{ width: "100%", marginTop: 8 }}
         >
-          Create my account →
+          Create my account
         </Button>
         <Button
           variant="ghost"
@@ -178,7 +178,7 @@ function InviteCard({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--surface, #FEFBF6)",
+        background: "var(--surface, #F1F2EC)",
         padding: 24,
       }}
     >
@@ -187,7 +187,7 @@ function InviteCard({
           width: "100%",
           maxWidth: 440,
           background: "var(--card, #fff)",
-          border: "1px solid var(--line, #EBE3D4)",
+          border: "1px solid var(--line, #DADCD2)",
           borderRadius: 20,
           boxShadow: "0 8px 32px rgba(58,53,45,0.10)",
           padding: "36px 40px",
@@ -218,7 +218,7 @@ function InviteCard({
               margin: 0,
               fontSize: 22,
               fontWeight: 700,
-              color: "var(--ink, #3A352D)",
+              color: "var(--ink, #1F2A22)",
               letterSpacing: "-.01em",
             }}
           >

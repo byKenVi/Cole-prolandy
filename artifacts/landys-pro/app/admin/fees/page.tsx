@@ -21,14 +21,14 @@ type FeeTab = "all" | "awaiting" | "due" | "paid";
 const thStyle: React.CSSProperties = {
   padding: "12px 20px",
   textAlign: "left",
-  font: "500 13px/1.3 Rubik, sans-serif",
+  font: "500 13px/1.3 var(--ui)",
   letterSpacing: "0",
   color: "var(--ink2)",
 };
 
 const tdStyle: React.CSSProperties = {
   padding: "14px 20px",
-  font: "400 14px/1.35 'Inter'",
+  font: "400 14px/1.35 var(--ui)",
   verticalAlign: "top",
 };
 
@@ -56,7 +56,7 @@ function feeStatusMeta(status: string): {
       return {
         label: "Awaiting contractor payment",
         short: "Awaiting",
-        hint: "Won — waiting for the contractor to confirm the landowner paid them.",
+        hint: "Job won. Waiting for the contractor to confirm the homeowner paid them.",
         bg: "var(--goldSoft)",
         fg: "var(--goldSoftFg)",
       };
@@ -130,7 +130,7 @@ function emptyCopy(tab: FeeTab): { title: string; description: string } {
       return {
         title: "Nothing awaiting contractor payment",
         description:
-          "Fees land here after a contractor reports a won job — until they confirm the landowner paid them.",
+          "A fee lands here when a contractor reports a won job, and stays until they confirm the homeowner paid them.",
       };
     case "due":
       return {
@@ -147,7 +147,7 @@ function emptyCopy(tab: FeeTab): { title: string; description: string } {
       return {
         title: "No success fees yet",
         description:
-          "Fees appear after contractors report won jobs — then move from awaiting → due → paid.",
+          "A fee appears when a contractor reports a won job. It is awaiting until the homeowner pays the contractor, then due, then paid.",
       };
   }
 }
@@ -159,7 +159,7 @@ function tabHint(tab: FeeTab): string {
     case "due":
       return "Landy's fee is owed. Mark paid when you receive a check or manual payment.";
     case "paid":
-      return "Settled fees — Stripe online, or Manual / Check when recorded by admin.";
+      return "Settled fees, paid online with Stripe or recorded by an admin (check or other).";
     default:
       return "Track every success fee from won job through settlement.";
   }
@@ -216,7 +216,7 @@ export default async function AdminFeesPage({
       <PageHeader
         kicker="Revenue"
         title="Success fees"
-        subtitle="Landy's cut on won jobs — from contractor payment confirmation through settlement."
+        subtitle="What contractors owe Landy's on won jobs, from the homeowner's payment to the fee being settled."
       />
 
       <AdminTabBar aria-label="Fee status">
@@ -252,7 +252,7 @@ export default async function AdminFeesPage({
       <p
         style={{
           margin: "-6px 0 16px",
-          font: "400 13px/1.45 'Inter'",
+          font: "400 13px/1.45 var(--ui)",
           color: "var(--ink3)",
           maxWidth: 640,
         }}
@@ -399,8 +399,8 @@ export default async function AdminFeesPage({
                     <RowLink href={`/admin/fees/${fee.leadMatchId}`} label={`Open fee for ${project}`} />
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                       <div style={{ minWidth: 0 }}>
-                        <p style={{ margin: 0, font: "600 15px/1.3 'Inter'", color: "var(--ink)" }}>{project}</p>
-                        <p style={{ margin: "3px 0 0", font: "400 12px/1.3 'Inter'", color: "var(--ink3)" }}>
+                        <p style={{ margin: 0, font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>{project}</p>
+                        <p style={{ margin: "3px 0 0", font: "400 12px/1.3 var(--ui)", color: "var(--ink3)" }}>
                           {fee.leadMatch.lead.propertyLocation}
                         </p>
                       </div>
@@ -416,7 +416,7 @@ export default async function AdminFeesPage({
                         display: "grid",
                         gridTemplateColumns: "1fr 1fr",
                         gap: 10,
-                        font: "400 13px/1.4 'Inter'",
+                        font: "400 13px/1.4 var(--ui)",
                         color: "var(--ink2)",
                       }}
                     >
@@ -430,7 +430,7 @@ export default async function AdminFeesPage({
                         <span style={{ display: "block", fontSize: 11, color: "var(--ink3)", marginBottom: 2 }}>
                           Final value
                         </span>
-                        {formatMoney(fee.finalValueCents)} · {formatRate(fee.rateBasisPoints)}
+                        {formatMoney(fee.finalValueCents)} at {formatRate(fee.rateBasisPoints)}
                       </div>
                       <div>
                         <span style={{ display: "block", fontSize: 11, color: "var(--ink3)", marginBottom: 2 }}>
@@ -498,7 +498,7 @@ export default async function AdminFeesPage({
               flexWrap: "wrap",
               gap: "10px 18px",
               alignItems: "center",
-              font: "400 12px/1.4 'Inter'",
+              font: "400 12px/1.4 var(--ui)",
               color: "var(--ink3)",
             }}
           >

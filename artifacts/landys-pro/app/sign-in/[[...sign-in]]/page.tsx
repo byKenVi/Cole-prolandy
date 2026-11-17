@@ -7,7 +7,7 @@ import { CheckCircle2 } from "lucide-react";
 
 const FEATURE_BULLETS = [
   "New opportunities delivered straight to your phone",
-  "Accept jobs in one tap — no upfront lead fees",
+  "Accept jobs in one tap, with no lead fees",
   "Pay Landy's only after the landowner pays you",
 ];
 
@@ -24,7 +24,7 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#FEFBF6]">
+    <div className="flex min-h-screen bg-[#F1F2EC]">
       {/* ── Left brand panel (hidden on small screens) ── */}
       <div className="hidden lg:flex lg:w-[46%] xl:w-[42%] flex-col justify-between bg-primary px-12 py-14">
         {/* Top: logo */}

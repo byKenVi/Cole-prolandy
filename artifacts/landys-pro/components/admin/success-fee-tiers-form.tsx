@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { updateSuccessFeeTiers } from "@/app/actions/admin";
 
 const hintStyle: React.CSSProperties = {
-  font: "400 13px/1.45 'Inter'",
+  font: "400 13px/1.45 var(--ui)",
   color: "var(--ink3)",
 };
 
@@ -16,7 +16,7 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 11,
   background: "var(--field)",
   color: "var(--ink)",
-  fontFamily: "Inter",
+  fontFamily: "var(--ui)",
   fontSize: 15,
 };
 
@@ -29,7 +29,7 @@ export type SuccessFeeTierFormRow = {
 };
 
 function formatUsd(amount: number | null | undefined) {
-  if (amount == null || !Number.isFinite(amount)) return "—";
+  if (amount == null || !Number.isFinite(amount)) return "?";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -59,7 +59,7 @@ function tierRangeCopy(
   }
   if (sortOrder === 2) {
     const from = previousMax != null ? previousMax + 1 : null;
-    return `${formatUsd(from)} – ${formatUsd(maxValueDollars)}`;
+    return `${formatUsd(from)} to ${formatUsd(maxValueDollars)}`;
   }
   const from = previousMax != null ? previousMax + 1 : null;
   return `${formatUsd(from)} and above`;
@@ -162,7 +162,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                 >
                   {heading}
                 </p>
-                <p style={{ margin: "8px 0 0", font: "500 13px/1.35 'Inter'", color: "var(--ink2)" }}>
+                <p style={{ margin: "8px 0 0", font: "500 13px/1.35 var(--ui)", color: "var(--ink2)" }}>
                   {tierRangeCopy(tier.sortOrder, tier.maxValueDollars, previousMax)}
                 </p>
               </div>
@@ -173,7 +173,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                     <label
                       style={{
                         display: "block",
-                        font: "500 13px/1.3 Rubik, sans-serif",
+                        font: "500 13px/1.3 var(--ui)",
                         letterSpacing: "0",
                         color: "var(--ink2)",
                         marginBottom: 7,
@@ -189,7 +189,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                           top: "50%",
                           transform: "translateY(-50%)",
                           color: "var(--ink3)",
-                          font: "500 14px/1 'Inter'",
+                          font: "500 14px/1 var(--ui)",
                           pointerEvents: "none",
                         }}
                       >
@@ -213,7 +213,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                     <label
                       style={{
                         display: "block",
-                        font: "500 13px/1.3 Rubik, sans-serif",
+                        font: "500 13px/1.3 var(--ui)",
                         letterSpacing: "0",
                         color: "var(--ink2)",
                         marginBottom: 7,
@@ -239,7 +239,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                   <label
                     style={{
                       display: "block",
-                      font: "500 13px/1.3 Rubik, sans-serif",
+                      font: "500 13px/1.3 var(--ui)",
                       letterSpacing: "0",
                       color: "var(--ink2)",
                       marginBottom: 7,
@@ -267,7 +267,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                         top: "50%",
                         transform: "translateY(-50%)",
                         color: "var(--ink3)",
-                        font: "600 14px/1 'Inter'",
+                        font: "600 14px/1 var(--ui)",
                         pointerEvents: "none",
                       }}
                     >
@@ -290,7 +290,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
       `}</style>
 
       {message && (
-        <p style={{ margin: "0 0 14px", font: "500 13px/1.4 'Inter'", color: "var(--danger)" }}>
+        <p style={{ margin: "0 0 14px", font: "500 13px/1.4 var(--ui)", color: "var(--danger)" }}>
           {message}
         </p>
       )}
@@ -307,7 +307,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
           color: "#fff",
           border: "none",
           borderRadius: 12,
-          font: "600 16px/1 'Inter'",
+          font: "600 16px/1 var(--ui)",
           cursor: pending ? "default" : "pointer",
           boxShadow: "0 8px 18px rgba(192,128,60,.28)",
         }}

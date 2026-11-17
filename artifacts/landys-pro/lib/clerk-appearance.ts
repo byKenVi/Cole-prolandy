@@ -20,21 +20,21 @@ type ClerkAppearance = NonNullable<ComponentProps<typeof SignIn>["appearance"]>;
 export const clerkAppearance: ClerkAppearance = {
   variables: {
     // Brand palette
-    colorPrimary: "#2F4A3C",
+    colorPrimary: "#2C4A39",
     colorDanger: "#B23B3B",
     colorSuccess: "#3F7D52",
     colorWarning: "#C99A2E",
     // Surfaces
     colorBackground: "#FFFFFF",
-    colorInputBackground: "#FEFBF6",
-    colorInputText: "#3A332C",
+    colorInputBackground: "#F1F2EC",
+    colorInputText: "#1F2A22",
     // Typography
-    colorText: "#3A332C",
+    colorText: "#1F2A22",
     colorTextSecondary: "#8A7F6D",
     colorTextOnPrimaryBackground: "#FFFFFF",
     // Spacing & shape
     borderRadius: "0.75rem",
-    fontFamily: 'var(--nf-rubik), "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif',
+    fontFamily: "var(--ui)",
     // Contractors are often older and on phones: 17px base, large controls.
     fontSize: "1.0625rem",
     fontWeight: {
@@ -61,7 +61,7 @@ export const clerkAppearance: ClerkAppearance = {
       "min-h-[58px] text-[18px] bg-primary hover:bg-primary-hover active:bg-[#1e3026] text-white font-semibold rounded-xl shadow-sm transition-colors",
     // Social / secondary buttons — overflow visible so "Last used" badge isn't clipped
     socialButtonsBlockButton:
-      "relative overflow-visible min-h-[56px] border-2 border-border bg-surface text-text hover:bg-[#F5F0E8] rounded-xl font-medium transition-colors",
+      "relative overflow-visible min-h-[56px] border-2 border-border bg-surface text-text hover:bg-[#EEF0E9] rounded-xl font-medium transition-colors",
     socialButtonsBlockButtonText: "text-[17px] font-medium",
     // Divider
     dividerLine: "bg-border",

@@ -16,11 +16,13 @@ import { MatchOpsPanel } from "@/components/admin/match-ops-panel";
 
 export const dynamic = "force-dynamic";
 
+const EMPTY = "Not provided";
+
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-sm font-medium text-text-muted">{label}</dt>
-      <dd className="mt-0.5 text-base text-text">{value}</dd>
+      <dd className={`mt-0.5 text-base ${value === EMPTY ? "text-text-muted" : "text-text"}`}>{value}</dd>
     </div>
   );
 }
@@ -101,7 +103,7 @@ function TimelineEventRow({ event, last }: { event: TimelineEvent; last: boolean
       return <Circle className="h-4 w-4 text-text-muted" strokeWidth={2} />;
     // offered
     return (
-      <span className="flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#C0803C] bg-[#FBF3E6]" />
+      <span className="flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#2C4A39] bg-[#FBF3E6]" />
     );
   })();
 
@@ -165,7 +167,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
       id: c.id,
       name: c.name,
       detail:
-        [c.serviceZipCodes.slice(0, 4).join(", "), c.serviceCounties.slice(0, 2).join(", ")].filter(Boolean).join(" - ") ||
+        [c.serviceZipCodes.slice(0, 4).join(", "), c.serviceCounties.slice(0, 2).join(", ")].filter(Boolean).join("; ") ||
         "No service area",
       sameCategory: Boolean(
         lead.contractorCategoryId &&
@@ -190,21 +192,21 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <p
             style={{
               margin: "0 0 8px",
-              font: "500 14px/1.35 Rubik, sans-serif",
+              font: "500 14px/1.35 var(--ui)",
               letterSpacing: "0",
               color: "var(--ink2)",
             }}
           >
             Client
           </p>
-          <h1 className="font-fraunces text-3xl font-semibold" style={{ color: "var(--ink)" }}>
+          <h1 className="font-head text-3xl font-semibold" style={{ color: "var(--ink)" }}>
             {lead.landownerName ?? "Name not provided"}
           </h1>
           <p className="mt-1 text-base font-medium" style={{ color: "var(--ink)" }}>
             {leadScopeLabel(lead)}
           </p>
           <p className="mt-1 text-sm" style={{ color: "var(--ink2)" }}>
-            {leadCategoryLabel(lead)} · {lead.propertyLocation}
+            {leadCategoryLabel(lead)}, {lead.propertyLocation}
           </p>
           <div className="mt-2 flex items-center gap-2">
             <LeadStatusBadge status={lead.status} />
@@ -275,15 +277,15 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <Field label="Landowner phone" value={lead.landownerPhone ?? "Not provided"} />
           <Field label="Landowner email" value={lead.landownerEmail} />
           <Field label="Property location" value={lead.propertyLocation} />
-          <Field label="Project details" value={lead.description ?? "—"} />
+          <Field label="Project details" value={lead.description ?? EMPTY} />
           <Field label="Category" value={lead.contractorCategory?.name ?? leadCategoryLabel(lead)} />
           <Field label="Work / project type" value={leadScopeLabel(lead)} />
-          <Field label="Land type" value={lead.landType?.name ?? "—"} />
-          <Field label="Budget band" value={lead.budgetBand ?? "—"} />
-          <Field label="Budget" value={lead.budget ?? "—"} />
+          <Field label="Land type" value={lead.landType?.name ?? EMPTY} />
+          <Field label="Budget band" value={lead.budgetBand ?? EMPTY} />
+          <Field label="Budget" value={lead.budget ?? EMPTY} />
           <Field
             label="Normalized budget"
-            value={lead.budgetCents != null ? formatMoney(lead.budgetCents) : "—"}
+            value={lead.budgetCents != null ? formatMoney(lead.budgetCents) : EMPTY}
           />
           <Field
             label="Acceptance cap"
@@ -293,9 +295,9 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
                 : `${lead.acceptedCount} / ${lead.maxPurchases}`
             }
           />
-          <Field label="Review blocker" value={lead.reviewBlocker ?? "—"} />
-          <Field label="Urgency" value={lead.urgencyCode ?? lead.urgency ?? "—"} />
-          <Field label="Timeline" value={lead.timelineCode ?? (lead.timeline ? formatDate(lead.timeline) : "—")} />
+          <Field label="Review blocker" value={lead.reviewBlocker ?? "None"} />
+          <Field label="Urgency" value={lead.urgencyCode ?? lead.urgency ?? EMPTY} />
+          <Field label="Timeline" value={lead.timelineCode ?? (lead.timeline ? formatDate(lead.timeline) : EMPTY)} />
           <Field label="Source" value={lead.source} />
           <Field label="Created" value={formatDate(lead.createdAt)} />
           <Field label="Expires" value={lead.expiresAt ? formatDate(lead.expiresAt) : "Not started"} />
@@ -349,7 +351,6 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
                     >
                       {m.contractor.name}
                     </Link>
-                    <span className="text-sm text-text-muted">·</span>
                     <span className="text-sm text-text-muted">{m.contractor.email}</span>
                     <LeadMatchStatusBadge status={m.status} />
                   </div>

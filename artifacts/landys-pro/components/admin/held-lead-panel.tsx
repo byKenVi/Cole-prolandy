@@ -1,5 +1,6 @@
 "use client";
 
+import { TriangleAlert } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { assignLeadAction, retryLeadRoutingAction } from "@/app/actions/admin";
@@ -57,42 +58,42 @@ export function HeldLeadPanel({
     <div
       style={{
         border: "1px solid var(--line)",
-        borderLeft: "4px solid var(--goldStrong)",
-        borderRadius: 14,
+        borderRadius: 12,
         background: "var(--card)",
         padding: 18,
         marginBottom: 20,
       }}
     >
-      <p style={{ margin: 0, font: "600 16px/1.3 Rubik, sans-serif", color: "var(--ink)" }}>
+      <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, font: "600 17px/1.3 var(--head)", color: "var(--ink)" }}>
+        <TriangleAlert size={18} aria-hidden style={{ color: "var(--warn)", flex: "none" }} />
         Not sent to any contractor yet
       </p>
-      <p style={{ margin: "6px 0 14px", font: "400 14px/1.5 'Inter'", color: "var(--ink2)" }}>
+      <p style={{ margin: "6px 0 14px", font: "400 14px/1.5 var(--ui)", color: "var(--ink2)" }}>
         {(reason && REASONS[reason]) ?? "This request is waiting for review."}
       </p>
       <button
         type="button"
         onClick={retry}
         disabled={pending}
-        style={{ height: 42, padding: "0 16px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", font: "600 14px/1 Rubik, sans-serif", color: "var(--ink)" }}
+        style={{ height: 42, padding: "0 16px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--card)", font: "600 14px/1 var(--ui)", color: "var(--ink)" }}
       >
-        {pending ? "Working..." : "Try automatic routing again"}
+        {pending ? "Routing" : "Try automatic routing again"}
       </button>
 
       <div style={{ marginTop: 18 }}>
-        <p style={{ margin: "0 0 8px", font: "600 14px/1.3 Rubik, sans-serif", color: "var(--ink)" }}>
+        <p style={{ margin: "0 0 8px", font: "600 14px/1.3 var(--ui)", color: "var(--ink)" }}>
           Or send it to contractors you choose
         </p>
         <div style={{ maxHeight: 280, overflowY: "auto", border: "1px solid var(--line)", borderRadius: 10 }}>
           {visible.length === 0 && (
-            <p style={{ margin: 0, padding: 12, font: "400 13px/1.4 'Inter'", color: "var(--ink2)" }}>
+            <p style={{ margin: 0, padding: 12, font: "400 13px/1.4 var(--ui)", color: "var(--ink2)" }}>
               No contractor in this category.
             </p>
           )}
           {visible.map((c) => (
             <label
               key={c.id}
-              style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderBottom: "1px solid var(--line)", font: "400 14px/1.4 'Inter'", cursor: "pointer" }}
+              style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderBottom: "1px solid var(--line)", font: "400 14px/1.4 var(--ui)", cursor: "pointer" }}
             >
               <input
                 type="checkbox"
@@ -112,21 +113,21 @@ export function HeldLeadPanel({
             type="button"
             onClick={assign}
             disabled={pending || picked.length === 0}
-            style={{ height: 42, padding: "0 16px", borderRadius: 10, border: 0, background: "var(--gold)", color: "#fff", font: "600 14px/1 Rubik, sans-serif", opacity: pending || picked.length === 0 ? 0.6 : 1 }}
+            style={{ height: 42, padding: "0 16px", borderRadius: 10, border: 0, background: "var(--gold)", color: "#fff", font: "600 14px/1 var(--ui)", opacity: pending || picked.length === 0 ? 0.6 : 1 }}
           >
             Send to {picked.length || ""} selected
           </button>
           <button
             type="button"
             onClick={() => setShowAll((v) => !v)}
-            style={{ border: 0, background: "transparent", color: "var(--ink2)", textDecoration: "underline", font: "500 13px/1 Rubik, sans-serif" }}
+            style={{ border: 0, background: "transparent", color: "var(--ink2)", textDecoration: "underline", font: "500 13px/1 var(--ui)" }}
           >
             {showAll ? "Show only this category" : "Show all contractors"}
           </button>
         </div>
       </div>
       {message && (
-        <p role="status" style={{ margin: "12px 0 0", font: "500 14px/1.4 Rubik, sans-serif", color: message.ok ? "var(--pos)" : "var(--danger)" }}>
+        <p role="status" style={{ margin: "12px 0 0", font: "500 14px/1.4 var(--ui)", color: message.ok ? "var(--pos)" : "var(--danger)" }}>
           {message.text}
         </p>
       )}

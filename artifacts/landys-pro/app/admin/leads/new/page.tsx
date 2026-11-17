@@ -36,9 +36,8 @@ export default async function NewLeadPage() {
       </Link>
 
       <PageHeader
-        kicker="Opportunities"
-        title="Create opportunity"
-        subtitle="Manually enter a landowner estimate request using the same fields that matter for Wix / Landys.co intake — then distribute to matched contractors."
+        title="New request"
+        subtitle="Enter a request taken by phone or email. It goes through the same matching as the ones from landys.co."
       />
 
       <Panel style={{ padding: "28px 28px 32px" }}>

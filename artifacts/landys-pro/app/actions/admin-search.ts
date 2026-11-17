@@ -75,7 +75,7 @@ export async function adminSearchSuggest(query: string): Promise<SearchHit[]> {
     id: l.id,
     href: `/admin/leads/${l.id}`,
     title: leadScopeLabel(l),
-    subtitle: `${leadCategoryLabel(l)} · ${l.propertyLocation} · ${
+    subtitle: `${leadCategoryLabel(l)}, ${l.propertyLocation}, ${
       l.priceCents === null ? "Pending review" : formatMoney(l.priceCents)
     }`,
   }));
@@ -85,7 +85,7 @@ export async function adminSearchSuggest(query: string): Promise<SearchHit[]> {
     id: c.id,
     href: `/admin/contractors/${c.id}`,
     title: c.name,
-    subtitle: `${c.contractorType?.name ?? "No type"} · ${c.email}`,
+    subtitle: `${c.contractorType?.name ?? "No type"}, ${c.email}`,
   }));
 
   return [...leadHits, ...contractorHits].slice(0, 10);

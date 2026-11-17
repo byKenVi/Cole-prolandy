@@ -4,14 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 /**
- * Active / Archived tabs + search (right-aligned) for contractors — matches leads
- * page layout. Archived = deactivated. Filter drives URL (?filter=).
+ * Active / No service area / Archived tabs and search for contractors, laid out
+ * like the requests page. Archived = deactivated. The filter drives ?filter=.
  */
 export function ContractorFilters({ q, filter }: { q: string; filter: string }) {
   const router = useRouter();
   const [query, setQuery] = useState(q);
 
-  const tab = filter === "deactivated" ? "archived" : "active";
+  const tab = filter === "deactivated" ? "archived" : filter === "no-area" ? "no-area" : "active";
 
   function go(nextQ: string, nextFilter: string) {
     const params = new URLSearchParams();
@@ -24,12 +24,12 @@ export function ContractorFilters({ q, filter }: { q: string; filter: string }) 
   const segStyle = (active: boolean): React.CSSProperties => ({
     cursor: "pointer",
     border: "none",
-    font: "600 13px/1 'Inter'",
-    padding: "9px 15px",
-    borderRadius: 9,
+    font: `${active ? 600 : 500} 14px/1 var(--ui)`,
+    padding: "9px 14px",
+    borderRadius: 7,
     background: active ? "var(--card)" : "transparent",
     color: active ? "var(--ink)" : "var(--ink2)",
-    boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
+    outline: active ? "1px solid var(--line)" : "none",
   });
 
   return (
@@ -63,6 +63,15 @@ export function ContractorFilters({ q, filter }: { q: string; filter: string }) 
           onClick={() => go(query, "")}
         >
           Active
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "no-area"}
+          style={segStyle(tab === "no-area")}
+          onClick={() => go(query, "no-area")}
+        >
+          No service area
         </button>
         <button
           type="button"
@@ -106,7 +115,7 @@ export function ContractorFilters({ q, filter }: { q: string; filter: string }) 
           placeholder="Search name or email"
           aria-label="Search contractors"
           className="a-input"
-          style={{ width: "100%", font: "400 14px/1 'Inter'" }}
+          style={{ width: "100%", font: "400 14px/1 var(--ui)" }}
         />
       </form>
     </div>

@@ -3,6 +3,18 @@
 import { useState, useTransition } from "react";
 import { syncWixContractors } from "@/app/actions/admin";
 
+function formatWhen(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Chicago",
+  });
+}
+
 export function WixContractorSyncPanel({
   lastSuccessAt,
   lastAttemptAt,
@@ -36,25 +48,32 @@ export function WixContractorSyncPanel({
       style={{
         background: "var(--card)",
         border: "1px solid var(--line)",
-        borderRadius: 14,
-        padding: "16px 18px",
+        borderRadius: 12,
+        padding: "16px 20px",
         marginBottom: 16,
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 14,
       }}
     >
-      <p style={{ margin: "0 0 6px", font: "600 14px/1.3 'Inter'", color: "var(--ink)" }}>
-        Wix contractor sync
+      <div style={{ minWidth: 0, flex: "1 1 320px" }}>
+      <p style={{ margin: 0, font: "600 17px/1.3 var(--head)", color: "var(--ink)" }}>
+        Import from landys.co
       </p>
-      <p style={{ margin: "0 0 12px", font: "400 12px/1.4 'Inter'", color: "var(--ink3)" }}>
-        Canonical external ID: Wix <code>_id</code>. Last success: {lastSuccessAt ?? "never"}. Last
-        attempt: {lastAttemptAt ?? "never"}.
+      <p style={{ margin: "4px 0 0", font: "400 14px/1.45 var(--ui)", color: "var(--ink2)" }}>
+        Runs every 6 hours. Last import: {lastSuccessAt ? formatWhen(lastSuccessAt) : "never"}
+        {lastAttemptAt && lastAttemptAt !== lastSuccessAt ? `. Last attempt: ${formatWhen(lastAttemptAt)}` : ""}.
       </p>
       {lastResult && (
-        <p style={{ margin: "0 0 12px", font: "400 12px/1.4 'Inter'", color: "var(--ink2)" }}>
-          Latest: {lastResult.created} created, {lastResult.updated} updated,{" "}
-          {lastResult.unchanged} unchanged, {lastResult.unresolved} unresolved
+        <p style={{ margin: "4px 0 0", font: "400 14px/1.45 var(--ui)", color: "var(--ink3)" }}>
+          Last result: {lastResult.created} added, {lastResult.updated} updated, {lastResult.unchanged} unchanged
+          {lastResult.unresolved ? `, ${lastResult.unresolved} could not be matched` : ""}
           {lastResult.errors.length ? `, ${lastResult.errors.length} errors` : ""}.
         </p>
       )}
+      </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
           type="button"
@@ -64,22 +83,23 @@ export function WixContractorSyncPanel({
           style={{
             height: 40,
             padding: "0 16px",
-            borderRadius: 10,
+            borderRadius: 8,
             border: "none",
             background: "var(--gold)",
             color: "#fff",
-            font: "600 13px/1 'Inter'",
+            font: "600 14px/1 var(--ui)",
             cursor: pending ? "default" : "pointer",
           }}
         >
-          {pending ? "Syncing…" : "Sync Wix contractors now"}
+          {pending ? "Importing" : "Import now"}
         </button>
       </div>
       {message && (
         <p
           style={{
-            margin: "10px 0 0",
-            font: "500 12px/1.4 'Inter'",
+            margin: 0,
+            flexBasis: "100%",
+            font: "500 14px/1.4 var(--ui)",
             color: error ? "var(--danger)" : "var(--sageFg)",
           }}
         >

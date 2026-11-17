@@ -422,7 +422,7 @@ export async function deleteLead(id: string): Promise<Result> {
       ok: false,
       message: accepted
         ? "This lead has match history and an accepted match with wallet charges, so it can't be deleted. Leave it in place to preserve the audit trail."
-        : "This lead has match history (pending, declined, or expired). Deleting would destroy those records — leave the lead in place to preserve the trail.",
+        : "This request has a match history (pending, declined or expired). Deleting it would erase that history, so it stays in place.",
     };
   }
 

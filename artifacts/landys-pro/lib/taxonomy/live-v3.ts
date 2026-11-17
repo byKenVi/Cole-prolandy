@@ -151,8 +151,8 @@ const BUDGET_BAND_ENTRIES: Array<{ band: BudgetBand; labels: readonly string[] }
 /** Human label shown to contractors and landowners. */
 export const BUDGET_BAND_LABELS: Record<BudgetBand, string> = {
   UNDER_5K: "Under $5,000",
-  BETWEEN_5K_15K: "$5,000 - $15,000",
-  BETWEEN_15K_50K: "$15,000 - $50,000",
+  BETWEEN_5K_15K: "$5,000 to $15,000",
+  BETWEEN_15K_50K: "$15,000 to $50,000",
   OVER_50K: "$50,000+",
 };
 

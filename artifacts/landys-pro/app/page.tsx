@@ -148,9 +148,9 @@ export default function LandingPage() {
                 </span>
               </div>
               <p className="mt-2 text-xs text-text-muted">
-                <span className="font-semibold text-text">Site Excavation</span> · Dripping Springs
+                <span className="font-semibold text-text">Site Excavation</span>, Dripping Springs
               </p>
-              <p className="text-sm font-semibold text-text">Est. $18,000 · 4% success fee</p>
+              <p className="text-sm font-semibold text-text">Budget $18,000, 4% success fee</p>
               <p className="mt-1 text-[11px] text-text-muted">No upfront cost to accept</p>
             </div>
           </div>
