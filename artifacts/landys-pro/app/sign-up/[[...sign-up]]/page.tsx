@@ -24,7 +24,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F1F2EC]">
+    <div className="flex min-h-screen bg-[#FEFBF6]">
       {/* ── Left brand panel (hidden on small screens) ── */}
       <div className="hidden lg:flex lg:w-[46%] xl:w-[42%] flex-col justify-between bg-primary px-12 py-14">
         {/* Top: logo */}

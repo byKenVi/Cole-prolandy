@@ -91,7 +91,7 @@ const cardStyle: React.CSSProperties = {
 
 const thStyle: React.CSSProperties = {
   padding: "10px 16px",
-  font: "500 13px/1.3 var(--ui)",
+  font: "500 13px/1.3 var(--label)",
   letterSpacing: "0",
   color: "var(--ink2)",
   textAlign: "left",
@@ -139,7 +139,7 @@ function StatusBadge({ status }: { status: "active" | "disabled" | "pending" | "
 
 function RoleBadge({ role }: { role: "OWNER" | "ADMIN" }) {
   return role === "OWNER" ? (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: "#2C4A39", whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: "#C0803C", whiteSpace: "nowrap" }}>
       <Crown style={{ width: 13, height: 13 }} /> Owner
     </span>
   ) : (
@@ -213,7 +213,7 @@ function ActionMenu({
           overflowY: "auto",
           /* Literal fallbacks: the portal target sits outside `.admin-theme`. */
           background: "var(--card, #ffffff)",
-          border: "1px solid var(--line, #DADCD2)",
+          border: "1px solid var(--line, #EBE3D4)",
           borderRadius: 12,
           boxShadow: "0 12px 34px rgba(58,53,45,0.20)",
           padding: "4px 0",
@@ -441,11 +441,11 @@ function MenuItem({
         cursor: "pointer",
         fontSize: 13.5,
         whiteSpace: "nowrap",
-        color: danger ? "#9A3B2E" : "var(--ink, #1F2A22)",
+        color: danger ? "#9A3B2E" : "var(--ink, #3A352D)",
         textAlign: "left",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = danger ? "#F9EEEB" : "#F7F8F3";
+        e.currentTarget.style.background = danger ? "#F9EEEB" : "#FBF6EC";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "none";

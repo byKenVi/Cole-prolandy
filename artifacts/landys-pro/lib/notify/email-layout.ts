@@ -28,7 +28,7 @@ const COLORS = {
   ink: "#2F2A24",
   muted: "#5E564A",
   line: "#E5DDCD",
-  brand: "#2C4A39",
+  brand: "#2F4A3C",
   gold: "#B4632E",
   goldText: "#FFFFFF",
 };

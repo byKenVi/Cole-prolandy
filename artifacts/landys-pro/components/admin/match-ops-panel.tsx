@@ -29,7 +29,7 @@ const btn: React.CSSProperties = {
   border: "1px solid var(--line)",
   background: "var(--card)",
   color: "var(--ink)",
-  font: "500 13px/1 var(--ui)",
+  font: "500 13px/1 var(--label)",
   cursor: "pointer",
 };
 
@@ -63,7 +63,7 @@ export function MatchOpsPanel({
 
   return (
     <div style={{ border: "1px solid var(--line)", borderRadius: 14, background: "var(--card)", padding: 18, marginBottom: 20 }}>
-      <p style={{ margin: 0, font: "600 16px/1.3 var(--ui)", color: "var(--ink)" }}>Follow-up tools</p>
+      <p style={{ margin: 0, font: "600 16px/1.3 var(--label)", color: "var(--ink)" }}>Follow-up tools</p>
       <p style={{ margin: "4px 0 14px", font: "400 13px/1.45 var(--ui)", color: "var(--ink2)" }}>
         Send the next message now instead of waiting, or record what a contractor told you on the phone. Every action is logged.
       </p>
@@ -71,7 +71,7 @@ export function MatchOpsPanel({
       <div style={{ display: "grid", gap: 12 }}>
         {rows.map((m) => (
           <div key={m.id} style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-            <p style={{ margin: "0 0 8px", font: "600 14px/1.3 var(--ui)", color: "var(--ink)" }}>
+            <p style={{ margin: "0 0 8px", font: "600 14px/1.3 var(--label)", color: "var(--ink)" }}>
               {m.contractorName}
               <span style={{ fontWeight: 400, color: "var(--ink2)" }}>
                 {": "}
@@ -152,7 +152,7 @@ export function MatchOpsPanel({
       </div>
 
       {message && (
-        <p role="status" style={{ margin: "12px 0 0", font: "500 14px/1.4 var(--ui)", color: message.ok ? "var(--pos)" : "var(--danger)" }}>
+        <p role="status" style={{ margin: "12px 0 0", font: "500 14px/1.4 var(--label)", color: message.ok ? "var(--pos)" : "var(--danger)" }}>
           {message.message}
         </p>
       )}

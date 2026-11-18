@@ -28,7 +28,7 @@ type SortDir = "desc" | "asc";
 
 const GRID = "52px minmax(200px,2.2fr) minmax(150px,1.4fr) 88px 88px 110px 100px 108px";
 const HEAD_CELL: React.CSSProperties = {
-  font: "500 13px/1.3 var(--ui)",
+  font: "500 13px/1.3 var(--label)",
   letterSpacing: "0",
   color: "var(--ink2)",
 };
@@ -224,7 +224,8 @@ export function LeadsTable({
         style={{
           background: "var(--card)",
           border: "1px solid var(--line)",
-          borderRadius: 12,
+          borderRadius: 18,
+          boxShadow: "var(--shadow)",
           overflowX: "auto",
         }}
       >
@@ -267,9 +268,9 @@ export function LeadsTable({
             >
               <span
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 8,
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
                   background: "var(--card2)",
                   border: "1px solid var(--line)",
                   display: "flex",

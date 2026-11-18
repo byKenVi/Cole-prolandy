@@ -59,7 +59,7 @@ export function PaginationControls({
       aria-label="Pagination"
       className={cn(
         "flex flex-wrap items-center justify-between gap-3",
-        !isAdmin && "border-t border-[#DADCD2] px-1 py-4",
+        !isAdmin && "border-t border-[#EBE3D4] px-1 py-4",
         className,
       )}
       style={
@@ -82,7 +82,7 @@ export function PaginationControls({
         style={isAdmin ? { margin: 0, font: "400 13px/1 var(--ui)", color: "var(--ink3)" } : undefined}
       >
         Page {page} of {totalPages}
-        <span className={cn(!isAdmin && "text-[#6B756D]")} style={isAdmin ? { color: "var(--ink3)" } : undefined}>
+        <span className={cn(!isAdmin && "text-[#A79E8D]")} style={isAdmin ? { color: "var(--ink3)" } : undefined}>
           , {totalCount} in total
         </span>
       </p>

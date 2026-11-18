@@ -1,16 +1,13 @@
 import * as React from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
-import { ProjectGlyph } from "@/components/project-glyph";
+import Image from "next/image";
 
 /**
- * Shared admin design primitives used across every admin screen. They render
- * with the admin CSS-variable tokens (var(--card) etc.) defined in globals.css,
- * so a single implementation works in both the light and dark themes. Purely
- * presentational (no hooks) so they can render on the server.
- *
- * House rules: panels are separated by a 1px rule, never by a shadow or a
- * coloured side stripe; headings use the condensed face (var(--head)).
+ * Shared admin design primitives — the pixel-perfect building blocks used across
+ * every admin screen. They render with the admin CSS-variable tokens (var(--card)
+ * etc.) defined in globals.css, so a single implementation works in both the
+ * light and dark themes. Purely presentational (no hooks) so they can render on
+ * the server.
  */
 
 /** Big rounded panel (a section container). */
@@ -29,7 +26,8 @@ export function Panel({
       style={{
         background: "var(--card)",
         border: "1px solid var(--line)",
-        borderRadius: 12,
+        borderRadius: 18,
+        boxShadow: "var(--shadow)",
         ...style,
       }}
     >
@@ -44,8 +42,9 @@ export function Kicker({ children }: { children: React.ReactNode }) {
     <p
       style={{
         margin: "0 0 6px",
-        font: "500 14px/1.35 var(--ui)",
-        color: "var(--ink2)",
+        font: "500 14px/1.35 var(--label)",
+        letterSpacing: "0",
+        color: "var(--goldStrong)",
       }}
     >
       {children}
@@ -83,9 +82,10 @@ export function PageHeader({
         <h1
           className="font-head admin-page-title"
           style={{
-            fontWeight: 700,
-            // Upper bound only: .admin-page-title clamps this down on phones.
+            fontWeight: 600,
+            // Upper bound only — .admin-page-title clamps this down on phones.
             "--admin-title-max": `${titleSize}px`,
+            letterSpacing: "-.015em",
             margin: 0,
             color: "var(--ink)",
           } as React.CSSProperties}
@@ -93,7 +93,7 @@ export function PageHeader({
           {title}
         </h1>
         {subtitle && (
-          <p style={{ margin: "8px 0 0", maxWidth: "68ch", color: "var(--ink2)", fontSize: 16, lineHeight: 1.5 }}>
+          <p style={{ margin: "9px 0 0", color: "var(--ink2)", fontSize: 15, lineHeight: 1.55 }}>
             {subtitle}
           </p>
         )}
@@ -117,21 +117,33 @@ export function GoldButtonLink({
       className="a-gold"
       style={{
         flex: "none",
-        height: 42,
-        padding: "0 18px",
+        height: 44,
+        padding: "0 20px",
         background: "var(--gold)",
         color: "#fff",
         border: "none",
-        borderRadius: 8,
+        borderRadius: 12,
         font: "600 15px/1 var(--ui)",
         cursor: "pointer",
+        boxShadow: "none",
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
         textDecoration: "none",
       }}
     >
-      <Plus size={17} strokeWidth={2.4} aria-hidden />
+      <svg
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 5v14M5 12h14" />
+      </svg>
       {children}
     </Link>
   );
@@ -152,10 +164,10 @@ export function Chip({
   return (
     <span
       style={{
-        font: "500 13px/1 var(--ui)",
+        font: "500 11px/1 var(--ui)",
         color: fg,
         background: bg,
-        padding: "5px 10px",
+        padding: dot ? "6px 11px" : "6px 10px",
         borderRadius: 999,
         display: "inline-flex",
         alignItems: "center",
@@ -187,26 +199,51 @@ export function StatCard({
 }) {
   return (
     <div
+      className="a-lift"
       style={{
         background: "var(--card)",
         border: "1px solid var(--line)",
-        borderRadius: 12,
-        padding: "16px 20px",
+        borderRadius: 14,
+        padding: "16px 18px",
+        boxShadow: "var(--shadow)",
       }}
     >
-      <p style={{ margin: 0, font: "500 14px/1.3 var(--ui)", color: "var(--ink2)" }}>{label}</p>
-      <p style={{ margin: "8px 0 0", font: "700 28px/1 var(--head)", color: valueColor }}>{value}</p>
-      {sub && <p style={{ margin: "6px 0 0", font: "400 13px/1.35 var(--ui)", color: "var(--ink3)" }}>{sub}</p>}
+      <p
+        style={{
+          margin: "0 0 8px",
+          font: "500 13px/1.3 var(--label)",
+          letterSpacing: "0",
+          color: "var(--ink2)",
+        }}
+      >
+        {label}
+      </p>
+      <p
+        style={{
+          margin: 0,
+          font: "600 24px/1 var(--display)",
+          color: valueColor,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value}
+      </p>
+      {sub && (
+        <p style={{ margin: "8px 0 0", font: "500 12px/1.3 var(--ui)", color: "var(--ink2)" }}>
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
 
-/** Square tile holding the 3D icon of a kind of work. */
+/** Rounded square icon tile with graceful fallback glyph when no icon. */
 export function IconTile({
   src,
+  alt = "",
   size = 44,
-  imgSize,
-  radius = 8,
+  imgSize = 26,
+  radius = 12,
 }: {
   src?: string | null;
   alt?: string;
@@ -214,9 +251,9 @@ export function IconTile({
   imgSize?: number;
   radius?: number;
 }) {
+  const resolved = src || "/icons/fallback.png";
   return (
     <span
-      aria-hidden
       style={{
         width: size,
         height: size,
@@ -229,7 +266,13 @@ export function IconTile({
         flex: "none",
       }}
     >
-      <ProjectGlyph src={src} size={imgSize ?? Math.round(size * 0.62)} />
+      <Image
+        src={resolved}
+        alt={alt}
+        width={imgSize}
+        height={imgSize}
+        style={{ objectFit: "contain" }}
+      />
     </span>
   );
 }
@@ -248,11 +291,10 @@ export function AdminTabBar({
       aria-label={ariaLabel}
       style={{
         display: "flex",
-        gap: 2,
+        gap: 3,
         background: "var(--card2)",
-        border: "1px solid var(--line)",
-        padding: 3,
-        borderRadius: 9,
+        padding: 4,
+        borderRadius: 12,
         marginBottom: 16,
         flexWrap: "wrap",
         width: "fit-content",
@@ -293,19 +335,20 @@ export function AdminTabLink({
         alignItems: "center",
         gap: 7,
         textDecoration: "none",
-        font: `${active ? 600 : 500} 14px/1 var(--ui)`,
-        padding: "9px 14px",
-        borderRadius: 7,
+        border: "none",
+        font: "600 13px/1 var(--ui)",
+        padding: "9px 15px",
+        borderRadius: 9,
         background: active ? "var(--card)" : "transparent",
         color: active ? "var(--ink)" : "var(--ink2)",
-        border: active ? "1px solid var(--line)" : "1px solid transparent",
+        boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
       }}
     >
       {children}
       {typeof count === "number" && (
         <span
           style={{
-            font: "600 12px/1 var(--ui)",
+            font: "600 11px/1 var(--mono)",
             color: active ? toneFg : "var(--ink3)",
             background: active ? toneBg : "var(--chipBg)",
             padding: "3px 7px",
@@ -343,28 +386,29 @@ export function AdminEmptyState({
       {icon && (
         <div
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 10,
-            background: "var(--sage)",
+            width: 52,
+            height: 52,
+            borderRadius: 14,
+            background: "var(--card2)",
+            border: "1px solid var(--line)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "var(--sageFg)",
+            color: "var(--ink3)",
             marginBottom: 4,
           }}
         >
           {icon}
         </div>
       )}
-      <p style={{ margin: 0, font: "600 18px/1.3 var(--head)", color: "var(--ink)" }}>{title}</p>
+      <p style={{ margin: 0, font: "600 16px/1.35 var(--ui)", color: "var(--ink)" }}>{title}</p>
       {description && (
         <p
           style={{
             margin: 0,
             maxWidth: 360,
-            font: "400 15px/1.5 var(--ui)",
-            color: "var(--ink2)",
+            font: "400 14px/1.55 var(--ui)",
+            color: "var(--ink3)",
           }}
         >
           {description}

@@ -165,6 +165,7 @@ export function SettingsTabs({
   return (
     <div className="admin-fade-up">
       <PageHeader
+        kicker="Admin"
         title="Settings"
         subtitle="How requests are sent out, what fees contractors pay, when follow-ups go out, and the lists behind the forms."
       />
@@ -415,10 +416,11 @@ export function SettingsTabs({
                 style={{
                   textAlign: "left",
                   padding: "16px 18px",
-                  borderRadius: 12,
+                  borderRadius: 16,
                   border: directory === card.id ? "1px solid var(--gold)" : "1px solid var(--line)",
                   background: directory === card.id ? "var(--goldSoft)" : "var(--card)",
                   cursor: "pointer",
+                  boxShadow: "var(--shadow)",
                   display: "flex",
                   gap: 14,
                   alignItems: "flex-start",

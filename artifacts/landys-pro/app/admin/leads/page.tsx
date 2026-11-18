@@ -172,6 +172,7 @@ export default async function AdminLeads({
   return (
     <div className="admin-fade-up">
       <PageHeader
+        kicker="Pipeline"
         title="Requests"
         subtitle="Estimate requests from landys.co and the ones you enter by hand: who received them, who accepted, where they stand."
         action={<GoldButtonLink href="/admin/leads/new">New request</GoldButtonLink>}
@@ -187,7 +188,7 @@ export default async function AdminLeads({
         }}
       >
         <StatCard label="Total requests" value={String(totalCount)} />
-        <StatCard label="Sent to contractors" value={String(activeCount)} />
+        <StatCard label="Sent to contractors" value={String(activeCount)} valueColor="var(--sageFg)" />
         <StatCard label="Accepted by a contractor" value={String(acceptedCount)} />
         <StatCard
           label="Open project value"

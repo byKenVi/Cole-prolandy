@@ -41,7 +41,7 @@ function fixture(overrides: Partial<MatchView> = {}): MatchView {
       landownerName: "Jordan Lee",
       landownerFirstName: "Jordan",
     },
-    feeRateLabel: "4-5%",
+    feeRateLabel: "4% to 5%",
     expiresAt: new Date(Date.now() + 31 * 3600_000),
     direct: false,
     maxAccepts: 3,

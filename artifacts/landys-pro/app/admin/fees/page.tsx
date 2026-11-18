@@ -21,7 +21,7 @@ type FeeTab = "all" | "awaiting" | "due" | "paid";
 const thStyle: React.CSSProperties = {
   padding: "12px 20px",
   textAlign: "left",
-  font: "500 13px/1.3 var(--ui)",
+  font: "500 13px/1.3 var(--label)",
   letterSpacing: "0",
   color: "var(--ink2)",
 };

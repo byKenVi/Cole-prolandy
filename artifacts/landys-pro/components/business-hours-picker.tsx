@@ -73,8 +73,8 @@ export function BusinessHoursPicker({
                 className={cn(
                   "min-w-[48px] rounded-[12px] border px-3 py-2.5 text-sm font-semibold transition-colors",
                   on
-                    ? "border-[#2C4A39] bg-[#2C4A39] text-white"
-                    : "border-border bg-surface text-text-muted hover:border-[#2C4A39]/60 hover:text-text",
+                    ? "border-[#C0803C] bg-[#C0803C] text-white"
+                    : "border-border bg-surface text-text-muted hover:border-[#C0803C]/60 hover:text-text",
                 )}
               >
                 <span className="sm:hidden">{d.short}</span>

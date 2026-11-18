@@ -53,7 +53,7 @@ const DialogContent = React.forwardRef<
     >
       {children}
       {showClose && (
-        <RadixDialog.Close className="absolute right-2.5 top-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[#8A7E68] transition-colors hover:bg-[#EEF0E9] hover:text-[#1F2A22] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2C4A39]">
+        <RadixDialog.Close className="absolute right-2.5 top-2.5 flex h-11 w-11 items-center justify-center rounded-full text-[#8A7E68] transition-colors hover:bg-[#F5EEDF] hover:text-[#3A352D] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C0803C]">
           <X className="h-[18px] w-[18px]" />
           <span className="sr-only">Close</span>
         </RadixDialog.Close>
@@ -74,7 +74,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <RadixDialog.Title
     ref={ref}
-    className={cn("font-head text-[22px] font-semibold leading-tight text-[#1F2A22]", className)}
+    className={cn("font-head text-[22px] font-semibold leading-tight text-[#3A352D]", className)}
     {...props}
   />
 ));

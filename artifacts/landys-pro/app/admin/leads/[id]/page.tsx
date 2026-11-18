@@ -103,7 +103,7 @@ function TimelineEventRow({ event, last }: { event: TimelineEvent; last: boolean
       return <Circle className="h-4 w-4 text-text-muted" strokeWidth={2} />;
     // offered
     return (
-      <span className="flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#2C4A39] bg-[#FBF3E6]" />
+      <span className="flex h-4 w-4 items-center justify-center rounded-full border-2 border-[#C0803C] bg-[#FBF3E6]" />
     );
   })();
 
@@ -192,7 +192,7 @@ export default async function AdminLeadDetail({ params }: { params: Promise<{ id
           <p
             style={{
               margin: "0 0 8px",
-              font: "500 14px/1.35 var(--ui)",
+              font: "500 14px/1.35 var(--label)",
               letterSpacing: "0",
               color: "var(--ink2)",
             }}

@@ -26,10 +26,10 @@ export function ContractorFilters({ q, filter }: { q: string; filter: string }) 
     border: "none",
     font: `${active ? 600 : 500} 14px/1 var(--ui)`,
     padding: "9px 14px",
-    borderRadius: 7,
+    borderRadius: 9,
     background: active ? "var(--card)" : "transparent",
     color: active ? "var(--ink)" : "var(--ink2)",
-    outline: active ? "1px solid var(--line)" : "none",
+    boxShadow: active ? "0 1px 3px rgba(58,53,45,.14)" : "none",
   });
 
   return (

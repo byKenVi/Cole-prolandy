@@ -63,7 +63,7 @@ export function OnboardingForm({
       <div>
         <Label>Opportunity matching</Label>
         {assignedProjects.length === 0 ? (
-          <p className="mt-2 rounded-[12px] border border-[#DADCD2] bg-[#F7F0E3] px-3 py-3 text-sm text-[#8A7E68]">
+          <p className="mt-2 rounded-[12px] border border-[#EBE3D4] bg-[#F7F0E3] px-3 py-3 text-sm text-[#8A7E68]">
             Matching is not configured yet. Contact Landy’s to get set up.
           </p>
         ) : (
@@ -71,7 +71,7 @@ export function OnboardingForm({
             {assignedProjects.map((p) => (
               <li
                 key={p.id}
-                className="rounded-full border border-[#E6DFD1] bg-[#F1F2EC] px-3 py-1.5 text-[13px] font-medium text-[#5A4E3E]"
+                className="rounded-full border border-[#E6DFD1] bg-[#FEFBF6] px-3 py-1.5 text-[13px] font-medium text-[#5A4E3E]"
               >
                 {p.name}
               </li>

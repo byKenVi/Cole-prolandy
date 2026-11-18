@@ -179,8 +179,9 @@ export function SystemHealthView({ checks }: { checks: Check[] }) {
       style={{
         marginBottom: 24,
         border: "1px solid var(--line)",
-        borderRadius: 12,
+        borderRadius: 16,
         background: "var(--card)",
+        overflow: "hidden",
       }}
     >
       <h2
@@ -188,7 +189,7 @@ export function SystemHealthView({ checks }: { checks: Check[] }) {
           margin: 0,
           padding: "14px 20px",
           borderBottom: "1px solid var(--line)",
-          font: "600 17px/1.2 var(--head)",
+          font: "600 15px/1.2 var(--ui)",
           color: "var(--ink)",
         }}
       >

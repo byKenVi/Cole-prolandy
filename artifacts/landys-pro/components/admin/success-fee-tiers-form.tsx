@@ -173,7 +173,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                     <label
                       style={{
                         display: "block",
-                        font: "500 13px/1.3 var(--ui)",
+                        font: "500 13px/1.3 var(--label)",
                         letterSpacing: "0",
                         color: "var(--ink2)",
                         marginBottom: 7,
@@ -213,7 +213,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                     <label
                       style={{
                         display: "block",
-                        font: "500 13px/1.3 var(--ui)",
+                        font: "500 13px/1.3 var(--label)",
                         letterSpacing: "0",
                         color: "var(--ink2)",
                         marginBottom: 7,
@@ -239,7 +239,7 @@ export function SuccessFeeTiersForm({ tiers }: { tiers: SuccessFeeTierFormRow[] 
                   <label
                     style={{
                       display: "block",
-                      font: "500 13px/1.3 var(--ui)",
+                      font: "500 13px/1.3 var(--label)",
                       letterSpacing: "0",
                       color: "var(--ink2)",
                       marginBottom: 7,

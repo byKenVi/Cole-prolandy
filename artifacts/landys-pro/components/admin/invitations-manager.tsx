@@ -19,7 +19,7 @@ export type InvitationRow = {
 };
 
 const cell: React.CSSProperties = { padding: "12px 14px", font: "400 14px/1.4 var(--ui)", verticalAlign: "top" };
-const head: React.CSSProperties = { ...cell, font: "500 13px/1.3 var(--ui)", color: "var(--ink2)", textAlign: "left" };
+const head: React.CSSProperties = { ...cell, font: "500 13px/1.3 var(--label)", color: "var(--ink2)", textAlign: "left" };
 
 function fmt(iso: string) {
   return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -108,7 +108,7 @@ export function InvitationsManager({ rows }: { rows: InvitationRow[] }) {
           borderBottom: "1px solid var(--line)",
         }}
       >
-        <div style={{ font: "600 14px/1.3 var(--ui)", color: "var(--ink)", marginRight: "auto" }}>
+        <div style={{ font: "600 14px/1.3 var(--label)", color: "var(--ink)", marginRight: "auto" }}>
           {selected.size} selected
         </div>
         <button
@@ -122,13 +122,13 @@ export function InvitationsManager({ rows }: { rows: InvitationRow[] }) {
             border: 0,
             background: "var(--gold)",
             color: "#fff",
-            font: "600 14px/1 var(--ui)",
+            font: "600 14px/1 var(--label)",
             opacity: pending || selected.size === 0 ? 0.6 : 1,
           }}
         >
           Send now
         </button>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, font: "500 12px/1.2 var(--ui)", color: "var(--ink2)" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, font: "500 12px/1.2 var(--label)", color: "var(--ink2)" }}>
           Or send on
           <input
             type="datetime-local"
@@ -148,7 +148,7 @@ export function InvitationsManager({ rows }: { rows: InvitationRow[] }) {
             border: "1px solid var(--line)",
             background: "var(--card)",
             color: "var(--ink)",
-            font: "600 14px/1 var(--ui)",
+            font: "600 14px/1 var(--label)",
             opacity: pending || selected.size === 0 ? 0.6 : 1,
           }}
         >
@@ -166,7 +166,7 @@ export function InvitationsManager({ rows }: { rows: InvitationRow[] }) {
             background: "transparent",
             color: "var(--ink2)",
             textDecoration: "underline",
-            font: "500 14px/1 var(--ui)",
+            font: "500 14px/1 var(--label)",
           }}
         >
           Cancel schedule
@@ -179,7 +179,7 @@ export function InvitationsManager({ rows }: { rows: InvitationRow[] }) {
           style={{
             margin: 0,
             padding: "12px 16px",
-            font: "500 14px/1.4 var(--ui)",
+            font: "500 14px/1.4 var(--label)",
             color: message.ok ? "var(--pos)" : "var(--danger)",
             borderBottom: "1px solid var(--line)",
           }}

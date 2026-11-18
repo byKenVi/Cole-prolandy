@@ -82,7 +82,7 @@ function InvitePageInner() {
 
   if (state.status === "error") {
     return (
-      <InviteCard icon={<AlertTriangle style={{ color: "#2C4A39" }} />} title="Something went wrong">
+      <InviteCard icon={<AlertTriangle style={{ color: "#C0803C" }} />} title="Something went wrong">
         <p style={bodyStyle}>{state.message}</p>
         <Button variant="ghost" onClick={() => router.push("/sign-in")} style={{ width: "100%", marginTop: 16 }}>
           Sign in instead
@@ -178,7 +178,7 @@ function InviteCard({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--surface, #F1F2EC)",
+        background: "var(--surface, #FEFBF6)",
         padding: 24,
       }}
     >
@@ -187,7 +187,7 @@ function InviteCard({
           width: "100%",
           maxWidth: 440,
           background: "var(--card, #fff)",
-          border: "1px solid var(--line, #DADCD2)",
+          border: "1px solid var(--line, #EBE3D4)",
           borderRadius: 20,
           boxShadow: "0 8px 32px rgba(58,53,45,0.10)",
           padding: "36px 40px",
@@ -218,7 +218,7 @@ function InviteCard({
               margin: 0,
               fontSize: 22,
               fontWeight: 700,
-              color: "var(--ink, #1F2A22)",
+              color: "var(--ink, #3A352D)",
               letterSpacing: "-.01em",
             }}
           >

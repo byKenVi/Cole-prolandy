@@ -1,40 +1,37 @@
 /*
- * Landy's Pro: contractor experience.
+ * Landy's Pro — contractor experience.
  *
  * Audience: tradespeople on their phones, often older. Rules:
- *  - 17px body minimum, 18px buttons, the condensed face for places and money;
- *  - every tap target >= 56px, one obvious primary action per screen
- *    (filled forest green; the alternative is outlined, never a second fill);
+ *  - 17px body minimum, 18px buttons, Fraunces for places and money;
+ *  - every tap target >= 56px, one obvious primary action per screen;
  *  - WCAG AA contrast on every text/background pair below;
- *  - no coloured side stripes: tone is carried by background and icon;
  *  - the "job ticket" (perforated work-order card) is the one signature element.
  */
 
 .pro {
-  --pro-page: #f1f2ec;
-  --pro-card: #ffffff;
-  --pro-forest: #2c4a39;
-  --pro-forest-deep: #22392c;
-  --pro-forest-ink: #f1f2ec;
-  /* Primary action. Historically copper; forest green now, like the admin. */
-  --pro-copper: #2c4a39;
-  --pro-copper-press: #22392c;
-  --pro-gold: #d6a95e;
-  --pro-ink: #1f2a22;
-  --pro-ink-2: #4f5b53;
-  --pro-line: #dadcd2;
-  --pro-line-strong: #b9beb1;
-  --pro-perf: #c9cdc2;
-  --pro-ok: #2e6b45;
+  --pro-page: #f5efe3;
+  --pro-card: #fffdf8;
+  --pro-forest: #2f4a3c;
+  --pro-forest-deep: #223a2d;
+  --pro-forest-ink: #f3ecdf;
+  --pro-copper: #a85a28;
+  --pro-copper-press: #8e4b20;
+  --pro-gold: #e0a95c;
+  --pro-ink: #27231d;
+  --pro-ink-2: #574e42;
+  --pro-line: #e0d5c1;
+  --pro-line-strong: #c7b99f;
+  --pro-perf: #cdbfa6;
+  --pro-ok: #2a6340;
   --pro-ok-bg: #e3eee5;
   --pro-warn: #6f4a00;
-  --pro-warn-bg: #f6ebd2;
+  --pro-warn-bg: #fbeed0;
   --pro-danger: #9c3127;
-  --pro-danger-bg: #f6e2de;
-  --pro-quote: #f4f5ef;
-  --pro-shadow: none;
+  --pro-danger-bg: #f8e3df;
+  --pro-quote: #f8f2e6;
+  --pro-shadow: 0 1px 0 rgba(39, 35, 29, 0.04), 0 10px 26px -14px rgba(39, 35, 29, 0.28);
 
-  font-family: var(--ui);
+  font-family: var(--nf-rubik), "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif;
   font-size: 17px;
   line-height: 1.55;
   color: var(--pro-ink);
@@ -55,13 +52,13 @@
 }
 
 .pro-display {
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-optical-sizing: auto;
   letter-spacing: -0.01em;
 }
 
 .pro-money {
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.015em;
 }
@@ -103,17 +100,18 @@
 }
 
 .pro-wordmark-script {
-  font-family: var(--font-script);
+  font-family: var(--nf-great-vibes), "Great Vibes", var(--nf-caveat), "Caveat", cursive;
   font-size: 30px;
   line-height: 1;
 }
 
 .pro-wordmark-badge {
-  font: 600 12px/1 var(--ui);
+  font: 700 12px/1 var(--nf-rubik), "Rubik", sans-serif;
+  letter-spacing: 0.06em;
   color: var(--pro-gold);
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  padding: 3px 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
+  padding: 3px 6px 2px;
   transform: translateY(-3px);
 }
 
@@ -158,7 +156,7 @@
   padding: 8px 2px 10px;
   text-decoration: none;
   color: #c9c0ae;
-  font: 500 13px/1.1 var(--ui);
+  font: 500 13px/1.1 var(--nf-rubik), "Rubik", sans-serif;
 }
 
 .pro-tab[aria-current="page"] {
@@ -192,9 +190,9 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--pro-gold);
-  color: var(--pro-ink);
-  font: 700 13px/22px var(--ui);
+  background: var(--pro-copper);
+  color: #fff;
+  font: 700 13px/22px var(--nf-rubik), "Rubik", sans-serif;
   text-align: center;
   box-shadow: 0 0 0 2px var(--pro-forest-deep);
 }
@@ -233,7 +231,7 @@
     border-radius: 12px;
     text-decoration: none;
     color: #d6cdbb;
-    font: 500 17px/1.2 var(--ui);
+    font: 500 17px/1.2 var(--nf-rubik), "Rubik", sans-serif;
   }
 
   .pro-sidebar-link:hover {
@@ -242,8 +240,8 @@
   }
 
   .pro-sidebar-link[aria-current="page"] {
-    background: var(--pro-page);
-    color: var(--pro-ink);
+    background: rgba(224, 169, 92, 0.16);
+    color: #fff;
     font-weight: 700;
   }
 
@@ -290,7 +288,7 @@
 
 .pro-title {
   margin: 0;
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-weight: 600;
   font-size: 31px;
   line-height: 1.12;
@@ -323,7 +321,7 @@
 
 .pro-section-title {
   margin: 0;
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-weight: 600;
   font-size: 23px;
   line-height: 1.2;
@@ -354,7 +352,8 @@
   overflow: hidden;
   background: var(--pro-card);
   border: 1px solid var(--pro-line);
-  border-radius: 14px;
+  border-radius: 18px;
+  box-shadow: var(--pro-shadow);
 }
 
 a.pro-ticket {
@@ -368,8 +367,8 @@ a.pro-ticket:active {
 }
 
 .pro-ticket--direct {
-  border-color: var(--pro-forest);
-  box-shadow: 0 0 0 1px var(--pro-forest);
+  border-color: var(--pro-copper);
+  box-shadow: 0 0 0 1px var(--pro-copper), var(--pro-shadow);
 }
 
 .pro-ticket-top {
@@ -388,7 +387,7 @@ a.pro-ticket:active {
 
 .pro-ticket-place {
   margin: 6px 0 0;
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-weight: 600;
   font-size: 28px;
   line-height: 1.12;
@@ -475,7 +474,7 @@ a.pro-ticket:active {
   padding: 10px 20px;
   border: 2px solid transparent;
   border-radius: 14px;
-  font: 600 18px/1.2 var(--ui);
+  font: 600 18px/1.2 var(--nf-rubik), "Rubik", sans-serif;
   text-align: center;
   text-decoration: none;
   cursor: pointer;
@@ -501,16 +500,13 @@ a.pro-ticket:active {
   background: var(--pro-copper-press);
 }
 
-/* The alternative to the primary action (Pass, I did not win, Resume):
-   outlined so a screen never shows two filled buttons. */
 .pro-btn--forest {
-  background: var(--pro-card);
-  color: var(--pro-forest);
-  border-color: var(--pro-forest);
+  background: var(--pro-forest);
+  color: #fff;
 }
 
 .pro-btn--forest:hover:not(:disabled) {
-  background: #eef3ee;
+  background: var(--pro-forest-deep);
 }
 
 .pro-btn--secondary {
@@ -559,8 +555,8 @@ a.pro-ticket:active {
   gap: 6px;
   padding: 4px 12px;
   border-radius: 999px;
-  font: 600 15px/1.35 var(--ui);
-  background: #eceee7;
+  font: 600 15px/1.35 var(--nf-rubik), "Rubik", sans-serif;
+  background: #efe7d7;
   color: var(--pro-ink-2);
   white-space: nowrap;
 }
@@ -585,8 +581,9 @@ a.pro-ticket:active {
   color: #fff;
 }
 
+/* Tone comes from the tinted background and its border, not a side stripe. */
 .pro-notice {
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 16px 18px;
   border: 1px solid var(--pro-line);
   background: var(--pro-card);
@@ -606,7 +603,7 @@ a.pro-ticket:active {
 
 .pro-notice--warn {
   background: var(--pro-warn-bg);
-  border-color: #e8d3a6;
+  border-color: #ecd9a8;
 }
 
 .pro-notice--danger {
@@ -639,22 +636,22 @@ a.pro-ticket:active {
 .pro-card {
   background: var(--pro-card);
   border: 1px solid var(--pro-line);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 20px;
+  box-shadow: var(--pro-shadow);
 }
 
 .pro-empty {
   text-align: center;
   padding: 34px 22px;
-  border: 1px solid var(--pro-line);
-  background: var(--pro-card);
-  border-radius: 14px;
+  border: 2px dashed var(--pro-line-strong);
+  border-radius: 18px;
   color: var(--pro-ink-2);
 }
 
 .pro-empty h3 {
   margin: 0 0 6px;
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-size: 22px;
   color: var(--pro-ink);
 }
@@ -663,7 +660,7 @@ a.pro-ticket:active {
 
 .pro-contact-name {
   margin: 0;
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-weight: 600;
   font-size: 26px;
   line-height: 1.15;
@@ -702,7 +699,7 @@ a.pro-ticket:active {
   border-radius: 50%;
   background: var(--pro-forest);
   color: #fff;
-  font: 700 16px/1 var(--ui);
+  font: 700 16px/1 var(--nf-rubik), "Rubik", sans-serif;
 }
 
 /* ── Forms ────────────────────────────────────────────── */
@@ -730,7 +727,7 @@ a.pro-ticket:active {
 }
 
 .pro-money-input span {
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-size: 26px;
   color: var(--pro-ink-2);
   margin-right: 6px;
@@ -742,7 +739,7 @@ a.pro-ticket:active {
   border: 0;
   outline: 0;
   background: transparent;
-  font-family: var(--head);
+  font-family: var(--nf-fraunces), "Fraunces", ui-serif, Georgia, serif;
   font-size: 28px;
   color: var(--pro-ink);
 }
@@ -763,7 +760,7 @@ a.pro-ticket:active {
 
 .pro-choice:has(input:checked) {
   border-color: var(--pro-forest);
-  background: #eef3ee;
+  background: #eef3ef;
   font-weight: 700;
 }
 

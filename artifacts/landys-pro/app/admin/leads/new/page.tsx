@@ -21,6 +21,7 @@ export default async function NewLeadPage() {
       </Link>
 
       <PageHeader
+        kicker="Requests"
         title="New request"
         subtitle="The same questions as the landys.co estimate form. Use it for requests taken by phone or email: they are routed exactly like the ones from the site."
       />

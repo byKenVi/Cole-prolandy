@@ -35,7 +35,7 @@ const STATUS_STYLE: Record<string, { bg: string; fg: string; text: string }> = {
 };
 
 const cell: React.CSSProperties = { padding: "12px 14px", font: "400 14px/1.4 var(--ui)", verticalAlign: "top" };
-const head: React.CSSProperties = { ...cell, font: "500 13px/1.3 var(--ui)", color: "var(--ink2)", textAlign: "left" };
+const head: React.CSSProperties = { ...cell, font: "500 13px/1.3 var(--label)", color: "var(--ink2)", textAlign: "left" };
 
 export default async function MessagesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   await requireAdmin();

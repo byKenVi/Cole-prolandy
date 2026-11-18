@@ -8,7 +8,7 @@ export const todoButtonStyle: CSSProperties = {
   gap: 7,
   height: 36,
   padding: "0 14px",
-  borderRadius: 8,
+  borderRadius: 10,
   border: "1px solid var(--fieldLine)",
   background: "var(--card)",
   color: "var(--ink)",

@@ -4,7 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { AdminTheme } from "@/lib/admin-theme";
 import { ADMIN_SIDEBAR_COOKIE } from "@/lib/admin-theme";
 import { AdminThemeProvider } from "@/components/admin/theme-context";
@@ -12,18 +12,18 @@ import { SignOutLink } from "@/components/auth/sign-out-link";
 import { AdminGlobalSearch } from "@/components/admin/global-search";
 
 /**
- * The admin application shell: a flat forest sidebar, a topbar with search,
- * and the themed content area. The sidebar collapses to an icon rail on
- * desktop (cookie-persisted) and becomes an off-canvas drawer below 900px.
+ * The admin application shell: a fixed dark/green sidebar, a sticky glass
+ * topbar, and the themed main content area. The sidebar can collapse to an
+ * icon-only rail on desktop (preference persisted in a cookie) and becomes an
+ * off-canvas drawer on tablet/phone widths, toggled by a topbar hamburger.
  *
- * Every destination has its own 3D icon (the client likes them; never reuse
- * one for two entries). Counters only appear on entries where
- * something is waiting for the admin, so the menu doubles as a to-do signal.
- *
- * Layout-critical properties live in the `.admin-*` classes in globals.css,
- * driven by the `data-collapsed` / `data-mobile-open` attributes on the root.
+ * Layout-critical properties (widths, positioning, collapse/drawer transforms,
+ * responsive hiding) live in the `.admin-*` CSS classes in globals.css so they
+ * can be driven by the `data-collapsed` / `data-mobile-open` attributes on the
+ * root; only decorative styling stays inline here.
  */
 
+/** Things waiting for an admin, shown as counters in the menu. */
 export type AdminNavCounts = {
   /** Requests held for admin review. */
   leads: number;
@@ -36,8 +36,10 @@ export type AdminNavCounts = {
 type NavItem = {
   href: string;
   label: string;
-  /** 3D PNG, unique per entry. */
+  /** 3D icon, unique per entry (the client likes them; never reuse one). */
   icon: string;
+  /** When true, only show if the signed-in admin is an Owner. */
+  ownerOnly?: boolean;
   count?: keyof AdminNavCounts;
 };
 type AdminIdentity = { name: string; email?: string; adminRole?: "owner" | "admin" };
@@ -61,29 +63,44 @@ function isActive(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
-function initialsOf(name: string): string {
+/** SVG used for the Team nav item (no PNG available). */
+function TeamIcon() {
   return (
-    name
-      .split(/[\s._-]+/)
-      .filter(Boolean)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "A"
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="9" cy="7" r="3" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      <path d="M21 21v-2a4 4 0 0 0-3-3.85" />
+    </svg>
   );
 }
 
 function NavLink({ item, active, count }: { item: NavItem; active: boolean; count: number }) {
   return (
-    <Link
-      href={item.href}
-      className="admin-navitem"
-      data-active={active}
-      aria-current={active ? "page" : undefined}
-      title={item.label}
-    >
+    <Link href={item.href} className="admin-navitem" data-active={active} title={item.label}>
       <span className="admin-nav-icon">
-        <Image src={item.icon} alt="" aria-hidden width={26} height={26} className="admin-nav-icon-img" />
+        {item.icon === "__team__" ? (
+          <TeamIcon />
+        ) : (
+          <Image
+            src={item.icon}
+            alt=""
+            aria-hidden
+            width={26}
+            height={26}
+            className="admin-nav-icon-img"
+          />
+        )}
       </span>
       <NavLabel label={item.label} />
       {count > 0 && (
@@ -100,8 +117,57 @@ function NavLabel({ label }: { label: string }) {
   return (
     <>
       <span className="admin-nav-label">{label}</span>
-      {pending && <Loader2 size={14} className="animate-spin admin-nav-label" aria-hidden />}
+      {pending && <Loader2 style={{ width: 14, height: 14 }} className="animate-spin admin-nav-label" aria-hidden />}
     </>
+  );
+}
+
+/** Soft concentric-ring texture that gives the green sidebar/hero its depth. */
+function RingTexture() {
+  return (
+    <svg
+      viewBox="0 0 300 700"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden
+      style={{ position: "absolute", inset: 0, opacity: 0.5, pointerEvents: "none" }}
+    >
+      <g fill="none" stroke="rgba(224,169,92,.13)" strokeWidth="1.2">
+        {[1, 0.72, 0.46].map((s) => (
+          <path
+            key={`a${s}`}
+            transform={`translate(150,150) scale(${s}) translate(-150,-150)`}
+            d="M30,150 C30,80 110,40 180,60 C250,80 290,140 270,210 C250,280 160,300 100,270 C55,248 30,215 30,150 Z"
+          />
+        ))}
+        {[1, 0.7].map((s) => (
+          <path
+            key={`b${s}`}
+            transform={`translate(160,520) scale(${s}) translate(-150,-150)`}
+            d="M30,150 C30,80 110,40 180,60 C250,80 290,140 270,210 C250,280 160,300 100,270 C55,248 30,215 30,150 Z"
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+function Chevron({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ transform: collapsed ? "rotate(180deg)" : "none", transition: "transform .26s ease" }}
+    >
+      <path d="M15 6l-6 6 6 6" />
+    </svg>
   );
 }
 
@@ -114,6 +180,7 @@ function Sidebar({
   onCloseMobile,
   showSignOut,
   identity,
+  isOwner,
 }: {
   successFeesTotal: string;
   paidFeesCount: number;
@@ -123,26 +190,39 @@ function Sidebar({
   onCloseMobile: () => void;
   showSignOut?: boolean;
   identity: AdminIdentity;
+  isOwner?: boolean;
 }) {
   const pathname = usePathname();
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner);
+  const initials =
+    identity.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "A";
   return (
     <aside className="admin-sidebar">
+      <RingTexture />
+
       <div className="admin-brand-row">
-        <Link href="/admin" className="admin-brand" aria-label="Landys Pro dashboard">
-          <span className="font-vibes admin-brand-word" style={{ fontSize: 34, lineHeight: 1, color: "#f1f2ec" }}>
+        <Link href="/admin" className="admin-brand">
+          <span className="font-vibes admin-brand-word" style={{ fontSize: 35, lineHeight: 1, color: "#F1E7D6" }}>
             Landys
           </span>
           <span
             className="admin-brand-tag"
             style={{
-              font: "600 11px/1 var(--ui)",
-              color: "#d6a95e",
-              border: "1px solid rgba(214,169,94,.6)",
+              font: "700 9px/1 var(--ui)",
+              letterSpacing: ".2em",
+              color: "#E3AB5E",
+              border: "1px solid var(--gold)",
               borderRadius: 999,
-              padding: "3px 7px",
+              padding: "3px 6px",
             }}
           >
-            Pro
+            PRO
           </span>
         </Link>
 
@@ -153,16 +233,23 @@ function Sidebar({
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand" : "Collapse"}
         >
-          {collapsed ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
+          <Chevron collapsed={collapsed} />
         </button>
 
-        <button type="button" className="admin-drawer-close" onClick={onCloseMobile} aria-label="Close menu">
-          <X size={20} aria-hidden />
+        <button
+          type="button"
+          className="admin-drawer-close"
+          onClick={onCloseMobile}
+          aria-label="Close menu"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
         </button>
       </div>
 
-      <nav className="admin-nav" aria-label="Admin">
-        {NAV_ITEMS.map((item) => (
+      <nav className="admin-nav">
+        {visibleNavItems.map((item) => (
           <NavLink
             key={item.href}
             item={item}
@@ -174,27 +261,56 @@ function Sidebar({
 
       <div style={{ flex: 1 }} />
 
-      <Link href="/admin/fees?tab=paid" className="admin-wallet-card" style={{ textDecoration: "none" }}>
+      <div className="admin-wallet-card">
         <div className="admin-wallet-body" style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ margin: "0 0 4px", font: "500 13px/1.3 var(--ui)", color: "#a9bbae" }}>
+          <p
+            style={{
+              margin: "0 0 4px",
+              font: "500 13px/1.3 var(--label)",
+              letterSpacing: "0",
+              color: "#C5D4C8",
+            }}
+          >
             Success fees collected
           </p>
-          <p style={{ margin: 0, font: "600 24px/1.1 var(--head)", color: "#ffffff" }}>{successFeesTotal}</p>
-          <p style={{ margin: "3px 0 0", font: "400 13px/1.3 var(--ui)", color: "#a9bbae" }}>
-            {paidFeesCount} paid fee{paidFeesCount === 1 ? "" : "s"}
+          <p
+            style={{
+              margin: "0 0 2px",
+              font: "600 24px/1 var(--display)",
+              letterSpacing: "-.01em",
+              color: "#F6EEDF",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {successFeesTotal}
+          </p>
+          <p style={{ margin: 0, font: "500 12px/1 var(--ui)", color: "#8FA592" }}>
+            from {paidFeesCount} paid fee{paidFeesCount === 1 ? "" : "s"}
           </p>
         </div>
-      </Link>
+        <svg
+          width="42"
+          height="42"
+          viewBox="0 0 48 48"
+          fill="none"
+          aria-hidden
+          style={{ flex: "none", filter: "drop-shadow(0 5px 8px rgba(0,0,0,.4))" }}
+        >
+          <ellipse cx="24" cy="30" rx="15" ry="6" fill="#B98038" />
+          <ellipse cx="24" cy="24" rx="15" ry="6" fill="#E3AB5E" />
+          <ellipse cx="24" cy="18" rx="15" ry="6" fill="#F0C27E" />
+          <text x="24" y="21.5" textAnchor="middle" fontSize="8" fontWeight="700" fill="#7A5320">$</text>
+        </svg>
+      </div>
 
       <div className="admin-user">
         <span
-          aria-hidden
           style={{
-            width: 36,
-            height: 36,
+            width: 37,
+            height: 37,
             borderRadius: 999,
-            background: "#34503f",
-            color: "#f1f2ec",
+            background: "#3E5544",
+            color: "#F1E7D6",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -202,26 +318,39 @@ function Sidebar({
             flex: "none",
           }}
         >
-          {initialsOf(identity.name)}
+          {initials}
         </span>
         <div className="admin-foot-text" style={{ minWidth: 0, flex: 1 }}>
           <p
             style={{
               margin: 0,
-              font: "600 14px/1.2 var(--ui)",
-              color: "#f1f2ec",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              font: "600 13px/1.2 var(--ui)",
+              color: "#F1E7D6",
             }}
           >
-            {identity.name}
-            <span style={{ fontWeight: 400, color: "#a9bbae" }}>
-              {", "}
-              {identity.adminRole === "owner" ? "owner" : "admin"}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {identity.name}
+            </span>
+            <span
+              style={{
+                flex: "none",
+                font: "600 11px/1.2 var(--label)",
+                letterSpacing: "0",
+                color: "#E3AB5E",
+                border: "1px solid rgba(227,171,94,.55)",
+                borderRadius: 999,
+                padding: "3px 6px",
+              }}
+            >
+              {identity.adminRole === "owner" ? "Owner" : "Admin"}
             </span>
           </p>
-          <p className="admin-foot-email">{identity.email ?? "Administrator"}</p>
+          <p className="admin-foot-email">
+            {identity.email ?? "Administrator"}
+          </p>
         </div>
         {showSignOut && (
           <span className="admin-sidebar-signout">
@@ -244,6 +373,14 @@ function Topbar({
   showSignOut?: boolean;
   identity: AdminIdentity;
 }) {
+  const initials =
+    identity.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "A";
   return (
     <header
       className="admin-topbar"
@@ -255,13 +392,17 @@ function Topbar({
         alignItems: "center",
         justifyContent: "space-between",
         gap: 16,
-        padding: "12px 40px",
-        background: "var(--bg)",
+        padding: "15px 34px",
+        background: "color-mix(in srgb,var(--surface) 82%,transparent)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
         borderBottom: "1px solid var(--line)",
       }}
     >
       <button type="button" className="admin-hamburger" onClick={onOpenMobile} aria-label="Open menu">
-        <Menu size={22} aria-hidden />
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
       </button>
 
       <AdminGlobalSearch />
@@ -269,12 +410,11 @@ function Topbar({
         {showSignOut && <SignOutLink variant="icon" label="Sign out" />}
         {userMenu ?? (
           <span
-            aria-hidden
             style={{
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               borderRadius: 999,
-              background: "var(--gold)",
+              background: "#3E5544",
               color: "#fff",
               display: "flex",
               alignItems: "center",
@@ -282,7 +422,7 @@ function Topbar({
               font: "600 13px/1 var(--ui)",
             }}
           >
-            {initialsOf(identity.name)}
+            {initials}
           </span>
         )}
       </div>
@@ -299,6 +439,7 @@ export function AdminShell({
   userMenu,
   showSignOut = false,
   identity,
+  isOwner = false,
   children,
 }: {
   initialTheme: AdminTheme;
@@ -309,6 +450,8 @@ export function AdminShell({
   userMenu?: React.ReactNode;
   showSignOut?: boolean;
   identity: AdminIdentity;
+  /** Pass true when the signed-in admin has the Owner role (shows Team nav). */
+  isOwner?: boolean;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
@@ -346,6 +489,7 @@ export function AdminShell({
             onCloseMobile={() => setMobileOpen(false)}
             showSignOut={showSignOut}
             identity={identity}
+            isOwner={isOwner}
           />
           <div className="admin-scrim" aria-hidden onClick={() => setMobileOpen(false)} />
           <div className="admin-content">

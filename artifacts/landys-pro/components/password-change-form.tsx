@@ -70,14 +70,14 @@ export function PasswordChangeForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {!hasPassword && (
-        <p className="rounded-lg bg-[#EEF0E9] px-4 py-3 text-sm text-[#8A7E68]">
+        <p className="rounded-lg bg-[#F5F0E8] px-4 py-3 text-sm text-[#8A7E68]">
           You signed in with Google. Set a password below to also enable email sign-in.
         </p>
       )}
 
       {hasPassword && (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="current-password" className="text-sm font-medium text-[#1F2A22]">
+          <Label htmlFor="current-password" className="text-sm font-medium text-[#3A352D]">
             Current password
           </Label>
           <div className="relative">
@@ -93,7 +93,7 @@ export function PasswordChangeForm() {
             <button
               type="button"
               onClick={() => setShowCurrent((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A7E68] hover:text-[#1F2A22]"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A7E68] hover:text-[#3A352D]"
               tabIndex={-1}
               aria-label={showCurrent ? "Hide password" : "Show password"}
             >
@@ -104,7 +104,7 @@ export function PasswordChangeForm() {
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="new-password" className="text-sm font-medium text-[#1F2A22]">
+        <Label htmlFor="new-password" className="text-sm font-medium text-[#3A352D]">
           New password
         </Label>
         <div className="relative">
@@ -121,18 +121,18 @@ export function PasswordChangeForm() {
           <button
             type="button"
             onClick={() => setShowNew((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A7E68] hover:text-[#1F2A22]"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A7E68] hover:text-[#3A352D]"
             tabIndex={-1}
             aria-label={showNew ? "Hide password" : "Show password"}
           >
             {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
-        <p className="text-xs text-[#6B756D]">Minimum 8 characters.</p>
+        <p className="text-xs text-[#A79E8D]">Minimum 8 characters.</p>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="confirm-password" className="text-sm font-medium text-[#1F2A22]">
+        <Label htmlFor="confirm-password" className="text-sm font-medium text-[#3A352D]">
           Confirm new password
         </Label>
         <Input

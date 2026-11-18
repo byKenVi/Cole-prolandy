@@ -13,7 +13,7 @@ import { getOptionalStringSetting } from "@/lib/domain/settings";
 
 export const dynamic = "force-dynamic";
 
-const AVATAR_BG = ["#5A5142", "#2C4A39", "#7A5A2E", "#4A4557", "#6B4A3A"];
+const AVATAR_BG = ["#5A5142", "#2F4A3C", "#7A5A2E", "#4A4557", "#6B4A3A"];
 
 function initials(name: string): string {
   return (
@@ -101,6 +101,7 @@ export default async function AdminContractors({
   return (
     <div className="admin-fade-up">
       <PageHeader
+        kicker="Network"
         title="Contractors"
         subtitle="The pros who receive requests. Most come from the landys.co directory."
         action={
@@ -142,8 +143,8 @@ export default async function AdminContractors({
         style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 20 }}
       >
         <StatCard label="Total contractors" value={String(totalCount)} />
-        <StatCard label="Active" value={String(activeCount)} />
-        <StatCard label="On the Pro plan" value={String(proCount)} />
+        <StatCard label="On Pro plan" value={String(proCount)} valueColor="var(--sageFg)" />
+        <StatCard label="Active" value={String(activeCount)} valueColor="var(--sageFg)" />
       </div>
 
       <ContractorFilters q={q ?? ""} filter={filter ?? ""} />
@@ -152,7 +153,8 @@ export default async function AdminContractors({
         style={{
           background: "var(--card)",
           border: "1px solid var(--line)",
-          borderRadius: 12,
+          borderRadius: 18,
+          boxShadow: "var(--shadow)",
           overflowX: "auto",
         }}
       >
@@ -186,7 +188,7 @@ export default async function AdminContractors({
                     height: 44,
                     borderRadius: 999,
                     background: AVATAR_BG[i % AVATAR_BG.length],
-                    color: "#F1F2EC",
+                    color: "#F1E7D6",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",

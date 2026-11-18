@@ -182,7 +182,7 @@ export function AdminGlobalSearch() {
                     style={{
                       display: "inline-block",
                       marginBottom: 3,
-                      font: "500 12px/1.3 var(--ui)",
+                      font: "500 12px/1.3 var(--label)",
                       letterSpacing: "0",
                       color: "var(--ink2)",
                     }}

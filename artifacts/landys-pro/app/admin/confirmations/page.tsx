@@ -20,7 +20,7 @@ type ConfirmationTab = "pending" | "confirmed" | "mismatches";
 const thStyle: React.CSSProperties = {
   padding: "12px 18px",
   textAlign: "left",
-  font: "500 13px/1.3 var(--ui)",
+  font: "500 13px/1.3 var(--label)",
   letterSpacing: "0",
   color: "var(--ink2)",
 };
@@ -33,7 +33,7 @@ const tdStyle: React.CSSProperties = {
 
 const fieldLabel: React.CSSProperties = {
   display: "block",
-  font: "500 13px/1.3 var(--ui)",
+  font: "500 13px/1.3 var(--label)",
   letterSpacing: "0",
   color: "var(--ink2)",
   marginBottom: 4,

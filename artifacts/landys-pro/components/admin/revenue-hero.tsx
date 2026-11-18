@@ -3,150 +3,257 @@ import Link from "next/link";
 export type RevenueRange = "7d" | "30d" | "90d" | "all";
 export type RevenuePoint = { label: string; revenueCents: number };
 
-const RANGE_OPTIONS: { id: RevenueRange; label: string; sentence: string }[] = [
-  { id: "7d", label: "7 days", sentence: "in the last 7 days" },
-  { id: "30d", label: "30 days", sentence: "in the last 30 days" },
-  { id: "90d", label: "90 days", sentence: "in the last 90 days" },
-  { id: "all", label: "All time", sentence: "since launch" },
+const RANGE_OPTIONS: { id: RevenueRange; label: string }[] = [
+  { id: "7d", label: "7D" },
+  { id: "30d", label: "30D" },
+  { id: "90d", label: "90D" },
+  { id: "all", label: "All" },
 ];
 
 /**
- * Success fees collected over a period: the amount, how many fees it comes
- * from, and one bar per day (or per month for long histories). Bars, not an
- * area: fees land on specific days, and an empty day should look empty.
+ * Success-fees-collected hero with an interactive Recharts sparkline.
+ * Series is PAID SuccessFee totals (server-computed, zero-filled).
  */
 export function RevenueHero({
   value,
-  paidCount,
+  trend,
   series,
   range,
 }: {
   value: string;
-  paidCount: number;
+  trend: number | null;
   series: RevenuePoint[];
   range: RevenueRange;
 }) {
-  const option = RANGE_OPTIONS.find((o) => o.id === range) ?? RANGE_OPTIONS[1]!;
+  const chartData = series.map((p) => ({
+    label: p.label,
+    revenueCents: p.revenueCents,
+  }));
   const chartWidth = 1000;
-  const chartHeight = 120;
-  const max = Math.max(1, ...series.map((p) => p.revenueCents));
-  const slot = chartWidth / Math.max(1, series.length);
-  const barWidth = Math.max(2, Math.min(28, slot * 0.62));
-  const firstLabel = series[0]?.label ?? "";
-  const middleLabel = series[Math.floor(series.length / 2)]?.label ?? "";
-  const lastLabel = series[series.length - 1]?.label ?? "";
+  const chartHeight = 96;
+  const topPadding = 8;
+  const bottomPadding = 8;
+  const maxRevenue = Math.max(1, ...chartData.map((point) => point.revenueCents));
+  const points = chartData.map((point, index) => {
+    const x =
+      chartData.length <= 1 ? chartWidth / 2 : (index / (chartData.length - 1)) * chartWidth;
+    const y =
+      chartHeight -
+      bottomPadding -
+      (point.revenueCents / maxRevenue) * (chartHeight - topPadding - bottomPadding);
+    return { ...point, x, y };
+  });
+  const linePath = points
+    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+    .join(" ");
+  const areaPath = points.length
+    ? `${linePath} L${points[points.length - 1]!.x.toFixed(1)},${chartHeight} L${points[0]!.x.toFixed(1)},${chartHeight} Z`
+    : "";
+  const firstLabel = chartData[0]?.label ?? "";
+  const middleLabel = chartData[Math.floor(chartData.length / 2)]?.label ?? "";
+  const lastLabel = chartData[chartData.length - 1]?.label ?? "";
+
+  const rangeLabel = RANGE_OPTIONS.find((o) => o.id === range)?.label ?? "30D";
 
   return (
-    <section
-      aria-label="Success fees collected"
+    <div
       style={{
-        border: "1px solid var(--line)",
-        borderRadius: 12,
-        background: "var(--card)",
-        padding: "18px 20px 16px",
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 22,
+        padding: "26px 28px 18px",
+        background: "linear-gradient(150deg,var(--green),var(--green2))",
+        color: "#F1E7D6",
+        boxShadow: "var(--shadowMd)",
       }}
     >
       <div
         style={{
+          position: "relative",
           display: "flex",
           flexWrap: "wrap",
           alignItems: "flex-start",
           justifyContent: "space-between",
-          gap: 16,
+          gap: 20,
         }}
       >
-        <div style={{ minWidth: 0 }}>
-          <h2 style={{ margin: 0, font: "600 17px/1.2 var(--head)", color: "var(--ink)" }}>Success fees collected</h2>
-          <p style={{ margin: "10px 0 0", font: "700 40px/1 var(--head)", color: "var(--ink)" }}>{value}</p>
-          <p style={{ margin: "8px 0 0", font: "400 14px/1.4 var(--ui)", color: "var(--ink2)" }}>
-            {paidCount === 0
-              ? `No fee paid ${option.sentence}.`
-              : `${paidCount} fee${paidCount === 1 ? "" : "s"} paid ${option.sentence}.`}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 12,
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                font: "500 14px/1.3 var(--label)",
+                letterSpacing: "0",
+                color: "rgba(241,231,214,.78)",
+              }}
+            >
+              Success fees collected
+            </p>
+            <div
+              role="tablist"
+              aria-label="Success fees period"
+              style={{
+                display: "inline-flex",
+                flexWrap: "wrap",
+                gap: 4,
+                padding: 3,
+                borderRadius: 999,
+                background: "rgba(0,0,0,.18)",
+              }}
+            >
+              {RANGE_OPTIONS.map((opt) => {
+                const active = opt.id === range;
+                return (
+                  <Link
+                    key={opt.id}
+                    href={opt.id === "30d" ? "/admin" : `/admin?range=${opt.id}`}
+                    role="tab"
+                    aria-selected={active}
+                    scroll={false}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      minHeight: 34,
+                      padding: "0 12px",
+                      borderRadius: 999,
+                      font: "600 11px/1 var(--ui)",
+                      textDecoration: "none",
+                      color: active ? "#2F4A3C" : "rgba(241,231,214,.78)",
+                      background: active ? "#E0A95C" : "transparent",
+                    }}
+                  >
+                    {opt.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+          <p
+            style={{
+              margin: "0 0 6px",
+              fontFamily: "var(--display)",
+              fontWeight: 600,
+              fontSize: "clamp(32px, 9vw, 48px)",
+              lineHeight: 1,
+              letterSpacing: "-.02em",
+              color: "#F8F1E2",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {value}
           </p>
+          {typeof trend === "number" && (
+            <p
+              style={{
+                margin: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                font: "600 13px/1 var(--ui)",
+                color: "#B9D0BC",
+                background: "rgba(185,208,188,.14)",
+                padding: "5px 10px",
+                borderRadius: 999,
+              }}
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ transform: trend < 0 ? "scaleY(-1)" : undefined }}
+                aria-hidden
+              >
+                <path d="M4 17l7-7 4 4 5-6" />
+              </svg>
+              {Math.abs(trend)}% vs prior half
+            </p>
+          )}
         </div>
-        <nav
-          aria-label="Period"
+        <span
+          aria-hidden
           style={{
-            display: "inline-flex",
-            flexWrap: "wrap",
-            gap: 2,
-            padding: 3,
-            borderRadius: 9,
-            background: "var(--card2)",
-            border: "1px solid var(--line)",
+            width: 92,
+            height: 92,
+            flex: "none",
+            borderRadius: 999,
+            background: "#e0a95c",
+            boxShadow: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            font: "700 34px/1 var(--display)",
+            color: "#7A5320",
           }}
         >
-          {RANGE_OPTIONS.map((opt) => {
-            const active = opt.id === range;
-            return (
-              <Link
-                key={opt.id}
-                href={opt.id === "30d" ? "/admin" : `/admin?range=${opt.id}`}
-                aria-current={active ? "page" : undefined}
-                scroll={false}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  minHeight: 32,
-                  padding: "0 12px",
-                  borderRadius: 7,
-                  font: `${active ? 600 : 500} 13px/1 var(--ui)`,
-                  textDecoration: "none",
-                  color: active ? "var(--ink)" : "var(--ink2)",
-                  background: active ? "var(--card)" : "transparent",
-                  border: active ? "1px solid var(--line)" : "1px solid transparent",
-                }}
-              >
-                {opt.label}
-              </Link>
-            );
-          })}
-        </nav>
+          $
+        </span>
       </div>
 
-      <div role="img" aria-label={`${value} collected ${option.sentence}`} style={{ marginTop: 18 }}>
+      <div
+        role="img"
+        aria-label={`Success fees collected over ${rangeLabel}: ${value}`}
+        style={{ width: "100%", marginTop: 14 }}
+      >
         <svg
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           width="100%"
-          height="120"
+          height="112"
           preserveAspectRatio="none"
           aria-hidden
-          style={{ display: "block" }}
+          style={{ display: "block", overflow: "visible" }}
         >
-          <line
-            x1="0"
-            x2={chartWidth}
-            y1={chartHeight - 0.5}
-            y2={chartHeight - 0.5}
-            stroke="var(--line)"
-            strokeWidth="1"
-            vectorEffect="non-scaling-stroke"
-          />
-          {series.map((point, index) => {
-            if (point.revenueCents <= 0) return null;
-            const h = Math.max(3, (point.revenueCents / max) * (chartHeight - 6));
-            const x = index * slot + (slot - barWidth) / 2;
-            return (
-              <rect
-                key={index}
-                x={x}
-                y={chartHeight - h}
-                width={barWidth}
-                height={h}
-                rx={Math.min(3, barWidth / 3)}
-                fill="var(--gold)"
-              />
-            );
-          })}
+          <defs>
+            <linearGradient id="heroRevenueFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#E0A95C" stopOpacity="0.48" />
+              <stop offset="100%" stopColor="#E0A95C" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          {[0.25, 0.5, 0.75].map((fraction) => (
+            <line
+              key={fraction}
+              x1="0"
+              x2={chartWidth}
+              y1={chartHeight * fraction}
+              y2={chartHeight * fraction}
+              stroke="rgba(241,231,214,.10)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {areaPath && <path d={areaPath} fill="url(#heroRevenueFill)" />}
+          {linePath && (
+            <path
+              d={linePath}
+              fill="none"
+              stroke="#E0A95C"
+              strokeWidth="3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
         </svg>
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             gap: 10,
-            marginTop: 6,
-            color: "var(--ink3)",
-            font: "500 12px/1 var(--ui)",
+            marginTop: 4,
+            color: "rgba(241,231,214,.5)",
+            font: "500 10px/1 var(--mono)",
           }}
         >
           <span>{firstLabel}</span>
@@ -154,6 +261,6 @@ export function RevenueHero({
           <span>{lastLabel}</span>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

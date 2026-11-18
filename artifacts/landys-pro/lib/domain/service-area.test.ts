@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { lookupCounty } from "@/lib/geo/zip";
 import {
   cleanCountyList,
   cleanZipList,
@@ -7,6 +8,12 @@ import {
   parseCounty,
   selectContractorsForLocation,
 } from "./service-area";
+
+// The ZIP dataset is a large JSON file: load it (and the county index) once,
+// so a busy machine running the whole suite does not hit the 5 s test timeout.
+beforeAll(async () => {
+  await lookupCounty("Sabine", "TX");
+}, 60_000);
 
 describe("service area parsing", () => {
   it("reads ZIP lists written as text or arrays", () => {

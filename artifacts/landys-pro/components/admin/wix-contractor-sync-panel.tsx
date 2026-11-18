@@ -48,7 +48,7 @@ export function WixContractorSyncPanel({
       style={{
         background: "var(--card)",
         border: "1px solid var(--line)",
-        borderRadius: 12,
+        borderRadius: 14,
         padding: "16px 20px",
         marginBottom: 16,
         display: "flex",
@@ -59,7 +59,7 @@ export function WixContractorSyncPanel({
       }}
     >
       <div style={{ minWidth: 0, flex: "1 1 320px" }}>
-      <p style={{ margin: 0, font: "600 17px/1.3 var(--head)", color: "var(--ink)" }}>
+      <p style={{ margin: 0, font: "600 15px/1.3 var(--ui)", color: "var(--ink)" }}>
         Import from landys.co
       </p>
       <p style={{ margin: "4px 0 0", font: "400 14px/1.45 var(--ui)", color: "var(--ink2)" }}>
@@ -83,7 +83,7 @@ export function WixContractorSyncPanel({
           style={{
             height: 40,
             padding: "0 16px",
-            borderRadius: 8,
+            borderRadius: 10,
             border: "none",
             background: "var(--gold)",
             color: "#fff",
